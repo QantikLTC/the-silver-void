@@ -40,8 +40,8 @@ Each rank unlocks a unique NFT pool with Common, Rare and Epic variants.
 |------|--------|------|------|
 | Simple Holder | The Litecoin Revelation | My First Coin | The Voyage Begins |
 | Apprentice Litecoiner | Spreading the Word | Don't be afraid of FUD | Strengthening the Chain |
-| Devoted Litecoiner | Kill the FUD! | MimbleWimble User | — |
-| Silver Maximalist | The Silver Throne | — | — |
+| Devoted Litecoiner | — | Kill the FUD! | MimbleWimble User |
+| Silver Maximalist | — | — | The Silver Throne|
 
 - **Mint fee** : 0.01 zkLTC per NFT
 - **Royalties** : 2.5% on resale (EIP-2981)
