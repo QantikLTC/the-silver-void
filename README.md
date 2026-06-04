@@ -89,8 +89,6 @@ the-silver-void/
 
 - [ ] Mainnet deployment on LitVM
 - [ ] NFT marketplace integration
-- [ ] Mobile app
-- [ ] DAO governance for burn thresholds
 
 ---
 
