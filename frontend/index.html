@@ -1862,6 +1862,173 @@ body::after {
 </style>
 </head>
 <body>
+<!-- ═══════════════ INTRO OVERLAY ═══════════════ -->
+<div id="sv-intro" style="position:fixed;inset:0;z-index:100000;background:radial-gradient(ellipse at 50% 40%,#0a0628 0%,#04021a 60%,#020110 100%);display:flex;align-items:center;justify-content:center;overflow:hidden;opacity:1;transition:opacity 0.8s ease;">
+  <canvas id="sv-intro-canvas" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
+
+  <!-- Skip button -->
+  <button id="sv-intro-skip" onclick="svIntroEnd()" style="position:absolute;top:24px;right:24px;z-index:5;background:transparent;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.5);font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.2em;padding:0.5rem 1.1rem;border-radius:3px;cursor:pointer;transition:all 0.2s;text-transform:uppercase;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.2)';this.style.color='rgba(255,255,255,0.5)'">Skip ✕</button>
+
+  <!-- Sequential scenes -->
+  <div style="position:relative;z-index:3;text-align:center;padding:2rem;max-width:760px;width:100%;">
+
+    <!-- Scene 1: Identity -->
+    <div class="sv-scene" id="sv-scene-1" style="opacity:0;">
+      <div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.5em;color:var(--teal);text-transform:uppercase;margin-bottom:1.5rem;">The Cypherpunk Pensieve</div>
+      <div style="font-family:'Cinzel',serif;font-size:clamp(2.2rem,7vw,4rem);letter-spacing:0.3em;text-transform:uppercase;color:#fff;line-height:1.15;font-weight:600;">THE SI<span class="ltc-letter" style="display:inline-block;transform:skewX(-6deg);">Ł</span>VER VOID</div>
+      <div style="font-size:0.9rem;color:rgba(255,255,255,0.4);font-style:italic;margin-top:1.5rem;max-width:480px;margin-left:auto;margin-right:auto;line-height:1.6;">"Lost coins only make everyone else's coins worth slightly more."</div>
+    </div>
+
+    <!-- Scene 2: The Burn -->
+    <div class="sv-scene" id="sv-scene-2" style="opacity:0;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;">
+      <div style="font-size:3.5rem;margin-bottom:1rem;">🔥</div>
+      <div style="font-family:'Cinzel',serif;font-size:clamp(1.4rem,5vw,2.4rem);letter-spacing:0.25em;text-transform:uppercase;font-weight:600;color:#fff;margin-bottom:1rem;">THE GREAT WORK</div>
+      <div style="font-size:0.95rem;color:rgba(255,255,255,0.55);line-height:1.7;max-width:440px;margin:0 auto;">Burn your zkLTC into <span style="color:var(--teal);">Eternal Silver</span>. Ascend the ranks of the Order. Unlock NFTs. Engrave your address in history.</div>
+    </div>
+
+    <!-- Scene 3: The Battle -->
+    <div class="sv-scene" id="sv-scene-3" style="opacity:0;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;">
+      <div style="display:flex;justify-content:center;gap:1.2rem;margin-bottom:1.2rem;">
+        <svg width="46" height="46" viewBox="0 0 80 80"><defs><linearGradient id="svi1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7755cc"/><stop offset="1" stop-color="#00e5cc"/></linearGradient></defs><polygon points="40,8 74,32 60,72 20,72 6,32" fill="url(#svi1)"/></svg>
+        <svg width="46" height="46" viewBox="0 0 80 80"><rect x="16" y="10" width="48" height="60" fill="none" stroke="url(#svi1)" stroke-width="4"/><rect x="27" y="26" width="26" height="3.5" fill="#00e5cc"/><rect x="27" y="38" width="26" height="3.5" fill="#00e5cc"/><rect x="27" y="50" width="16" height="3.5" fill="#00e5cc"/></svg>
+        <svg width="46" height="46" viewBox="0 0 80 80"><polyline points="8,14 46,42 8,70" fill="none" stroke="url(#svi1)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><polyline points="72,14 46,42 72,70" fill="none" stroke="url(#svi1)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="46" cy="42" r="5.5" fill="#00e5cc"/></svg>
+      </div>
+      <div style="font-family:'Cinzel',serif;font-size:clamp(1.4rem,5vw,2.4rem);letter-spacing:0.25em;text-transform:uppercase;font-weight:600;color:#fff;margin-bottom:1rem;">ENTER THE DUELS</div>
+      <div style="font-size:0.95rem;color:rgba(255,255,255,0.55);line-height:1.7;max-width:440px;margin:0 auto;">Challenge fellow Sacrifiants. Stake your zkLTC. Winner takes the pot — and <span style="color:var(--teal);">20% burns forever</span> into the Void. <span style="color:var(--teal);">⚔🔥</span></div>
+    </div>
+
+    <!-- Final scene: Two doors -->
+    <div class="sv-scene" id="sv-scene-final" style="opacity:0;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;">
+      <div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.4em;color:var(--teal);text-transform:uppercase;margin-bottom:0.6rem;">Choose Your Path</div>
+      <div style="font-family:'Cinzel',serif;font-size:clamp(1.6rem,5vw,2.6rem);letter-spacing:0.3em;text-transform:uppercase;color:#fff;margin-bottom:2rem;font-weight:600;">THE SI<span class="ltc-letter" style="display:inline-block;transform:skewX(-6deg);">Ł</span>VER VOID</div>
+      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+        <button onclick="svIntroGoto('ritual')" style="flex:1;min-width:200px;max-width:280px;padding:1.5rem 1rem;background:linear-gradient(135deg,rgba(0,229,204,0.1),rgba(0,229,204,0.02));border:1px solid rgba(0,229,204,0.35);border-radius:5px;cursor:pointer;transition:all 0.25s;" onmouseover="this.style.background='linear-gradient(135deg,rgba(0,229,204,0.2),rgba(0,229,204,0.05))';this.style.borderColor='var(--teal)'" onmouseout="this.style.background='linear-gradient(135deg,rgba(0,229,204,0.1),rgba(0,229,204,0.02))';this.style.borderColor='rgba(0,229,204,0.35)'">
+          <div style="font-size:2rem;margin-bottom:0.6rem;">🔥</div>
+          <div style="font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:0.15em;color:#fff;margin-bottom:0.4rem;">ENTER THE VOID</div>
+          <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);">Burn · Ascend · Collect</div>
+        </button>
+        <button onclick="svIntroGoto('duel')" style="flex:1;min-width:200px;max-width:280px;padding:1.5rem 1rem;background:linear-gradient(135deg,rgba(119,85,204,0.12),rgba(119,85,204,0.02));border:1px solid rgba(119,85,204,0.4);border-radius:5px;cursor:pointer;transition:all 0.25s;" onmouseover="this.style.background='linear-gradient(135deg,rgba(119,85,204,0.25),rgba(119,85,204,0.05))';this.style.borderColor='#9d7fee'" onmouseout="this.style.background='linear-gradient(135deg,rgba(119,85,204,0.12),rgba(119,85,204,0.02))';this.style.borderColor='rgba(119,85,204,0.4)'">
+          <div style="font-size:2rem;margin-bottom:0.6rem;">⚔️</div>
+          <div style="font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:0.15em;color:#fff;margin-bottom:0.4rem;">ENTER THE ARENA</div>
+          <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);">Duel · Stake · Burn · Conquer</div>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+@keyframes svFadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+.sv-scene.sv-show { animation:svFadeUp 0.9s ease forwards; }
+#sv-scene-2.sv-show, #sv-scene-3.sv-show, #sv-scene-final.sv-show {
+  animation:svFadeUpCenter 0.9s ease forwards;
+}
+@keyframes svFadeUpCenter {
+  from { opacity:0; transform:translate(-50%,-45%); }
+  to { opacity:1; transform:translate(-50%,-50%); }
+}
+.sv-scene.sv-hide { animation:svFadeOut 0.6s ease forwards; }
+@keyframes svFadeOut { to { opacity:0; } }
+</style>
+
+<script>
+(function(){
+  // Intro plays on every visit
+  window.addEventListener('DOMContentLoaded', svIntroPlay);
+})();
+
+let _svIntroTimers = [];
+
+function svIntroPlay() {
+  svIntroParticles();
+  const scenes = ['sv-scene-1','sv-scene-2','sv-scene-3','sv-scene-final'];
+  const durations = [4200, 4200, 4500, 99999]; // final stays
+  let t = 0;
+  scenes.forEach((id, i) => {
+    _svIntroTimers.push(setTimeout(() => {
+      // hide previous
+      if (i > 0) {
+        const prev = document.getElementById(scenes[i-1]);
+        if (prev) { prev.classList.remove('sv-show'); prev.classList.add('sv-hide'); }
+      }
+      const cur = document.getElementById(id);
+      if (cur) { cur.classList.remove('sv-hide'); cur.classList.add('sv-show'); }
+    }, t));
+    t += durations[i];
+  });
+}
+
+function svIntroGoto(sectionId) {
+  svIntroEnd(() => {
+    const el = document.getElementById(sectionId);
+    if (el) el.scrollIntoView({behavior:'smooth'});
+  });
+}
+
+function svIntroEnd(cb) {
+  _svIntroTimers.forEach(clearTimeout);
+  _svIntroTimers = [];
+  try { localStorage.setItem('sv_intro_seen', '1'); } catch {}
+  const el = document.getElementById('sv-intro');
+  if (el) {
+    el.style.opacity = '0';
+    setTimeout(() => { el.style.display = 'none'; if (cb) cb(); }, 800);
+  } else if (cb) cb();
+}
+
+// Replay function (called from a button in nav/footer)
+function svIntroReplay() {
+  const el = document.getElementById('sv-intro');
+  if (!el) return;
+  // reset scenes
+  ['sv-scene-1','sv-scene-2','sv-scene-3','sv-scene-final'].forEach(id => {
+    const s = document.getElementById(id);
+    if (s) { s.classList.remove('sv-show','sv-hide'); s.style.opacity='0'; }
+  });
+  el.style.display = 'flex';
+  void el.offsetWidth;
+  el.style.opacity = '1';
+  svIntroPlay();
+}
+
+// Lightweight particle field for the intro
+function svIntroParticles() {
+  const canvas = document.getElementById('sv-intro-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let w, h, particles;
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  particles = Array.from({length: 70}, () => ({
+    x: Math.random()*w, y: Math.random()*h,
+    r: Math.random()*1.6+0.4,
+    vy: -(Math.random()*0.4+0.1),
+    a: Math.random()*0.5+0.2
+  }));
+  let running = true;
+  const intro = document.getElementById('sv-intro');
+  function loop() {
+    if (!running || !intro || intro.style.display === 'none') return;
+    ctx.clearRect(0,0,w,h);
+    particles.forEach(p => {
+      p.y += p.vy;
+      if (p.y < -5) { p.y = h+5; p.x = Math.random()*w; }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(0,229,204,${p.a})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(loop);
+  }
+  loop();
+}
+</script>
+<!-- ═══════════════ END INTRO ═══════════════ -->
 <canvas id="void-particles" style="position:fixed;top:0;left:0;pointer-events:none;"></canvas>
 <canvas id="bg-canvas" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:0.9;"></canvas>
 <!-- NAV -->
@@ -1872,8 +2039,11 @@ body::after {
       <li><a href="#ritual" style="color:rgba(255,255,255,0.75);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='#ffffff'" onmouseout="this.style.color='rgba(255,255,255,0.75)'">The Ritual</a></li>
       <li><a href="#ranks" style="color:rgba(255,255,255,0.75);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='#ffffff'" onmouseout="this.style.color='rgba(255,255,255,0.75)'">The Order</a></li>
       <li><a href="#leaderboard" style="color:rgba(255,255,255,0.75);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='#ffffff'" onmouseout="this.style.color='rgba(255,255,255,0.75)'">Sacrifiants</a></li>
+      <li><a href="#duel" style="color:rgba(255,255,255,0.75);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='#ffffff'" onmouseout="this.style.color='rgba(255,255,255,0.75)'">⚔ Duels</a></li>
+      <li><a href="#" onclick="svIntroReplay();return false;" style="color:rgba(255,255,255,0.45);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'" title="Replay intro">✶ Intro</a></li>
     </ul>
     <button class="nav-btn" id="wallet-btn">Connect Wallet</button>
+    <button id="feats-btn" onclick="featsOpen()" style="display:none;background:transparent;border:1px solid rgba(200,168,74,0.4);color:#c8a84a;width:38px;height:38px;border-radius:4px;cursor:pointer;font-size:1rem;margin-left:0.5rem;transition:all 0.2s;vertical-align:middle;" onmouseover="this.style.background='rgba(200,168,74,0.12)'" onmouseout="this.style.background='transparent'" title="Hall of Feats">🏆</button>
     <div class="hamburger" id="hamburger" onclick="toggleMenu()">
       <span></span><span></span><span></span>
     </div>
@@ -1885,8 +2055,10 @@ body::after {
   <div class="menu-brand">The <em>Si<span class="ltc-letter">Ł</span>ver</em> Void</div>
   <a class="menu-item" href="#ritual" onclick="closeMenu()"><span class="mi-icon">⬡</span>The Ritual</a>
   <a class="menu-item" href="#ranks" onclick="closeMenu()"><span class="mi-icon">◆</span>The Order</a>
+  <a class="menu-item" href="#duel" onclick="closeMenu()"><span class="mi-icon">⚔</span>Duels</a>
   <a class="menu-item" href="#leaderboard" onclick="closeMenu()"><span class="mi-icon">✦</span>Sacrifiants</a>
   <a class="menu-item" href="https://liteforge.explorer.caldera.xyz/address/0x0AD3f776C45FF457d2d8e211A3174A4Db201b656" target="_blank" onclick="closeMenu()"><span class="mi-icon">⛓</span>Contract</a>
+  <a class="menu-item" href="#" onclick="closeMenu();svIntroReplay();return false;"><span class="mi-icon">✶</span>Replay Intro</a>
   <div class="menu-bottom">LiteForge Testnet · Chain ID 4441</div>
 </div>
 
@@ -2367,6 +2539,186 @@ body::after {
 <!-- LEADERBOARD -->
 
 
+
+
+<!-- DUEL CHAMBER -->
+<section id="duel" style="padding:5rem 0 3rem;">
+  <div style="max-width:920px;margin:0 auto;padding:0 1.5rem;">
+
+    <div style="text-align:center;margin-bottom:3rem;">
+      <div class="eyebrow" style="justify-content:center;">⚔ The Duel Chamber</div>
+      <h2 class="section-h2" style="font-family:'Cinzel',serif;text-align:center;">Rock · Paper · Scissors</h2>
+      <p style="font-family:'Cormorant Garamond',serif;font-size:1rem;font-style:italic;color:rgba(255,255,255,0.4);margin-top:0.4rem;">Stake 0.1 zkLTC. Choose your weapon. The chain decides.</p>
+    </div>
+
+    <!-- DUEL STATS -->
+    <div style="display:flex;gap:1rem;margin-bottom:2rem;">
+      <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1rem;text-align:center;">
+        <span id="duel-stat-duels" style="font-family:'Cinzel',serif;font-size:1.3rem;color:var(--teal);display:block;">—</span>
+        <span style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,255,255,0.2);font-family:'Cinzel',serif;text-transform:uppercase;display:block;margin-top:0.25rem;">Duels Played</span>
+      </div>
+      <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1rem;text-align:center;">
+        <span id="duel-stat-ties" style="font-family:'Cinzel',serif;font-size:1.3rem;color:var(--teal);display:block;">—</span>
+        <span style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,255,255,0.2);font-family:'Cinzel',serif;text-transform:uppercase;display:block;margin-top:0.25rem;">Ties</span>
+      </div>
+      <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1rem;text-align:center;">
+        <span id="duel-stat-burned" style="font-family:'Cinzel',serif;font-size:1.3rem;color:var(--teal);display:block;">—</span>
+        <span style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,255,255,0.2);font-family:'Cinzel',serif;text-transform:uppercase;display:block;margin-top:0.25rem;">zkLTC Burned</span>
+      </div>
+      <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1rem;text-align:center;">
+        <span id="duel-stat-open" style="font-family:'Cinzel',serif;font-size:1.3rem;color:var(--teal);display:block;">—</span>
+        <span style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,255,255,0.2);font-family:'Cinzel',serif;text-transform:uppercase;display:block;margin-top:0.25rem;">Open Duels</span>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem;">
+
+      <!-- CREATE DUEL -->
+      <div style="background:linear-gradient(135deg,rgba(8,4,40,0.9),rgba(4,2,26,0.95));border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1.5rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;">
+          <div style="font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:0.25em;color:var(--teal);text-transform:uppercase;">⚔ Challenge Someone</div>
+          <button onclick="document.getElementById('duel-rules-modal').style.display='flex'" style="width:24px;height:24px;border-radius:50%;background:transparent;border:1px solid rgba(0,229,204,0.4);color:var(--teal);font-family:'Cinzel',serif;font-size:0.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;" onmouseover="this.style.background='rgba(0,229,204,0.15)'" onmouseout="this.style.background='transparent'" title="How it works">?</button>
+        </div>
+        <p style="font-size:0.82rem;color:rgba(255,255,255,0.3);font-style:italic;margin-bottom:1rem;">Your choice stays hidden until reveal. No cheating possible.</p>
+
+        <div style="font-size:0.6rem;letter-spacing:0.15em;color:rgba(255,255,255,0.3);font-family:'Cinzel',serif;text-transform:uppercase;margin-bottom:0.5rem;">Your weapon</div>
+        <div style="display:flex;gap:0.8rem;margin-bottom:1rem;">
+          <div id="duel-choice-1" data-duel-choice="1" style="flex:1;padding:1rem 0.5rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:4px;cursor:pointer;text-align:center;transition:all 0.2s;">
+            <span style="display:block;margin-bottom:0.4rem;"><svg width="36" height="36" viewBox="0 0 80 80"><defs><linearGradient id="vtRock" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7755cc"/><stop offset="1" stop-color="#00e5cc"/></linearGradient></defs><polygon points="40,8 74,32 60,72 20,72 6,32" fill="url(#vtRock)" opacity="0.95"/></svg></span>
+            <span style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,255,255,0.5);">ROCK</span>
+          </div>
+          <div id="duel-choice-2" data-duel-choice="2" style="flex:1;padding:1rem 0.5rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:4px;cursor:pointer;text-align:center;transition:all 0.2s;">
+            <span style="display:block;margin-bottom:0.4rem;"><svg width="36" height="36" viewBox="0 0 80 80"><defs><linearGradient id="vtPaper" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7755cc"/><stop offset="1" stop-color="#00e5cc"/></linearGradient></defs><rect x="16" y="10" width="48" height="60" fill="none" stroke="url(#vtPaper)" stroke-width="4"/><rect x="27" y="26" width="26" height="3.5" fill="#00e5cc"/><rect x="27" y="38" width="26" height="3.5" fill="#00e5cc"/><rect x="27" y="50" width="16" height="3.5" fill="#00e5cc"/></svg></span>
+            <span style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,255,255,0.5);">PAPER</span>
+          </div>
+          <div id="duel-choice-3" data-duel-choice="3" style="flex:1;padding:1rem 0.5rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:4px;cursor:pointer;text-align:center;transition:all 0.2s;">
+            <span style="display:block;margin-bottom:0.4rem;"><svg width="36" height="36" viewBox="0 0 80 80"><defs><linearGradient id="vtSci" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7755cc"/><stop offset="1" stop-color="#00e5cc"/></linearGradient></defs><polyline points="8,14 46,42 8,70" fill="none" stroke="url(#vtSci)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><polyline points="72,14 46,42 72,70" fill="none" stroke="url(#vtSci)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="46" cy="42" r="5.5" fill="#00e5cc"/></svg></span>
+            <span style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,255,255,0.5);">SCISSORS</span>
+          </div>
+        </div>
+
+        <div style="font-size:0.6rem;letter-spacing:0.15em;color:rgba(255,255,255,0.3);font-family:'Cinzel',serif;text-transform:uppercase;margin:0.8rem 0 0.5rem;">⚡ &nbsp; Choose Stake</div>
+        <div class="burn-presets-row" style="margin-bottom:0.8rem;">
+          <button id="duel-stake-01" data-duel-stake="0.1" class="bpreset on">0.1<span class="bpr-hint">zkLTC</span></button>
+          <button id="duel-stake-05" data-duel-stake="0.5" class="bpreset">0.5<span class="bpr-hint">zkLTC</span></button>
+          <button id="duel-stake-1"  data-duel-stake="1"   class="bpreset">1<span class="bpr-hint">zkLTC</span></button>
+          <button id="duel-stake-5"  data-duel-stake="5"   class="bpreset">5<span class="bpr-hint">zkLTC</span></button>
+        </div>
+        <div style="background:rgba(0,229,204,0.06);border:1px solid rgba(0,229,204,0.2);border-radius:3px;padding:1rem;margin-bottom:0.8rem;">
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.3rem;">
+            <span style="color:rgba(255,255,255,0.3);">Stake</span>
+            <span id="duel-stake-display" style="color:var(--teal);font-family:'Cinzel',serif;">0.1 zkLTC</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.3rem;">
+            <span style="color:rgba(255,255,255,0.3);">If you win</span>
+            <span id="duel-if-win" style="color:#fff;font-family:'Cinzel',serif;">+0.15 zkLTC</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;">
+            <span style="color:rgba(255,255,255,0.3);">Burned</span>
+            <span id="duel-burn-amount" style="color:#7755cc;font-family:'Cinzel',serif;">0.02 zkLTC ∞</span>
+          </div>
+        </div>
+
+        <button data-duel-action="createConfirm" style="width:100%;padding:0.75rem;font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;cursor:pointer;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);background:linear-gradient(135deg,var(--teal),#5a9fff);color:#04021a;border:none;margin-top:0.2rem;transition:filter 0.2s;" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter=''">
+          ⚔ &nbsp; Open Duel · <span id='duel-open-btn-label'>0.1</span> zkLTC
+        </button>
+      </div>
+
+      <!-- MY DUELS (inline, large) -->
+      <div style="background:linear-gradient(135deg,rgba(8,4,40,0.9),rgba(4,2,26,0.95));border:1px solid rgba(119,85,204,0.3);border-radius:4px;padding:1.5rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;">
+          <div style="font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:0.25em;color:#9d7fee;text-transform:uppercase;">⚔ My Duels</div>
+          <button onclick="myDuelsScan()" title="Refresh" style="background:transparent;border:1px solid rgba(119,85,204,0.3);color:rgba(157,127,238,0.7);font-size:0.7rem;padding:0.3rem 0.5rem;border-radius:3px;cursor:pointer;">↻</button>
+        </div>
+        <div id="myduels-inline-list" style="min-height:120px;">
+          <div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.5rem 0;">Connect your wallet to see your duels.</div>
+        </div>
+      </div>
+
+      <!-- Legacy single-duel elements kept hidden for backward JS compatibility -->
+      <div style="display:none;">
+        <div id="duel-my-none">You have no active duel.</div>
+
+        <!-- Waiting for B -->
+        <div id="duel-my-open">
+          <div data-duel-status-label style="font-family:'Cinzel',serif;font-size:0.5rem;letter-spacing:0.2em;padding:0.2rem 0.6rem;border-radius:2px;background:rgba(0,229,204,0.1);color:var(--teal);border:1px solid rgba(0,229,204,0.3);display:inline-block;margin-bottom:0.8rem;">⏳ WAITING FOR OPPONENT</div>
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.3rem;"><span style="color:rgba(255,255,255,0.3);">Duel ID</span><span id="duel-my-id-open" style="font-family:'Cinzel',serif;color:var(--teal);">—</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.3rem;"><span style="color:rgba(255,255,255,0.3);">Your choice</span><span id="duel-my-choice-open" style="font-family:'Cinzel',serif;">—</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:1rem;"><span style="color:rgba(255,255,255,0.3);">Stake</span><span style="font-family:'Cinzel',serif;">0.1 zkLTC</span></div>
+          <button id="duel-cancel-btn" data-duel-action="cancel" style="width:100%;padding:0.65rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.2em;cursor:pointer;background:transparent;color:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.12);border-radius:2px;margin-top:0.3rem;">✕ &nbsp; Cancel & Refund</button>
+          <div id="duel-joined-info" style="display:none;background:rgba(0,229,204,0.05);border:1px solid rgba(0,229,204,0.18);border-radius:3px;padding:0.9rem 1rem;margin-top:0.8rem;">
+            <div style="font-size:0.78rem;color:rgba(255,255,255,0.6);line-height:1.6;">
+              <div style="margin-bottom:0.5rem;">⚔️ <strong style="color:var(--teal);">You've joined!</strong> Your opponent now has to reveal their hidden move.</div>
+              <div style="margin-bottom:0.5rem;">⏱️ This usually takes <strong style="color:#fff;">a few seconds</strong>. The result appears here and in your history automatically.</div>
+              <div style="color:rgba(255,255,255,0.4);font-size:0.72rem;">🛡️ If they don't reveal within <strong style="color:#c8a84a;">6 hours</strong>, you can claim the entire pot — no move means you win by default.</div>
+            </div>
+            <div id="duel-claim-zone" style="display:none;margin-top:0.8rem;">
+              <button id="duel-claim-btn" onclick="duelClaimTimeout()" style="width:100%;padding:0.7rem;font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.15em;cursor:pointer;background:linear-gradient(135deg,#c8a84a,#e8d088);color:#04021a;border:none;border-radius:3px;text-transform:uppercase;font-weight:600;">🏆 Claim Your Victory</button>
+            </div>
+            <div id="duel-countdown" style="margin-top:0.6rem;font-size:0.7rem;color:rgba(255,255,255,0.3);text-align:center;font-family:'Cinzel',serif;letter-spacing:0.1em;"></div>
+          </div>
+        </div>
+
+        <!-- Must reveal -->
+        <div id="duel-my-reveal">
+          <div style="font-family:'Cinzel',serif;font-size:0.5rem;letter-spacing:0.2em;padding:0.2rem 0.6rem;border-radius:2px;background:rgba(200,168,74,0.1);color:#c8a84a;border:1px solid rgba(200,168,74,0.3);display:inline-block;margin-bottom:0.8rem;">⚡ OPPONENT JOINED — REVEAL NOW!</div>
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.3rem;"><span style="color:rgba(255,255,255,0.3);">Duel ID</span><span id="duel-my-id-reveal" style="font-family:'Cinzel',serif;color:var(--teal);">—</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:1rem;"><span style="color:rgba(255,255,255,0.3);">Your choice</span><span id="duel-my-choice-reveal" style="font-family:'Cinzel',serif;">—</span></div>
+          <div style="background:rgba(0,229,204,0.05);border:1px solid rgba(0,229,204,0.2);border-radius:3px;padding:1rem;">
+            <p style="font-size:0.75rem;color:rgba(255,255,255,0.3);margin-bottom:0.8rem;font-style:italic;">Your secret was auto-saved. Click Reveal to resolve.</p>
+            <button data-duel-action="reveal" style="width:100%;padding:0.7rem;font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;cursor:pointer;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);background:linear-gradient(135deg,var(--teal),#5a9fff);color:#04021a;border:none;transition:filter 0.2s;" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter=''">⬡ &nbsp; Reveal & Resolve</button>
+          </div>
+          <p style="font-size:0.7rem;color:#ff4466;margin-top:0.8rem;font-style:italic;">⚠️ Reveal within 6h or opponent claims your stake!</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- OPEN DUELS -->
+    <div style="background:linear-gradient(135deg,rgba(8,4,40,0.9),rgba(4,2,26,0.95));border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1.5rem;margin-bottom:1.5rem;">
+      <div style="font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:0.25em;color:var(--teal);margin-bottom:1.2rem;text-transform:uppercase;">🏟 Open Challenges <span id="duel-open-count" style="color:rgba(255,255,255,0.2);"></span></div>
+      <div id="duel-filters" style="display:flex;gap:0.4rem;margin-bottom:1rem;flex-wrap:wrap;">
+        <button onclick="duelSetFilter('all',this)" class="duel-filter-btn on" style="flex:1;min-width:48px;padding:0.4rem 0.3rem;background:rgba(0,229,204,0.12);border:1px solid rgba(0,229,204,0.4);color:var(--teal);font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;border-radius:3px;cursor:pointer;transition:all 0.2s;">ALL</button>
+        <button onclick="duelSetFilter('0.1',this)" class="duel-filter-btn" style="flex:1;min-width:48px;padding:0.4rem 0.3rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;border-radius:3px;cursor:pointer;transition:all 0.2s;">0.1</button>
+        <button onclick="duelSetFilter('0.5',this)" class="duel-filter-btn" style="flex:1;min-width:48px;padding:0.4rem 0.3rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;border-radius:3px;cursor:pointer;transition:all 0.2s;">0.5</button>
+        <button onclick="duelSetFilter('1',this)" class="duel-filter-btn" style="flex:1;min-width:48px;padding:0.4rem 0.3rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;border-radius:3px;cursor:pointer;transition:all 0.2s;">1</button>
+        <button onclick="duelSetFilter('5',this)" class="duel-filter-btn" style="flex:1;min-width:48px;padding:0.4rem 0.3rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;border-radius:3px;cursor:pointer;transition:all 0.2s;">5</button>
+      </div>
+      <div id="duel-list" style="display:flex;flex-direction:column;gap:0.8rem;">
+        <div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.2rem 0;">No open challenges. Be the first!</div>
+      </div>
+      <button data-duel-action="loadopen" style="width:100%;padding:0.65rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.2em;cursor:pointer;background:transparent;color:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.12);border-radius:2px;margin-top:1rem;">↻ &nbsp; Refresh</button>
+    </div>
+
+    <!-- HISTORY -->
+    <div style="background:linear-gradient(135deg,rgba(8,4,40,0.9),rgba(4,2,26,0.95));border:1px solid rgba(0,229,204,0.15);border-radius:4px;padding:1.2rem;margin-top:1rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <div style="font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:0.25em;color:var(--teal);text-transform:uppercase;">📜 My Duel History</div>
+        <button onclick="localStorage.removeItem(_duelKey('duel_history'));duelRenderHistory();" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.2);font-size:0.55rem;font-family:'Cinzel',serif;letter-spacing:0.1em;padding:0.2rem 0.5rem;border-radius:2px;cursor:pointer;">✕ Clear</button>
+      </div>
+      <div id="duel-history"></div>
+    </div>
+
+
+  </div>
+</section>
+
+<!-- DUEL RESULT OVERLAY -->
+<div id="duel-result-overlay" style="position:fixed;inset:0;z-index:9998;background:rgba(4,2,26,0);display:none;align-items:center;justify-content:center;transition:background 0.5s;pointer-events:none;">
+  <div id="duel-result-box" style="text-align:center;max-width:380px;width:90%;background:linear-gradient(135deg,rgba(10,8,40,0.98),rgba(4,2,26,0.98));border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:2.5rem 2rem;opacity:0;transform:translateY(24px) scale(0.97);transition:all 0.5s cubic-bezier(0.16,1,0.3,1);pointer-events:auto;">
+    <span id="duel-res-emoji" style="font-size:4rem;margin-bottom:1rem;display:block;">⚡</span>
+    <div style="display:flex;justify-content:center;align-items:center;gap:1.5rem;margin-bottom:1.5rem;font-size:2.5rem;">
+      <span id="duel-res-a"></span>
+      <span style="font-family:'Cinzel',serif;font-size:0.8rem;color:rgba(255,255,255,0.3);">VS</span>
+      <span id="duel-res-b"></span>
+    </div>
+    <div id="duel-res-title" style="font-family:'Cinzel',serif;font-size:1.5rem;font-weight:700;margin-bottom:0.5rem;"></div>
+    <div id="duel-res-sub" style="font-size:0.9rem;color:rgba(255,255,255,0.35);font-style:italic;margin-bottom:1.5rem;"></div>
+    <button data-duel-action="closeresult" style="width:100%;max-width:200px;padding:0.7rem;font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;cursor:pointer;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);background:linear-gradient(135deg,var(--teal),#5a9fff);color:#04021a;border:none;margin:0 auto;display:block;">⬡ &nbsp; Continue</button>
+  </div>
+</div>
+
 <!-- FOOTER -->
 <footer>
   <div class="footer-brand">The Si<span class="ltc-letter footer-ltc">Ł</span>ver Void</div>
@@ -2547,10 +2899,19 @@ async function connectWallet(){
     btn.textContent=short;
     btn.style.borderColor='var(--teal)'; btn.style.color='var(--teal)';
     btn.title='Tap to disconnect';
+    const _fb = document.getElementById('feats-btn'); if(_fb) _fb.style.display='inline-block';
     await loadUserData();
     await loadChainData();
     showToast('Wallet connected — Welcome to the Void');
     setTimeout(updateSteps,500);
+    // Small delay to ensure duelReadContract is ready
+    setTimeout(async () => {
+      if (typeof duelRestoreState === 'function') await duelRestoreState();
+      if (typeof duelRenderHistory === 'function') duelRenderHistory();
+      if (typeof featsCheck === 'function') featsCheck();
+      if (typeof myDuelsScan === 'function') myDuelsScan();
+      if (typeof myDuelsStartAuto === 'function') myDuelsStartAuto();
+    }, 800);
   }catch(e){
     btn.textContent='Connect Wallet'; btn.style.borderColor=''; btn.style.color='';
     showToast('Connection failed',true);
@@ -2561,6 +2922,7 @@ function disconnectWallet(){
   connectedAddress=null; provider=null; signer=null; contract=null;
   const btn=document.getElementById('wallet-btn');
   if(btn){btn.textContent='Connect Wallet'; btn.style.borderColor=''; btn.style.color='';}
+  const _fbtn=document.getElementById('feats-btn'); if(_fbtn) _fbtn.style.display='none';
   const _xpf=document.getElementById('xpf-profile'); if(_xpf) _xpf.style.width='0%';
   const _xrl=document.getElementById('xp-rank-label'); if(_xrl) _xrl.textContent='Connect wallet to check rank';
   const _xpl=document.getElementById('xp-prog-label'); if(_xpl) _xpl.textContent='—';
@@ -2571,6 +2933,20 @@ function disconnectWallet(){
   const loreEl=document.getElementById('rcc-lore'); if(loreEl) loreEl.textContent='Connect wallet to reveal your rank in the Order.';
   const starsEl=document.getElementById('rcc-stars'); if(starsEl) starsEl.innerHTML='<span style="color:rgba(255,255,255,0.08)">★</span><span style="color:rgba(255,255,255,0.08)">★</span><span style="color:rgba(255,255,255,0.08)">★</span><span style="color:rgba(255,255,255,0.08)">★</span>';
   const xfEl=document.getElementById('rcc-xp-fill'); if(xfEl) xfEl.style.width='0%';
+  // Reset duel panels
+  const _dmNone = document.getElementById('duel-my-none');
+  const _dmOpen = document.getElementById('duel-my-open');
+  const _dmReveal = document.getElementById('duel-my-reveal');
+  if (_dmNone)   _dmNone.style.display   = 'block';
+  if (_dmOpen)   _dmOpen.style.display   = 'none';
+  if (_dmReveal) _dmReveal.style.display = 'none';
+  // Clear history display (data stays in localStorage, reloads on reconnect)
+  const _dhList = document.getElementById('duel-history');
+  if (_dhList) _dhList.innerHTML = '<div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.2rem 0;">Connect wallet to see your history.</div>';
+  // Reset My Duels inline list
+  const _mdl = document.getElementById('myduels-inline-list');
+  if (_mdl) _mdl.innerHTML = '<div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.5rem 0;">Connect your wallet to see your duels.</div>';
+  if (typeof myDuelsStopAuto === 'function') myDuelsStopAuto();
   showToast('Wallet disconnected');
   updateSteps();
 }
@@ -2589,7 +2965,17 @@ function disconnectWallet(){
 async function loadChainData(){
   try{
     const [totalBurned,totalBurners,totalBurns]=await readContract.getStats();
-    const fmt=parseFloat(ethers.formatEther(totalBurned)).toLocaleString('en',{maximumFractionDigits:3});
+
+    // Add duel contract burns to the global total
+    let combinedBurned = totalBurned;
+    try {
+      if (typeof duelReadContract !== 'undefined' && duelReadContract) {
+        const duelBurned = await duelReadContract.totalBurned();
+        combinedBurned = totalBurned + duelBurned;
+      }
+    } catch(de) { /* duel contract not ready — use main total only */ }
+
+    const fmt=parseFloat(ethers.formatEther(combinedBurned)).toLocaleString('en',{maximumFractionDigits:3});
     ['hero-total','hero-total-pc','void-n'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=fmt;});
     const hb=document.getElementById('hero-burners'); if(hb)hb.textContent=totalBurners.toString();
     const hbpc=document.getElementById('hero-burners-pc'); if(hbpc)hbpc.textContent=totalBurners.toString();
@@ -2649,6 +3035,10 @@ async function loadUserData(){
     else { const range=nextT-currT; pct=range>0?Math.min(((burnedEth-currT)/range)*100,100):100; }
     document.getElementById('xpf-profile').style.width=Math.max(pct,rankIdx<0?0:1)+'%';
     const rankNum=rankIdx; window._currentRankIdx=rankIdx;
+    // Capture burn data for Hall of Feats
+    _burnTotal = burnedEth;
+    _burnRank = rankIdx;
+    if (typeof featsCheck === 'function') featsCheck();
     const customRankName = rankIdx>=0 ? ((typeof RANKS_DATA!=='undefined'&&RANKS_DATA[rankIdx])?RANKS_DATA[rankIdx].name:['Simple Holder','Apprentice Litecoiner','Devoted Litecoiner','Silver Maximalist'][rankIdx]) : '— No rank yet —';
     document.getElementById('xp-rank-label').textContent = rankIdx>=0 ? customRankName+' · Rank '+(rankIdx+1) : '— Burn ≥ 0.5 zkLTC —';
     document.getElementById('xp-rank-label').style.color = rankIdx>=0 ? '' : 'rgba(255,255,255,0.3)';
@@ -2784,14 +3174,28 @@ function getRankColor(tier){
   return m[tier]||'#8ab0c8';
 }
 
-function renderLB(list){
+let _lbPage = 0;
+let _lbCurrentList = [];
+const _lbPerPage = 15;
+
+function renderLB(list, page){
   const wrap=document.getElementById('lb-rows');
   if(!wrap) return;
-  if(!list.length){
+  if (list !== undefined) { _lbCurrentList = list; _lbPage = 0; }
+  if (page !== undefined) { _lbPage = page; }
+  const fullList = _lbCurrentList;
+  if(!fullList.length){
     wrap.innerHTML=`<div class="lb-empty"><strong>✦ The Void Awaits</strong>No sacrifiants yet in this league — will you be the first?</div>`;
     return;
   }
-  wrap.innerHTML=list.map((p,idx)=>{
+  const totalPages = Math.ceil(fullList.length / _lbPerPage);
+  if (_lbPage >= totalPages) _lbPage = totalPages - 1;
+  if (_lbPage < 0) _lbPage = 0;
+  const start = _lbPage * _lbPerPage;
+  const pageItems = fullList.slice(start, start + _lbPerPage);
+
+  const rows = pageItems.map((p,localIdx)=>{
+    const idx = start + localIdx;
     const c=getRankColor(p.tier);
     const bg=c+'12'; const bc=c+'35';
     const numClass=idx===0?'gold':idx===1?'silver-r':idx===2?'bronze':'';
@@ -2810,6 +3214,15 @@ function renderLB(list){
       <div class="lb-tier" style="color:${c}">${['★','★★','★★★','★★★★'][['Simple Holder','Apprentice Litecoiner','Devoted Litecoiner','Silver Maximalist'].indexOf(p.tier)]||'★'}</div>
     </div>`;
   }).join('');
+
+  const pagination = totalPages > 1 ? `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding-top:0.8rem;border-top:1px solid rgba(255,255,255,0.06);">
+      <button onclick="renderLB(undefined, ${_lbPage - 1})" ${_lbPage === 0 ? 'disabled' : ''} style="background:transparent;border:1px solid rgba(0,229,204,${_lbPage === 0 ? '0.08' : '0.3'});color:rgba(0,229,204,${_lbPage === 0 ? '0.2' : '0.7'});font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.12em;padding:0.4rem 0.9rem;border-radius:3px;cursor:${_lbPage === 0 ? 'default' : 'pointer'};">← PREV</button>
+      <span style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:rgba(255,255,255,0.3);">PAGE ${_lbPage + 1} / ${totalPages}</span>
+      <button onclick="renderLB(undefined, ${_lbPage + 1})" ${_lbPage >= totalPages - 1 ? 'disabled' : ''} style="background:transparent;border:1px solid rgba(0,229,204,${_lbPage >= totalPages - 1 ? '0.08' : '0.3'});color:rgba(0,229,204,${_lbPage >= totalPages - 1 ? '0.2' : '0.7'});font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.12em;padding:0.4rem 0.9rem;border-radius:3px;cursor:${_lbPage >= totalPages - 1 ? 'default' : 'pointer'};">NEXT →</button>
+    </div>` : '';
+
+  wrap.innerHTML = rows + pagination;
 }
 
 function filtNew(el){
@@ -2839,11 +3252,19 @@ async function loadLeaderboard(){
     try{
       const [tb,totalBurners,totalBurns]=await fc2.getStats();
       burnerCount=Number(totalBurners);
+      // Add duel contract burns to the displayed total
+      let combinedTb = tb;
+      try {
+        if (typeof duelReadContract !== 'undefined' && duelReadContract) {
+          const duelBurned = await duelReadContract.totalBurned();
+          combinedTb = tb + duelBurned;
+        }
+      } catch(de) {}
       // Update sidebar stats
       const lbTotal=document.getElementById('lb-total');
       const lbBurners=document.getElementById('lb-burners');
       const lbBurnsEl=document.getElementById('lb-burns');
-      if(lbTotal) lbTotal.innerHTML=parseFloat(ethers.formatEther(tb)).toFixed(3)+'<span class="lb-stat-unit">zkLTC</span>';
+      if(lbTotal) lbTotal.innerHTML=parseFloat(ethers.formatEther(combinedTb)).toFixed(3)+'<span class="lb-stat-unit">zkLTC</span>';
       if(lbBurners) lbBurners.textContent=totalBurners.toString();
       if(lbBurnsEl) lbBurnsEl.textContent=totalBurns.toString();
     }catch(e){ console.warn('Stats error:',e.message); }
@@ -3220,8 +3641,9 @@ if(window.ethereum){
   // Nav links
   const nl = document.getElementById('nav-links-desktop');
   if(nl) {
-    nl.innerHTML = [['#ritual','The Ritual'],['#ranks','The Order'],['#leaderboard','Sacrifiants']]
-      .map(([h,t]) => `<li><a href="${h}" style="color:var(--silver-dim);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='#ffffff'" onmouseout="this.style.color='rgba(255,255,255,0.75)'">${t}</a></li>`).join('');
+    nl.innerHTML = [['#ritual','The Ritual'],['#ranks','The Order'],['#leaderboard','Sacrifiants'],['#duel','⚔ Duels']]
+      .map(([h,t]) => `<li><a href="${h}" style="color:var(--silver-dim);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--silver)'" onmouseout="this.style.color='var(--silver-dim)'">${t}</a></li>`).join('')
+      + `<li><a href="#" onclick="svIntroReplay();return false;" style="color:rgba(255,255,255,0.45);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'" title="Replay intro">✶ Intro</a></li>`;
     nl.style.display = 'flex';
   }
 
@@ -3483,6 +3905,8 @@ async function claimNFT(rankIdx, nftId, color) {
       const tx = await nc.mint(rankIdx + 1, nftId, { value: ethers.parseEther('0.01') });
       await tx.wait();
       showToast('✦ NFT Minted!');
+      _nftMinted = true;
+      if (typeof featsCheck === 'function') featsCheck();
       if(btn) { btn.textContent = '✦ Claimed'; btn.style.background = 'rgba(0,229,204,0.1)'; btn.style.color = '#00e5cc'; btn.style.border = '1px solid rgba(0,229,204,0.3)'; btn.disabled = true; }
     }
   } catch(e) {
@@ -3849,6 +4273,1373 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
   <div class="ru-close-new" onclick="closeRUNew()">&#x2B21; &ensp; Click to continue</div>
 </div>
+
+
+<script>
+// ══════════════════════════════════════
+// DUEL CHAMBER — Rock Paper Scissors
+// ══════════════════════════════════════
+
+const DUEL_CONTRACT = '0x78b70AA24ca90690AD2b21d5c1980F55420A0AA1';
+const DUEL_ABI = [
+  'function createDuel(bytes32 commitA) external payable',
+  'function joinDuel(uint256 duelId, uint8 choiceB) external payable',
+  'function reveal(uint256 duelId, uint8 choiceA, bytes32 secretA) external',
+  'function cancelDuel(uint256 duelId) external',
+  'function claimRevealTimeout(uint256 duelId) external',
+  'function getOpenDuels() external view returns (uint256[])',
+  'function getDuel(uint256 id) external view returns (tuple(uint256 id, address playerA, address playerB, bytes32 commitA, uint8 choiceA, uint8 choiceB, address winner, uint256 stake, uint256 createdAt, uint256 joinedAt, uint8 status))',
+  'function openDuelCount() external view returns (uint256)',
+  'function totalBurned() external view returns (uint256)',
+  'function totalDuels() external view returns (uint256)',
+  'function totalTies() external view returns (uint256)',
+  'event DuelCreated(uint256 indexed duelId, address indexed playerA)',
+  'event DuelJoined(uint256 indexed duelId, address indexed playerB, uint8 choiceB)',
+  'event DuelRevealed(uint256 indexed duelId, uint8 choiceA, uint8 choiceB, address winner)',
+  'event DuelTied(uint256 indexed duelId, uint8 choice)',
+];
+
+const DUEL_EMOJIS = ['','🪨','📄','✂️'];
+
+// SVG weapon symbols (geometric violet-teal style) — size in px
+function duelSVG(choice, size) {
+  size = size || 36;
+  const gid = 'vt'+Math.random().toString(36).slice(2,7);
+  const grad = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7755cc"/><stop offset="1" stop-color="#00e5cc"/></linearGradient></defs>`;
+  if (choice === 1) { // Rock — pentagon
+    return `<svg width="${size}" height="${size}" viewBox="0 0 80 80" style="vertical-align:middle;">${grad}<polygon points="40,8 74,32 60,72 20,72 6,32" fill="url(#${gid})" opacity="0.95"/></svg>`;
+  } else if (choice === 2) { // Paper — outlined rect with lines
+    return `<svg width="${size}" height="${size}" viewBox="0 0 80 80" style="vertical-align:middle;">${grad}<rect x="16" y="10" width="48" height="60" fill="none" stroke="url(#${gid})" stroke-width="4"/><rect x="27" y="26" width="26" height="3.5" fill="#00e5cc"/><rect x="27" y="38" width="26" height="3.5" fill="#00e5cc"/><rect x="27" y="50" width="16" height="3.5" fill="#00e5cc"/></svg>`;
+  } else if (choice === 3) { // Scissors — chevrons
+    return `<svg width="${size}" height="${size}" viewBox="0 0 80 80" style="vertical-align:middle;">${grad}<polyline points="8,14 46,42 8,70" fill="none" stroke="url(#${gid})" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><polyline points="72,14 46,42 72,70" fill="none" stroke="url(#${gid})" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="46" cy="42" r="5.5" fill="#00e5cc"/></svg>`;
+  }
+  return '<span style="opacity:0.4;">🔒</span>';
+}
+const DUEL_NAMES  = ['','Rock','Paper','Scissors'];
+const DUEL_RPC    = 'https://liteforge.rpc.caldera.xyz/http';
+
+let duelReadContract = null;
+let duelContract     = null;
+let duelChoice       = 0;
+let duelMyId         = null;
+let duelMySecret     = null;
+let duelSelectedStake = '0.1';
+let duelJoinedId     = null;
+let duelJoinedChoice = 0;
+let duelMyStatus     = null;
+let duelMyChoiceNum  = 0;
+const duelHistory    = [];
+
+// Init duel contracts
+(async function initDuel() {
+  try {
+    duelReadContract = new ethers.Contract(DUEL_CONTRACT, DUEL_ABI, new ethers.JsonRpcProvider(DUEL_RPC));
+    await duelLoadStats();
+    await duelLoadOpen();
+
+    // Restore duel state from sessionStorage
+    const savedId     = localStorage.getItem(_duelKey('duelId'));
+    const savedSecret = localStorage.getItem(_duelKey('secret'));
+    const savedChoice = parseInt(localStorage.getItem(_duelKey('choice'))||'0');
+    const savedStatus = localStorage.getItem(_duelKey('status'));
+
+        // Restore joined state (player B)
+    const savedJoinedId = localStorage.getItem(_duelKey('joined_id'));
+    const savedJoinedChoice = parseInt(localStorage.getItem(_duelKey('joined_choice'))||'0');
+    if (savedJoinedId && savedJoinedChoice) {
+      duelJoinedId = BigInt(savedJoinedId);
+      duelJoinedChoice = savedJoinedChoice;
+    }
+
+    if (savedId && savedSecret && savedChoice) {
+      // Store in memory only — panels shown by duelRestoreState() after wallet connects
+      duelMyId        = BigInt(savedId);
+      duelMySecret    = savedSecret;
+      duelMyChoiceNum = savedChoice;
+      duelMyStatus    = savedStatus || 'open';
+    }
+    // History shown only after wallet connects — not on page load
+
+    setInterval(async () => {
+      await duelLoadStats();
+      await duelLoadOpen();
+      await duelCheckMyStatus();
+    }, 15000);
+  } catch(e) {}
+})();
+
+// Called when main wallet connects
+async function initDuelContract() {
+  if (!signer) return;
+  duelContract = new ethers.Contract(DUEL_CONTRACT, DUEL_ABI, signer);
+}
+
+// Restore duel state after wallet reconnect
+async function duelRestoreState() {
+  await initDuelContract();
+  let savedId     = localStorage.getItem(_duelKey('duelId'));
+  let savedSecret = localStorage.getItem(_duelKey('secret'));
+  let savedChoice = parseInt(localStorage.getItem(_duelKey('choice'))||'0');
+  let savedStatus = localStorage.getItem(_duelKey('status'));
+
+  // Fallback: if no local state, scan open duels on-chain for one owned by this wallet
+  if ((!savedId || !savedSecret) && connectedAddress) {
+    try {
+      const openIds = await duelReadContract.getOpenDuels();
+      for (let i = openIds.length - 1; i >= 0; i--) {
+        const d = await duelReadContract.getDuel(openIds[i]);
+        if (d.playerA.toLowerCase() === connectedAddress.toLowerCase()) {
+          savedId = openIds[i].toString();
+          // secret/choice unknown — we can show the duel but reveal needs the secret
+          break;
+        }
+      }
+    } catch(fe) { console.warn('on-chain scan failed:', fe); }
+  }
+
+  if (!savedId) return;
+
+  duelMyId        = BigInt(savedId);
+  duelMySecret    = savedSecret || null;
+  duelMyChoiceNum = savedChoice || 0;
+  duelMyStatus    = savedStatus || 'open';
+
+  try {
+    const d  = await duelReadContract.getDuel(duelMyId);
+    const st = Number(d.status);
+    if (st === 0) {
+      document.getElementById('duel-my-none').style.display   = 'none';
+      document.getElementById('duel-my-open').style.display   = 'block';
+      document.getElementById('duel-my-reveal').style.display = 'none';
+      document.getElementById('duel-my-id-open').textContent  = '#'+duelMyId;
+      document.getElementById('duel-my-choice-open').innerHTML = savedChoice ? duelSVG(savedChoice,32) : '<span style="opacity:0.4;">🔒</span>';
+    } else if (st === 1) {
+      duelMyStatus = 'joined';
+      document.getElementById('duel-my-none').style.display   = 'none';
+      document.getElementById('duel-my-open').style.display   = 'none';
+      document.getElementById('duel-my-reveal').style.display = 'block';
+      document.getElementById('duel-my-id-reveal').textContent     = '#'+duelMyId;
+      document.getElementById('duel-my-choice-reveal').innerHTML = savedChoice ? duelSVG(savedChoice,32) : '<span style="opacity:0.4;">🔒</span>';
+      if (!savedSecret) {
+        showToast('⚠ Opponent joined but secret missing — reveal needs original browser');
+      } else {
+        showToast('⚡ Opponent joined! Reveal now!');
+      }
+    } else {
+      // Duel already resolved, clear state
+      localStorage.removeItem(_duelKey('duelId'));
+      localStorage.removeItem(_duelKey('secret'));
+      localStorage.removeItem(_duelKey('choice'));
+      localStorage.removeItem(_duelKey('status'));
+      duelMyId = null; duelMySecret = null;
+    }
+  } catch(e) { console.error('duelRestoreState:', e); }
+
+  // Also restore player B "joined" state if present
+  try {
+    const jId = localStorage.getItem(_duelKey('joined_id'));
+    const jChoice = parseInt(localStorage.getItem(_duelKey('joined_choice'))||'0');
+    if (jId && jChoice) {
+      duelJoinedId = BigInt(jId);
+      duelJoinedChoice = jChoice;
+      const d = await duelReadContract.getDuel(duelJoinedId);
+      const st = Number(d.status);
+      if (st === 1) {
+        // Still waiting for creator to reveal — show joined panel
+        duelShowJoinedPanel(jId, jChoice);
+      } else if (st === 2 || st === 4) {
+        // Already resolved while we were away — show result + save history
+        const isTie = st === 4;
+        const isWin = !isTie && d.winner.toLowerCase() === connectedAddress?.toLowerCase();
+        const choiceA = Number(d.choiceA);
+        const choiceB = Number(d.choiceB);
+        duelShowResult(isWin, isTie, choiceB, choiceA);
+        const _h = duelHistoryLoad();
+        if (!_h.some(x => x.duelId === jId)) {
+          _h.unshift({ duelId: jId, isWin, isTie, myChoice: choiceB, oppChoice: choiceA, stake: ethers.formatEther(d.stake), ts: Date.now(), role: 'joiner' });
+          duelHistorySave(_h);
+          duelRenderHistory();
+        }
+        duelJoinedId = null; duelJoinedChoice = 0;
+        localStorage.removeItem(_duelKey('joined_id'));
+        localStorage.removeItem(_duelKey('joined_choice'));
+        localStorage.removeItem(_duelKey('joined_stake'));
+      }
+    }
+  } catch(e) { console.error('duelRestoreState joined:', e); }
+}
+
+// Choice selection
+function duelSelectChoice(n) {
+  duelChoice = n;
+  [1,2,3].forEach(i => {
+    const el = document.getElementById('duel-choice-'+i);
+    if (!el) return;
+    if (i === n) {
+      el.style.borderColor = 'var(--teal)';
+      el.style.background  = 'rgba(0,229,204,0.12)';
+      el.style.boxShadow   = '0 0 15px rgba(0,229,204,0.2)';
+    } else {
+      el.style.borderColor = 'rgba(255,255,255,0.1)';
+      el.style.background  = 'rgba(255,255,255,0.04)';
+      el.style.boxShadow   = '';
+    }
+  });
+}
+
+// Generate secret automatically
+function duelMakeSecret() {
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function duelMakeCommit(choiceNum, secret) {
+  const secretBytes = ethers.zeroPadBytes(ethers.toUtf8Bytes(secret), 32);
+  return ethers.solidityPackedKeccak256(['uint8','bytes32'], [choiceNum, secretBytes]);
+}
+
+function duelSecretToBytes32(secret) {
+  return ethers.zeroPadBytes(ethers.toUtf8Bytes(secret), 32);
+}
+
+// CREATE
+function duelSelectStake(amount) {
+  duelSelectedStake = amount;
+  // Use bpreset .on class like Initiate a Burn
+  ['01','05','1','5'].forEach(k => {
+    const el = document.getElementById('duel-stake-'+k);
+    if (!el) return;
+    const val = k==='01'?'0.1':k==='05'?'0.5':k;
+    if (val === amount) {
+      el.classList.add('on');
+    } else {
+      el.classList.remove('on');
+    }
+  });
+  const lbl = document.getElementById('duel-open-btn-label'); if(lbl) lbl.textContent = amount;
+  const disp = document.getElementById('duel-stake-display'); if(disp) disp.textContent = amount+' zkLTC';
+  // Update info box
+  const winEl = document.getElementById('duel-if-win');
+  const burnEl = document.getElementById('duel-burn-amount');
+  const total = parseFloat(amount)*2;
+  if(winEl) winEl.textContent = '+'+(total*0.75).toFixed(3)+' zkLTC';
+  if(burnEl) burnEl.textContent = (total*0.20).toFixed(3)+' zkLTC ∞';
+}
+
+// Intercepts the "Open Duel" click — shows the reveal-responsibility warning first
+function duelCreateConfirm() {
+  if (!connectedAddress) { showToast('Connect wallet first'); return; }
+  if (!duelChoice) { showToast('Choose Rock, Paper or Scissors'); return; }
+  const stakeEl = document.getElementById('duel-confirm-stake');
+  if (stakeEl) stakeEl.textContent = duelSelectedStake + ' zkLTC';
+  document.getElementById('duel-confirm-modal').style.display = 'flex';
+}
+
+function duelCreateProceed() {
+  document.getElementById('duel-confirm-modal').style.display = 'none';
+  duelCreate();
+}
+
+async function duelCreate() {
+  if (!connectedAddress) { showToast('Connect wallet first'); return; }
+  if (!duelChoice) { showToast('Choose Rock, Paper or Scissors'); return; }
+  if (!duelContract) await initDuelContract();
+  if (!duelContract) { showToast('Contract not ready'); return; }
+
+  try {
+    duelMySecret = duelMakeSecret();
+    const commit = duelMakeCommit(duelChoice, duelMySecret);
+    showToast('Confirm in MetaMask...');
+    const tx = await duelContract.createDuel(commit, { value: ethers.parseEther(duelSelectedStake) });
+    const receipt = await tx.wait();
+
+    const iface = new ethers.Interface(DUEL_ABI);
+    let duelId = null;
+    for (const log of receipt.logs) {
+      try { const p=iface.parseLog(log); if(p.name==='DuelCreated'){duelId=p.args.duelId;break;} } catch {}
+    }
+    // Fallback: get ID from contract state if log parsing failed
+    if (duelId === null) {
+      try {
+        const total = await duelReadContract.openDuelCount ? await duelReadContract.openDuelCount() : null;
+        const openIds = await duelReadContract.getOpenDuels();
+        // Find our duel — most recent open duel from our address
+        for (let i = openIds.length - 1; i >= 0; i--) {
+          const d = await duelReadContract.getDuel(openIds[i]);
+          if (d.playerA.toLowerCase() === connectedAddress.toLowerCase()) {
+            duelId = openIds[i];
+            break;
+          }
+        }
+      } catch(fe) { console.warn('Fallback ID fetch failed:', fe); }
+    }
+    if (duelId === null) { showToast('✦ Duel created! (ID unknown — refresh)'); return; }
+
+    duelMyId = duelId;
+    duelMyStatus = 'open';
+    duelMyChoiceNum = duelChoice;
+
+    // Persist state so it survives page reload
+    localStorage.setItem(_duelKey('duelId'), duelId.toString());
+    localStorage.setItem(_duelKey('secret'), duelMySecret);
+    localStorage.setItem(_duelKey('choice'), duelChoice.toString());
+    localStorage.setItem(_duelKey('status'), 'open');
+
+    document.getElementById('duel-my-none').style.display    = 'none';
+    document.getElementById('duel-my-open').style.display    = 'block';
+    document.getElementById('duel-my-reveal').style.display  = 'none';
+    document.getElementById('duel-my-id-open').textContent   = '#'+duelId;
+    document.getElementById('duel-my-choice-open').innerHTML = duelSVG(duelChoice,28)+' <span style="vertical-align:middle;">'+DUEL_NAMES[duelChoice]+'</span>';
+    // Ensure creator sees the cancel button and the default waiting label
+    const _cb = document.getElementById('duel-cancel-btn');
+    if (_cb) _cb.style.display = '';
+    const _ji = document.getElementById('duel-joined-info'); if(_ji) _ji.style.display = 'none';
+    if (typeof _duelCountdownTimer !== 'undefined' && _duelCountdownTimer) clearInterval(_duelCountdownTimer);
+    const _sl = document.querySelector('#duel-my-open [data-duel-status-label]');
+    if (_sl) _sl.textContent = '⏳ WAITING FOR OPPONENT';
+
+    showToast('✦ Duel #'+duelId+' created!');
+    await duelLoadStats(); await duelLoadOpen();
+  } catch(e) {
+    console.error('duelCreate error:', e);
+    showToast(duelFriendlyError(e), true);
+  }
+}
+
+// Shared friendly error mapper (same style as Ritual Matrix)
+function duelFriendlyError(e) {
+  const msg = e?.reason || e?.message || '';
+  if (msg.includes('insufficient funds') || msg.includes('insufficient') || msg.includes('missing revert data') || msg.includes('data=null'))
+    return '✖ Your zkLTC balance is too low';
+  if (msg.includes('rejected') || msg.includes('denied') || msg.includes('user rejected'))
+    return '✖ Transaction rejected';
+  if (msg.includes('must send exactly') || msg.includes('stake must be'))
+    return '✖ Invalid stake amount';
+  if (msg.includes('not open') || msg.includes('duel not open'))
+    return '✖ This duel is no longer open';
+  if (msg.includes('cannot duel yourself'))
+    return '✖ You cannot join your own duel';
+  if (msg.includes('wrong stake'))
+    return '✖ Stake amount mismatch';
+  if (msg.includes('network') || msg.includes('disconnected'))
+    return '✖ Network error — check your connection';
+  if (msg.length > 0)
+    return '✖ ' + msg.slice(0, 60);
+  return '✖ Transaction failed';
+}
+
+// JOIN
+async function duelJoin(duelId, choiceNum) {
+  if (!connectedAddress) { showToast('Connect wallet first'); return; }
+  if (!duelContract) await initDuelContract();
+  if (!duelContract) { showToast('Contract not ready'); return; }
+  try {
+    showToast('Confirm in MetaMask...');
+    const _duelInfo = await duelReadContract.getDuel(duelId);
+    const tx = await duelContract.joinDuel(duelId, choiceNum, { value: _duelInfo.stake });
+    await tx.wait();
+
+    // Save joined state for this wallet (player B)
+    duelJoinedId = BigInt(duelId.toString());
+    duelJoinedChoice = choiceNum;
+    localStorage.setItem(_duelKey('joined_id'), duelId.toString());
+    localStorage.setItem(_duelKey('joined_choice'), choiceNum.toString());
+    localStorage.setItem(_duelKey('joined_stake'), ethers.formatEther(_duelInfo.stake));
+
+    // Show "joined — waiting for reveal" panel
+    duelShowJoinedPanel(duelId, choiceNum);
+
+    showToast('✦ Joined! Waiting for opponent to reveal...');
+    await duelLoadStats(); await duelLoadOpen();
+  } catch(e) {
+    console.error('duelJoin error:', e);
+    showToast(duelFriendlyError(e), true);
+  }
+}
+
+// Show the "you joined, waiting for opponent to reveal" panel for player B
+function duelShowJoinedPanel(duelId, choiceNum) {
+  const none = document.getElementById('duel-my-none');
+  const open = document.getElementById('duel-my-open');
+  const reveal = document.getElementById('duel-my-reveal');
+  if (none) none.style.display = 'none';
+  if (open) {
+    open.style.display = 'block';
+    const idEl = document.getElementById('duel-my-id-open');
+    const chEl = document.getElementById('duel-my-choice-open');
+    if (idEl) idEl.textContent = '#'+duelId;
+    if (chEl) chEl.innerHTML = duelSVG(choiceNum,28);
+    // Change the status label to reflect player B is waiting on A's reveal
+    const statusEl = open.querySelector('[data-duel-status-label]');
+    if (statusEl) statusEl.textContent = '⏳ WAITING FOR OPPONENT TO REVEAL';
+    // Hide cancel button — only the creator can cancel
+    const cancelBtn = document.getElementById('duel-cancel-btn');
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    // Show the explanatory info box for the joiner
+    const info = document.getElementById('duel-joined-info');
+    if (info) info.style.display = 'block';
+    duelStartJoinedCountdown(duelId);
+  }
+  if (reveal) reveal.style.display = 'none';
+}
+
+// Countdown + auto-claim for the joiner (player B)
+let _duelCountdownTimer = null;
+function duelStartJoinedCountdown(duelId) {
+  if (_duelCountdownTimer) clearInterval(_duelCountdownTimer);
+  const REVEAL_WINDOW = 21600; // 6 hours in seconds (matches contract REVEAL_DELAY)
+  const cdEl = document.getElementById('duel-countdown');
+  const claimZone = document.getElementById('duel-claim-zone');
+
+  async function tick() {
+    try {
+      const d = await duelReadContract.getDuel(duelId);
+      const st = Number(d.status);
+      // Resolved already → stop, result handled elsewhere
+      if (st === 2 || st === 4) {
+        if (_duelCountdownTimer) clearInterval(_duelCountdownTimer);
+        if (cdEl) cdEl.textContent = '';
+        return;
+      }
+      const joinedAt = Number(d.joinedAt);
+      const now = Math.floor(Date.now() / 1000);
+      const elapsed = now - joinedAt;
+      const remaining = REVEAL_WINDOW - elapsed;
+      if (remaining > 0) {
+        const h = Math.floor(remaining / 3600);
+        const m = Math.floor((remaining % 3600) / 60);
+        const s = remaining % 60;
+        const t = (h > 0 ? h + 'h ' : '') + m + 'm ' + (s<10?'0':'') + s + 's';
+        if (cdEl) cdEl.textContent = 'Opponent can reveal for ' + t;
+        if (claimZone) claimZone.style.display = 'none';
+      } else {
+        // Timeout passed — opponent ghosted, joiner can claim
+        if (cdEl) cdEl.textContent = '⏰ Opponent did not reveal in time!';
+        if (claimZone) claimZone.style.display = 'block';
+      }
+    } catch(e) {}
+  }
+  tick();
+  _duelCountdownTimer = setInterval(tick, 4000); // poll every 4s
+}
+
+// Joiner claims the pot after opponent timeout
+async function duelClaimTimeout() {
+  const jId = duelJoinedId || (localStorage.getItem(_duelKey('joined_id')) ? BigInt(localStorage.getItem(_duelKey('joined_id'))) : null);
+  if (!jId) { showToast('No duel to claim'); return; }
+  if (!duelContract) await initDuelContract();
+  const btn = document.getElementById('duel-claim-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Claiming...'; }
+  try {
+    const tx = await duelContract.claimRevealTimeout(jId);
+    await tx.wait();
+    showToast('🏆 Victory claimed — pot is yours!');
+    if (_duelCountdownTimer) clearInterval(_duelCountdownTimer);
+    // Force a status check to update history + reset panel
+    if (typeof duelCheckMyStatus === 'function') await duelCheckMyStatus();
+  } catch(e) {
+    console.error('claimTimeout error:', e);
+    showToast(typeof duelFriendlyError === 'function' ? duelFriendlyError(e) : '✖ Claim failed', true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🏆 Claim Your Victory'; }
+  }
+}
+
+// REVEAL
+async function duelReveal() {
+  const _restoredSecret = duelMySecret || localStorage.getItem(_duelKey('secret'));
+  if (!duelContract || !duelMyId || !_restoredSecret) { showToast('No active duel'); return; }
+  duelMySecret = _restoredSecret;
+  try {
+    const secretBytes = duelSecretToBytes32(duelMySecret);
+    showToast('Confirm in MetaMask...');
+    const tx = await duelContract.reveal(duelMyId, duelMyChoiceNum, secretBytes);
+    const receipt = await tx.wait();
+
+    const iface = new ethers.Interface(DUEL_ABI);
+    let isWin=false, isTie=false, choiceA=0, choiceB=0;
+    for (const log of receipt.logs) {
+      try {
+        const p = iface.parseLog(log);
+        if (p.name==='DuelRevealed') {
+          choiceA = Number(p.args.choiceA); choiceB = Number(p.args.choiceB);
+          isWin = p.args.winner.toLowerCase() === connectedAddress.toLowerCase();
+          break;
+        }
+        if (p.name==='DuelTied') { choiceA=Number(p.args.choice); choiceB=choiceA; isTie=true; break; }
+      } catch {}
+    }
+
+    duelShowResult(isWin, isTie, choiceA, choiceB);
+    // Save to persistent history
+    const _hist = duelHistoryLoad();
+    _hist.unshift({ duelId: duelMyId ? duelMyId.toString() : '?', isWin, isTie, myChoice: duelMyChoiceNum, oppChoice: choiceB, stake: duelSelectedStake, ts: Date.now(), role: 'creator' });
+    duelHistorySave(_hist);
+    duelRenderHistory();
+    if (typeof featsCheck === 'function') featsCheck();
+
+    duelMyId=null; duelMyStatus=null; duelMySecret=null;
+    localStorage.removeItem(_duelKey('duelId')); localStorage.removeItem(_duelKey('secret')); localStorage.removeItem(_duelKey('choice')); localStorage.removeItem(_duelKey('status')); duelMySecret=null;
+    document.getElementById('duel-my-none').style.display   = 'block';
+    document.getElementById('duel-my-reveal').style.display = 'none';
+    await duelLoadStats(); await duelLoadOpen();
+  } catch(e) {
+    console.error('duelReveal error:', e);
+    const m = e?.reason||e?.message||'';
+    if (m.includes('commit mismatch')) showToast('✖ Wrong secret — cannot reveal', true);
+    else showToast(duelFriendlyError(e), true);
+  }
+}
+
+// CANCEL
+async function duelCancel() {
+  if (!duelContract || !duelMyId) return;
+  try {
+    showToast('Confirm in MetaMask...');
+    const tx = await duelContract.cancelDuel(duelMyId);
+    await tx.wait();
+    duelMyId=null; duelMyStatus=null;
+    document.getElementById('duel-my-none').style.display = 'block';
+    document.getElementById('duel-my-open').style.display = 'none';
+    showToast('✦ Cancelled — refunded');
+    await duelLoadStats(); await duelLoadOpen();
+  } catch(e) {
+    console.error('duelCancel error:', e);
+    const m = e?.reason||e?.message||'';
+    if (m.includes('too early')) showToast('✖ Cannot cancel — opponent already joined', true);
+    else showToast(duelFriendlyError(e), true);
+  }
+}
+
+// CHECK MY STATUS
+async function duelCheckMyStatus() {
+  // Poll for B's result
+  const jId = duelJoinedId || (localStorage.getItem(_duelKey('joined_id')) ? BigInt(localStorage.getItem(_duelKey('joined_id'))) : null);
+  const jChoice = duelJoinedChoice || parseInt(localStorage.getItem(_duelKey('joined_choice'))||'0');
+  if (jId && jChoice) {
+    try {
+      const d = await duelReadContract.getDuel(jId);
+      const st = Number(d.status);
+      if (st === 2 || st === 4) {
+        const isTie = st === 4;
+        const isWin = !isTie && d.winner.toLowerCase() === connectedAddress?.toLowerCase();
+        const choiceA = Number(d.choiceA); // now revealed on-chain
+        const choiceB = Number(d.choiceB);
+        const stakeStr = ethers.formatEther(d.stake);
+        // For wallet B: myChoice=choiceB, oppChoice=choiceA
+        duelShowResult(isWin, isTie, choiceB, choiceA);
+        // Save to history
+        const _hist2 = duelHistoryLoad();
+        _hist2.unshift({ duelId: jId.toString(), isWin, isTie, myChoice: choiceB, oppChoice: choiceA, stake: stakeStr, ts: Date.now(), role: 'joiner' });
+        duelHistorySave(_hist2);
+        duelRenderHistory();
+        if (typeof featsCheck === 'function') featsCheck();
+        duelJoinedId = null; duelJoinedChoice = 0;
+        localStorage.removeItem(_duelKey('joined_id'));
+        localStorage.removeItem(_duelKey('joined_choice'));
+        localStorage.removeItem(_duelKey('joined_stake'));
+        // Reset the "My Active Duel" panel back to none
+        const none = document.getElementById('duel-my-none');
+        const open = document.getElementById('duel-my-open');
+        const reveal = document.getElementById('duel-my-reveal');
+        if (none) none.style.display = 'block';
+        if (open) open.style.display = 'none';
+        if (reveal) reveal.style.display = 'none';
+        const _ji2 = document.getElementById('duel-joined-info'); if(_ji2) _ji2.style.display = 'none';
+        if (typeof _duelCountdownTimer !== 'undefined' && _duelCountdownTimer) clearInterval(_duelCountdownTimer);
+      }
+    } catch(e) {}
+  }
+  if (!duelMyId || duelMyStatus !== 'open') return;
+  try {
+    const d = await duelReadContract.getDuel(duelMyId);
+    if (Number(d.status) === 1) {
+      duelMyStatus = 'joined';
+      document.getElementById('duel-my-open').style.display   = 'none';
+      document.getElementById('duel-my-reveal').style.display = 'block';
+      document.getElementById('duel-my-id-reveal').textContent     = '#'+duelMyId;
+      document.getElementById('duel-my-choice-reveal').innerHTML = duelSVG(duelMyChoiceNum,28)+' <span style="vertical-align:middle;">'+DUEL_NAMES[duelMyChoiceNum]+'</span>';
+      showToast('⚡ Opponent joined! Reveal your choice now!');
+    }
+  } catch {}
+}
+
+// LOAD OPEN DUELS
+let _duelOpenCache = [];
+let _duelFilter = 'all';
+let _duelOpenPage = 0;
+const _duelOpenPerPage = 10;
+
+async function duelLoadOpen() {
+  try {
+    const ids = await duelReadContract.getOpenDuels();
+    const list = document.getElementById('duel-list');
+    if (!list) return;
+    if (ids.length === 0) {
+      _duelOpenCache = [];
+      document.getElementById('duel-open-count').textContent = '';
+      list.innerHTML = '<div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.2rem 0;">No open challenges. Be the first to create one!</div>';
+      return;
+    }
+    const duels = await Promise.all(ids.map(id => duelReadContract.getDuel(id)));
+    _duelOpenCache = duels;
+    duelRenderOpen();
+  } catch(e) { console.error('duelLoadOpen:', e); }
+}
+
+function duelSetFilter(f, btn) {
+  _duelFilter = f;
+  _duelOpenPage = 0;
+  document.querySelectorAll('.duel-filter-btn').forEach(b => {
+    b.classList.remove('on');
+    b.style.background = 'rgba(255,255,255,0.04)';
+    b.style.borderColor = 'rgba(255,255,255,0.1)';
+    b.style.color = 'rgba(255,255,255,0.4)';
+  });
+  if (btn) {
+    btn.classList.add('on');
+    btn.style.background = 'rgba(0,229,204,0.12)';
+    btn.style.borderColor = 'rgba(0,229,204,0.4)';
+    btn.style.color = 'var(--teal)';
+  }
+  duelRenderOpen();
+}
+
+function duelRenderOpen(page) {
+  if (page !== undefined) _duelOpenPage = page;
+  const list = document.getElementById('duel-list');
+  if (!list) return;
+
+  let filtered = _duelOpenCache;
+  if (_duelFilter !== 'all') {
+    filtered = _duelOpenCache.filter(d => parseFloat(ethers.formatEther(d.stake)) === parseFloat(_duelFilter));
+  }
+
+  document.getElementById('duel-open-count').textContent = filtered.length ? '('+filtered.length+')' : '';
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.2rem 0;">No open challenges at this stake.</div>';
+    return;
+  }
+
+  const totalPages = Math.ceil(filtered.length / _duelOpenPerPage);
+  if (_duelOpenPage >= totalPages) _duelOpenPage = totalPages - 1;
+  if (_duelOpenPage < 0) _duelOpenPage = 0;
+  const start = _duelOpenPage * _duelOpenPerPage;
+  const pageItems = filtered.slice(start, start + _duelOpenPerPage);
+
+  list.innerHTML = '';
+  pageItems.forEach(d => {
+    const isMe = connectedAddress && d.playerA.toLowerCase() === connectedAddress.toLowerCase();
+    const div = document.createElement('div');
+    div.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:3px;padding:1rem;';
+    div.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${isMe?'0':'0.7rem'};">
+        <div>
+          <div style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.2em;color:#7755cc;">DUEL #${d.id}</div>
+          <div style="color:#8ab0c8;font-size:0.8rem;">${d.playerA.slice(0,6)}...${d.playerA.slice(-4)}</div>
+        </div>
+        <div style="font-family:'Cinzel',serif;font-size:0.75rem;color:var(--teal);">${ethers.formatEther(d.stake)} zkLTC</div>
+      </div>
+      ${!isMe ? `
+        <div style="font-size:0.7rem;color:rgba(255,255,255,0.25);margin-bottom:0.5rem;font-style:italic;">Choose your weapon:</div>
+        <div style="display:flex;gap:0.5rem;">
+          <div onclick="duelJoin(${d.id},1)" style="flex:1;padding:0.6rem;background:rgba(119,85,204,0.15);border:1px solid rgba(119,85,204,0.3);border-radius:3px;cursor:pointer;font-size:1.4rem;text-align:center;transition:all 0.2s;" onmouseover="this.style.background='rgba(119,85,204,0.3)'" onmouseout="this.style.background='rgba(119,85,204,0.15)'">${duelSVG(1,28)}</div>
+          <div onclick="duelJoin(${d.id},2)" style="flex:1;padding:0.6rem;background:rgba(119,85,204,0.15);border:1px solid rgba(119,85,204,0.3);border-radius:3px;cursor:pointer;font-size:1.4rem;text-align:center;transition:all 0.2s;" onmouseover="this.style.background='rgba(119,85,204,0.3)'" onmouseout="this.style.background='rgba(119,85,204,0.15)'">${duelSVG(2,28)}</div>
+          <div onclick="duelJoin(${d.id},3)" style="flex:1;padding:0.6rem;background:rgba(119,85,204,0.15);border:1px solid rgba(119,85,204,0.3);border-radius:3px;cursor:pointer;font-size:1.4rem;text-align:center;transition:all 0.2s;" onmouseover="this.style.background='rgba(119,85,204,0.3)'" onmouseout="this.style.background='rgba(119,85,204,0.15)'">${duelSVG(3,28)}</div>
+        </div>
+      ` : '<div style="font-size:0.6rem;color:rgba(255,255,255,0.2);font-family:Cinzel,serif;letter-spacing:0.15em;">YOUR CHALLENGE</div>'}
+    `;
+    list.appendChild(div);
+  });
+
+  if (totalPages > 1) {
+    const pag = document.createElement('div');
+    pag.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-top:0.8rem;padding-top:0.6rem;border-top:1px solid rgba(255,255,255,0.06);';
+    pag.innerHTML = `
+      <button onclick="duelRenderOpen(${_duelOpenPage - 1})" ${_duelOpenPage === 0 ? 'disabled' : ''} style="background:transparent;border:1px solid rgba(0,229,204,${_duelOpenPage === 0 ? '0.08' : '0.3'});color:rgba(0,229,204,${_duelOpenPage === 0 ? '0.2' : '0.7'});font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;padding:0.35rem 0.8rem;border-radius:3px;cursor:${_duelOpenPage === 0 ? 'default' : 'pointer'};">← PREV</button>
+      <span style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.15em;color:rgba(255,255,255,0.3);">${_duelOpenPage + 1} / ${totalPages}</span>
+      <button onclick="duelRenderOpen(${_duelOpenPage + 1})" ${_duelOpenPage >= totalPages - 1 ? 'disabled' : ''} style="background:transparent;border:1px solid rgba(0,229,204,${_duelOpenPage >= totalPages - 1 ? '0.08' : '0.3'});color:rgba(0,229,204,${_duelOpenPage >= totalPages - 1 ? '0.2' : '0.7'});font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;padding:0.35rem 0.8rem;border-radius:3px;cursor:${_duelOpenPage >= totalPages - 1 ? 'default' : 'pointer'};">NEXT →</button>
+    `;
+    list.appendChild(pag);
+  }
+}
+
+// LOAD STATS
+async function duelLoadStats() {
+  try {
+    const [td,tt,tb,oc] = await Promise.all([
+      duelReadContract.totalDuels(),
+      duelReadContract.totalTies(),
+      duelReadContract.totalBurned(),
+      duelReadContract.openDuelCount(),
+    ]);
+    const s = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+    s('duel-stat-duels',  td.toString());
+    s('duel-stat-ties',   tt.toString());
+    s('duel-stat-burned', parseFloat(ethers.formatEther(tb)).toFixed(3));
+    s('duel-stat-open',   oc.toString());
+  } catch {}
+}
+
+// RESULT OVERLAY
+function duelShowResult(isWin, isTie, choiceA, choiceB) {
+  const overlay = document.getElementById('duel-result-overlay');
+  const box     = document.getElementById('duel-result-box');
+  if (!overlay || !box) return;
+
+  document.getElementById('duel-res-a').innerHTML = choiceA ? duelSVG(choiceA,48) : '?';
+  document.getElementById('duel-res-b').innerHTML = choiceB ? duelSVG(choiceB,48) : '?';
+
+  const title = document.getElementById('duel-res-title');
+  const sub   = document.getElementById('duel-res-sub');
+
+  if (isTie) {
+    document.getElementById('duel-res-emoji').textContent = '🤝';
+    title.textContent = 'TIE!'; title.style.color = '#c8a84a';
+    sub.textContent = 'Both players fully refunded.';
+  } else if (isWin) {
+    document.getElementById('duel-res-emoji').textContent = '🏆';
+    title.textContent = 'YOU WIN!'; title.style.color = 'var(--teal)';
+    sub.textContent = '+0.15 zkLTC · 0.02 burned forever';
+  } else {
+    document.getElementById('duel-res-emoji').textContent = '💀';
+    title.textContent = 'YOU LOSE'; title.style.color = '#ff4466';
+    sub.textContent = '0.02 zkLTC burned forever';
+  }
+
+  overlay.style.display = 'flex';
+  setTimeout(() => {
+    overlay.style.background = 'rgba(4,2,26,0.95)';
+    box.style.opacity = '1';
+    box.style.transform = 'translateY(0) scale(1)';
+  }, 50);
+}
+
+function duelCloseResult() {
+  const overlay = document.getElementById('duel-result-overlay');
+  const box     = document.getElementById('duel-result-box');
+  if (!overlay || !box) return;
+  overlay.style.background = 'rgba(4,2,26,0)';
+  box.style.opacity = '0';
+  box.style.transform = 'translateY(24px) scale(0.97)';
+  setTimeout(() => { overlay.style.display = 'none'; }, 400);
+}
+
+// HISTORY - persisted in localStorage
+// Per-wallet localStorage key helper
+function _duelKey(k) {
+  const addr = (typeof connectedAddress !== 'undefined' && connectedAddress) ? connectedAddress.toLowerCase() : 'anon';
+  return 'sv_' + addr + '_' + k;
+}
+function duelHistoryLoad() {
+  try { return JSON.parse(localStorage.getItem(_duelKey('duel_history'))||'[]'); } catch { return []; }
+}
+function duelHistorySave(arr) {
+  try { localStorage.setItem(_duelKey('duel_history'), JSON.stringify(arr.slice(0,50))); } catch {}
+}
+let _duelHistoryPage = 0;
+const _duelHistoryPerPage = 5;
+
+function duelRenderHistory(page) {
+  if (page !== undefined) _duelHistoryPage = page;
+  const list = document.getElementById('duel-history');
+  if (!list) return;
+  const history = duelHistoryLoad();
+  if (history.length === 0) {
+    list.innerHTML = '<div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.2rem 0;">No recent duels.</div>';
+    return;
+  }
+  const totalPages = Math.ceil(history.length / _duelHistoryPerPage);
+  if (_duelHistoryPage >= totalPages) _duelHistoryPage = totalPages - 1;
+  if (_duelHistoryPage < 0) _duelHistoryPage = 0;
+  const start = _duelHistoryPage * _duelHistoryPerPage;
+  const pageItems = history.slice(start, start + _duelHistoryPerPage);
+
+  const rows = pageItems.map(h => {
+    const resultColor = h.isTie ? '#c8a84a' : h.isWin ? 'var(--teal)' : '#ff4466';
+    const resultLabel = h.isTie ? 'TIE' : h.isWin ? 'WIN' : 'LOSS';
+    const myEmoji = h.myChoice ? duelSVG(h.myChoice,22) : '?';
+    const oppEmoji = h.oppChoice ? duelSVG(h.oppChoice,22) : '?';
+    const stake = parseFloat(h.stake) || 0.1;
+    const date = h.ts ? new Date(h.ts).toLocaleDateString() : '';
+    const total = stake * 2;
+    const pnl = h.isTie ? '+0.000' : h.isWin ? '+' + (total * 0.75).toFixed(3) : '-' + stake.toFixed(3);
+    const pnlColor = h.isTie ? '#c8a84a' : h.isWin ? 'var(--teal)' : '#ff4466';
+    return `
+    <div style="padding:0.7rem 0.5rem;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:0.8rem;">
+      <span style="min-width:80px;text-align:center;display:inline-flex;align-items:center;justify-content:center;gap:4px;">${myEmoji} <span style="font-size:0.7rem;color:rgba(255,255,255,0.3);">vs</span> ${oppEmoji}</span>
+      <div style="flex:1;">
+        <div style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.15em;color:rgba(255,255,255,0.3);">DUEL #${h.duelId}</div>
+        <div style="font-size:0.7rem;color:rgba(255,255,255,0.2);">${stake} zkLTC · ${date}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.12em;padding:0.2rem 0.6rem;border-radius:2px;border:1px solid ${resultColor};color:${resultColor};margin-bottom:0.2rem;">${resultLabel}</div>
+        <div style="font-size:0.65rem;color:${pnlColor};font-weight:600;">${pnl} zkLTC</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const pagination = totalPages > 1 ? `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.8rem;padding-top:0.6rem;border-top:1px solid rgba(255,255,255,0.05);">
+      <button onclick="duelRenderHistory(${_duelHistoryPage - 1})" ${_duelHistoryPage === 0 ? 'disabled' : ''} style="background:transparent;border:1px solid rgba(255,255,255,${_duelHistoryPage === 0 ? '0.05' : '0.2'});color:rgba(255,255,255,${_duelHistoryPage === 0 ? '0.1' : '0.4'});font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;padding:0.3rem 0.7rem;border-radius:2px;cursor:${_duelHistoryPage === 0 ? 'default' : 'pointer'};">← PREV</button>
+      <span style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.15em;color:rgba(255,255,255,0.25);">${_duelHistoryPage + 1} / ${totalPages}</span>
+      <button onclick="duelRenderHistory(${_duelHistoryPage + 1})" ${_duelHistoryPage >= totalPages - 1 ? 'disabled' : ''} style="background:transparent;border:1px solid rgba(255,255,255,${_duelHistoryPage >= totalPages - 1 ? '0.05' : '0.2'});color:rgba(255,255,255,${_duelHistoryPage >= totalPages - 1 ? '0.1' : '0.4'});font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;padding:0.3rem 0.7rem;border-radius:2px;cursor:${_duelHistoryPage >= totalPages - 1 ? 'default' : 'pointer'};">NEXT →</button>
+    </div>` : '';
+
+  list.innerHTML = rows + pagination;
+}
+
+// Init duel contract when main wallet connects
+document.addEventListener('DOMContentLoaded', () => {
+  const origConnectBtn = document.getElementById('btn-connect') || document.getElementById('wallet-btn');
+  // Watch for wallet connection
+  const _checkDuelInit = setInterval(() => {
+    if (connectedAddress && signer && !duelContract) {
+      duelContract = new ethers.Contract(DUEL_CONTRACT, DUEL_ABI, signer);
+      clearInterval(_checkDuelInit);
+    }
+  }, 1000);
+});
+
+// Attach duel event listeners (avoids global scope issues)
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('[data-duel-choice]').forEach(function(el) {
+    el.addEventListener('click', function() { duelSelectChoice(parseInt(this.dataset.duelChoice)); });
+  });
+  document.querySelectorAll('[data-duel-stake]').forEach(function(el) {
+    el.addEventListener('click', function() { duelSelectStake(this.dataset.duelStake); });
+  });
+  document.querySelectorAll('[data-duel-action]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var a = this.dataset.duelAction;
+      if (a==='createConfirm') duelCreateConfirm();
+      else if (a==='reveal') duelReveal();
+      else if (a==='cancel') duelCancel();
+      else if (a==='checkstatus') duelCheckMyStatus();
+      else if (a==='loadopen') duelLoadOpen();
+      else if (a==='loadstats') duelLoadStats();
+      else if (a==='closeresult') duelCloseResult();
+    });
+  });
+});
+
+</script>
+<!-- DUEL CREATE CONFIRMATION MODAL -->
+<div id="duel-confirm-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,1,12,0.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1.5rem;" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:linear-gradient(135deg,rgba(14,7,30,0.99),rgba(7,3,18,0.99));border:1px solid rgba(255,170,68,0.35);border-radius:6px;max-width:560px;width:100%;padding:2.4rem;position:relative;box-shadow:0 0 50px rgba(255,170,68,0.08);">
+    <button onclick="document.getElementById('duel-confirm-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;width:28px;height:28px;border-radius:50%;background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;">✕</button>
+
+    <div style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.18em;color:#ffaa44;text-transform:uppercase;margin-bottom:1.2rem;">⚠️ Before You Open This Duel</div>
+
+    <div style="font-size:0.85rem;color:rgba(255,255,255,0.7);line-height:1.65;margin-bottom:1.2rem;">
+      You're about to lock <strong style="color:var(--teal);" id="duel-confirm-stake">0.1 zkLTC</strong> into this duel.
+    </div>
+
+    <div style="background:rgba(255,170,68,0.06);border:1px solid rgba(255,170,68,0.2);border-radius:4px;padding:1rem 1.1rem;margin-bottom:1.2rem;">
+      <div style="font-size:0.8rem;color:rgba(255,255,255,0.75);line-height:1.7;">
+        <div style="margin-bottom:0.6rem;">🔑 <strong style="color:#fff;">Your move stays secret</strong> until you reveal it — only you can do that.</div>
+        <div style="margin-bottom:0.6rem;">⏱️ Once an opponent joins, you'll have <strong style="color:#ffaa44;">6 hours</strong> to come back and reveal.</div>
+        <div>⚠️ <strong style="color:#ff6655;">If you don't reveal in time, your opponent can claim your entire stake</strong> — yours and theirs.</div>
+      </div>
+    </div>
+
+    <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin-bottom:1.4rem;font-style:italic;">
+      Tip: keep an eye on "My Duels" — it shows when an opponent has joined and you need to reveal.
+    </div>
+
+    <div style="display:flex;gap:0.7rem;">
+      <button onclick="document.getElementById('duel-confirm-modal').style.display='none'" style="flex:1;padding:0.75rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.15em;cursor:pointer;background:transparent;color:rgba(255,255,255,0.4);border:1px solid rgba(255,255,255,0.15);border-radius:3px;text-transform:uppercase;">Cancel</button>
+      <button onclick="duelCreateProceed()" style="flex:1.4;padding:0.75rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.15em;cursor:pointer;background:linear-gradient(135deg,var(--teal),#5a9fff);color:#04021a;border:none;border-radius:3px;text-transform:uppercase;font-weight:600;">I Understand — Open Duel</button>
+    </div>
+  </div>
+</div>
+
+<!-- DUEL RULES MODAL -->
+<div id="duel-rules-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,1,12,0.85);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1.5rem;" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:linear-gradient(135deg,rgba(12,6,45,0.98),rgba(6,3,28,0.99));border:1px solid rgba(0,229,204,0.25);border-radius:6px;max-width:480px;width:100%;padding:1.8rem;position:relative;box-shadow:0 0 40px rgba(0,229,204,0.1);">
+    <button onclick="document.getElementById('duel-rules-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;width:28px;height:28px;border-radius:50%;background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;">✕</button>
+
+    <div style="font-family:'Cinzel',serif;font-size:0.95rem;letter-spacing:0.2em;color:var(--teal);text-transform:uppercase;margin-bottom:1.4rem;">⚔ How Duels Work</div>
+
+    <div style="font-size:0.85rem;color:rgba(255,255,255,0.65);line-height:1.6;">
+
+      <div style="margin-bottom:1.2rem;">
+        <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:#7a9fcc;text-transform:uppercase;margin-bottom:0.4rem;">① Create or Join</div>
+        Pick Rock 🪨, Paper 📄, or Scissors ✂️ and a stake (0.1 / 0.5 / 1 / 5 zkLTC). Your choice is cryptographically hidden — no one can see it, not even your opponent.
+      </div>
+
+      <div style="margin-bottom:1.2rem;">
+        <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:#7a9fcc;text-transform:uppercase;margin-bottom:0.4rem;">② Opponent Plays</div>
+        Someone joins your open duel by matching your stake and picking their weapon. Now both choices are locked on-chain.
+      </div>
+
+      <div style="margin-bottom:1.2rem;">
+        <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:#7a9fcc;text-transform:uppercase;margin-bottom:0.4rem;">③ Reveal & Resolve</div>
+        As the creator, you reveal your hidden choice. The contract compares both weapons and pays out automatically. Classic rules: Rock beats Scissors, Scissors beats Paper, Paper beats Rock.
+      </div>
+
+      <div style="background:rgba(0,229,204,0.05);border:1px solid rgba(0,229,204,0.15);border-radius:4px;padding:1rem;margin-bottom:1rem;">
+        <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:var(--teal);text-transform:uppercase;margin-bottom:0.6rem;">💰 Prize Split</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;"><span>🏆 Winner</span><span style="color:var(--teal);">75% of pot</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;"><span>🔥 Burned forever</span><span style="color:#c8a84a;">20% of pot</span></div>
+        <div style="display:flex;justify-content:space-between;"><span>⚙ Protocol fee</span><span style="color:rgba(255,255,255,0.4);">5% of pot</span></div>
+      </div>
+
+      <div style="font-size:0.78rem;color:rgba(255,255,255,0.4);line-height:1.5;">
+        <strong style="color:rgba(255,255,255,0.55);">🤝 Tie:</strong> both players are fully refunded.<br>
+        <strong style="color:rgba(255,255,255,0.55);">⏱ Reveal timeout:</strong> if the creator doesn't reveal within 6h, the opponent can claim the full pot.<br>
+        <strong style="color:rgba(255,255,255,0.55);">↩ Cancel:</strong> an unmatched duel can be cancelled anytime for a full refund, as long as no one has joined.
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ HALL OF FEATS ═══════════════ -->
+<style>
+.feats-scroll::-webkit-scrollbar { width:8px; }
+.feats-scroll::-webkit-scrollbar-track { background:rgba(255,255,255,0.03); border-radius:4px; }
+.feats-scroll::-webkit-scrollbar-thumb { background:rgba(200,168,74,0.35); border-radius:4px; }
+.feats-scroll::-webkit-scrollbar-thumb:hover { background:rgba(200,168,74,0.55); }
+.feats-scroll { scrollbar-width:thin; scrollbar-color:rgba(200,168,74,0.35) rgba(255,255,255,0.03); }
+</style>
+<div id="feats-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,1,12,0.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1.5rem;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="feats-scroll" style="background:linear-gradient(135deg,rgba(12,8,30,0.99),rgba(6,3,20,0.99));border:1px solid rgba(200,168,74,0.3);border-radius:6px;max-width:560px;width:100%;max-height:85vh;overflow-y:auto;padding:1.8rem;position:relative;box-shadow:0 0 50px rgba(200,168,74,0.08);">
+    <button onclick="document.getElementById('feats-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;width:28px;height:28px;border-radius:50%;background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;z-index:2;">✕</button>
+
+    <div style="font-family:'Cinzel',serif;font-size:0.95rem;letter-spacing:0.2em;color:#c8a84a;text-transform:uppercase;margin-bottom:0.3rem;">🏆 Hall of Feats</div>
+    <div style="font-size:0.8rem;color:rgba(255,255,255,0.4);margin-bottom:1.2rem;">Prove your worth in the arena of the Void.</div>
+
+    <div style="background:rgba(200,168,74,0.06);border:1px solid rgba(200,168,74,0.18);border-radius:4px;padding:0.9rem 1.1rem;margin-bottom:1.4rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+        <span style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:#c8a84a;text-transform:uppercase;">Progress</span>
+        <span id="feats-count" style="font-family:'Cinzel',serif;font-size:0.8rem;color:#fff;">0 / 0</span>
+      </div>
+      <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">
+        <div id="feats-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#c8a84a,#e8d088);transition:width 0.6s ease;"></div>
+      </div>
+    </div>
+
+    <div id="feats-grid" style="display:flex;flex-direction:column;gap:0.6rem;"></div>
+  </div>
+</div>
+
+<script>
+// ═══ ACHIEVEMENTS / HALL OF FEATS ═══
+// Burn data captured from loadUserData (on-chain burner info)
+let _burnTotal = 0;   // total zkLTC burned (ritual)
+let _burnRank = -1;   // rankIdx: -1 none, 0 Simple Holder ... 3 Silver Max
+let _nftMinted = false;
+const FEATS = [
+  // ── DUEL FEATS ──
+  { id:'first_duel',   icon:'⚔️',  name:'First Steps',       desc:'Play your first duel.', cat:'Duel' },
+  { id:'first_win',    icon:'🩸', name:'First Blood',        desc:'Win your first duel.', cat:'Duel' },
+  { id:'duels_10',     icon:'🛡️', name:'Initiate of Combat', desc:'Play 10 duels.', cat:'Duel' },
+  { id:'duels_50',     icon:'🎖️',  name:'Void Veteran',       desc:'Play 50 duels.', cat:'Duel' },
+  { id:'wins_10',      icon:'👑', name:'Conqueror',          desc:'Win 10 duels.', cat:'Duel' },
+  { id:'streak_3',     icon:'🔥', name:'Unburned',           desc:'Win 3 duels in a row.', cat:'Duel' },
+  { id:'streak_5',     icon:'☄️',  name:'Ascendant',          desc:'Win 5 duels in a row.', cat:'Duel' },
+  { id:'trinity',      icon:'🔱',  name:'Trinity',            desc:'Win with Rock, Paper and Scissors.', cat:'Duel' },
+  { id:'high_roller',  icon:'💎', name:'High Roller',        desc:'Win a duel at the 5 zkLTC stake.', cat:'Duel' },
+  { id:'duel_burn_1',  icon:'🪙',  name:'Ash Giver',          desc:'Burn 1 zkLTC through duels.', cat:'Duel' },
+  // ── BURN / ORDER FEATS ──
+  { id:'first_burn',   icon:'🕯️', name:'The First Offering', desc:'Make your first ritual burn.', cat:'Burn' },
+  { id:'rank_1',       icon:'🌑', name:'Simple Holder',      desc:'Reach Rank 1 (burn ≥ 0.5 zkLTC).', cat:'Burn' },
+  { id:'rank_2',       icon:'🌒', name:'Apprentice Litecoiner', desc:'Reach Rank 2 (burn ≥ 5 zkLTC).', cat:'Burn' },
+  { id:'rank_3',       icon:'🌓', name:'Devoted Litecoiner', desc:'Reach Rank 3 (burn ≥ 20 zkLTC).', cat:'Burn' },
+  { id:'rank_4',       icon:'🌕', name:'Silver Maximalist',  desc:'Reach Rank 4 (burn ≥ 100 zkLTC).', cat:'Burn' },
+  { id:'burn_10',      icon:'🔥', name:'Pyre Keeper',        desc:'Burn 10 zkLTC in total (ritual).', cat:'Burn' },
+  { id:'burn_50',      icon:'🌋', name:'Flame Devourer',     desc:'Burn 50 zkLTC in total (ritual).', cat:'Burn' },
+  { id:'nft_mint',     icon:'🖼️', name:'Eternal Silver',     desc:'Mint your first rank NFT.', cat:'Burn' },
+];
+
+function featsKey() {
+  const addr = (typeof connectedAddress !== 'undefined' && connectedAddress) ? connectedAddress.toLowerCase() : 'anon';
+  return 'sv_' + addr + '_feats';
+}
+function featsLoad() {
+  try { return JSON.parse(localStorage.getItem(featsKey()) || '{}'); } catch { return {}; }
+}
+function featsSave(obj) {
+  try { localStorage.setItem(featsKey(), JSON.stringify(obj)); } catch {}
+}
+
+// Evaluate all feats from duel history; unlock new ones, return newly unlocked
+function featsEvaluate() {
+  let history = [];
+  try { history = (typeof duelHistoryLoad === 'function') ? duelHistoryLoad() : []; } catch {}
+  const unlocked = featsLoad();
+  const newly = [];
+
+  const totalDuels = history.length;
+  const wins = history.filter(h => h.isWin).length;
+  // Best win streak (history is newest-first)
+  let bestStreak = 0, cur = 0;
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i].isWin) { cur++; bestStreak = Math.max(bestStreak, cur); }
+    else cur = 0;
+  }
+  const winChoices = new Set(history.filter(h => h.isWin).map(h => h.myChoice));
+  const highRoller = history.some(h => h.isWin && parseFloat(h.stake) === 5);
+  const totalBurned = history.reduce((sum,h) => {
+    // 20% of total pot (2x stake) burns on resolved non-tie duels
+    if (!h.isTie && h.stake && parseFloat(h.stake)) return sum + parseFloat(h.stake) * 2 * 0.20;
+    return sum;
+  }, 0);
+
+  const checks = {
+    first_duel: totalDuels >= 1,
+    first_win:  wins >= 1,
+    duels_10:   totalDuels >= 10,
+    duels_50:   totalDuels >= 50,
+    wins_10:    wins >= 10,
+    streak_3:   bestStreak >= 3,
+    streak_5:   bestStreak >= 5,
+    trinity:    winChoices.has(1) && winChoices.has(2) && winChoices.has(3),
+    high_roller: highRoller,
+    duel_burn_1: totalBurned >= 1,
+    // ── Burn / ritual feats (from on-chain burner info) ──
+    first_burn: _burnTotal > 0,
+    rank_1:     _burnRank >= 0,  // rankIdx 0 = Simple Holder
+    rank_2:     _burnRank >= 1,
+    rank_3:     _burnRank >= 2,
+    rank_4:     _burnRank >= 3,
+    burn_10:    _burnTotal >= 10,
+    burn_50:    _burnTotal >= 50,
+    nft_mint:   _nftMinted === true,
+  };
+
+  for (const f of FEATS) {
+    if (checks[f.id] && !unlocked[f.id]) {
+      unlocked[f.id] = Date.now();
+      newly.push(f);
+    }
+  }
+  if (newly.length) featsSave(unlocked);
+  return newly;
+}
+
+// Called after each duel resolves
+function featsCheck() {
+  const newly = featsEvaluate();
+  newly.forEach((f, i) => {
+    setTimeout(() => {
+      if (typeof showToast === 'function') showToast('🏆 Feat unlocked: ' + f.name);
+    }, i * 1200);
+  });
+  featsUpdateBadge();
+}
+
+function featsUpdateBadge() {
+  const unlocked = featsLoad();
+  const count = Object.keys(unlocked).length;
+  const btn = document.getElementById('feats-btn');
+  if (btn) btn.title = 'Hall of Feats (' + count + '/' + FEATS.length + ')';
+}
+
+function featsOpen() {
+  featsEvaluate(); // make sure it's current
+  const unlocked = featsLoad();
+  const count = Object.keys(unlocked).filter(k => FEATS.some(f => f.id === k)).length;
+  document.getElementById('feats-count').textContent = count + ' / ' + FEATS.length;
+  document.getElementById('feats-bar').style.width = (count / FEATS.length * 100) + '%';
+
+  const renderFeat = (f) => {
+    const isUnlocked = !!unlocked[f.id];
+    const date = isUnlocked ? new Date(unlocked[f.id]).toLocaleDateString() : '';
+    return `
+    <div style="display:flex;align-items:center;gap:1rem;padding:0.8rem 1rem;background:${isUnlocked?'rgba(200,168,74,0.07)':'rgba(255,255,255,0.02)'};border:1px solid ${isUnlocked?'rgba(200,168,74,0.25)':'rgba(255,255,255,0.05)'};border-radius:4px;${isUnlocked?'':'opacity:0.5;'}">
+      <div style="font-size:1.6rem;min-width:40px;text-align:center;filter:${isUnlocked?'none':'grayscale(1)'};">${isUnlocked?f.icon:'🔒'}</div>
+      <div style="flex:1;">
+        <div style="font-family:'Cinzel',serif;font-size:0.8rem;letter-spacing:0.1em;color:${isUnlocked?'#e8d088':'rgba(255,255,255,0.5)'};">${f.name}</div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.35);margin-top:0.15rem;">${f.desc}</div>
+      </div>
+      ${isUnlocked?`<div style="font-size:0.6rem;color:rgba(200,168,74,0.6);font-family:'Cinzel',serif;">${date}</div>`:'<div style="font-size:0.6rem;color:rgba(255,255,255,0.2);font-family:Cinzel,serif;letter-spacing:0.1em;">LOCKED</div>'}
+    </div>`;
+  };
+
+  const catHeader = (label, icon) => `
+    <div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;color:#c8a84a;text-transform:uppercase;margin:1.2rem 0 0.6rem;padding-bottom:0.4rem;border-bottom:1px solid rgba(200,168,74,0.15);">${icon} ${label}</div>`;
+
+  const duelFeats = FEATS.filter(f => f.cat === 'Duel');
+  const burnFeats = FEATS.filter(f => f.cat === 'Burn');
+
+  const grid = document.getElementById('feats-grid');
+  grid.innerHTML =
+    catHeader('Arena · Duels', '⚔️') +
+    '<div style="display:flex;flex-direction:column;gap:0.6rem;">' + duelFeats.map(renderFeat).join('') + '</div>' +
+    catHeader('Ritual · The Burn', '🔥') +
+    '<div style="display:flex;flex-direction:column;gap:0.6rem;">' + burnFeats.map(renderFeat).join('') + '</div>';
+
+  document.getElementById('feats-modal').style.display = 'flex';
+}
+</script>
+<!-- ═══════════════ END HALL OF FEATS ═══════════════ -->
+
+<!-- ═══════════════ MY DUELS (inline panel logic) ═══════════════ -->
+<script>
+// Auto-refresh My Duels every 10s while connected
+let _myDuelsAutoTimer = null;
+function myDuelsStartAuto() {
+  if (_myDuelsAutoTimer) clearInterval(_myDuelsAutoTimer);
+  _myDuelsAutoTimer = setInterval(() => {
+    // Only refresh if wallet still connected and the duel section exists
+    if (connectedAddress && document.getElementById('myduels-inline-list')) {
+      myDuelsScan();
+    } else {
+      clearInterval(_myDuelsAutoTimer);
+      _myDuelsAutoTimer = null;
+    }
+  }, 10000);
+}
+function myDuelsStopAuto() {
+  if (_myDuelsAutoTimer) { clearInterval(_myDuelsAutoTimer); _myDuelsAutoTimer = null; }
+}
+
+async function myDuelsScan() {
+  const list = document.getElementById('myduels-inline-list');
+  if (!connectedAddress || !duelReadContract) {
+    list.innerHTML = '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);">Connect your wallet first.</div>';
+    return;
+  }
+  list.innerHTML = '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);font-style:italic;">Scanning the Void...</div>';
+
+  try {
+    const me = connectedAddress.toLowerCase();
+    const ZERO = '0x0000000000000000000000000000000000000000';
+
+    // Probe duels by ID until we hit a non-existent one (playerA == zero address).
+    // This avoids RPC log-query limits.
+    const active = [];
+    let id = 1;
+    let misses = 0;
+    const MAX_PROBE = 500;     // safety cap
+    const MISS_LIMIT = 3;      // stop after 3 consecutive non-existent ids
+
+    while (id <= MAX_PROBE && misses < MISS_LIMIT) {
+      let d;
+      try { d = await duelReadContract.getDuel(id); }
+      catch { misses++; id++; continue; }
+
+      if (!d || d.playerA === ZERO) { misses++; id++; continue; }
+      misses = 0; // reset on a real duel
+
+      const st = Number(d.status);
+      const iAmA = d.playerA.toLowerCase() === me;
+      const iAmB = d.playerB && d.playerB.toLowerCase() === me;
+      // Keep only my duels that are still active (Open or Joined)
+      if ((iAmA || iAmB) && (st === 0 || st === 1)) {
+        active.push({ id: id.toString(), d });
+      }
+      id++;
+    }
+
+    if (active.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);font-style:italic;">No active duels right now.<br><span style="font-size:0.72rem;">Resolved duels appear in your history.</span></div>';
+      return;
+    }
+
+    active.sort((a,b) => Number(a.id) - Number(b.id));
+
+    list.innerHTML = active.map(({id, d}) => {
+      const st = Number(d.status);
+      const iAmA = d.playerA.toLowerCase() === me;
+      const iAmB = d.playerB.toLowerCase() === me;
+      const stake = ethers.formatEther(d.stake);
+      let role, statusLabel, statusColor, action = '';
+
+      if (st === 0) {
+        // Open — waiting for opponent. Cancel allowed anytime now.
+        role = 'Created';
+        statusLabel = '⏳ Waiting for opponent';
+        statusColor = '#00e5cc';
+        action = `<button onclick="myDuelsCancel('${id}')" style="width:100%;margin-top:0.6rem;padding:0.55rem;font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.15em;cursor:pointer;background:transparent;color:rgba(255,255,255,0.45);border:1px solid rgba(255,255,255,0.15);border-radius:3px;text-transform:uppercase;">✕ Cancel & Refund</button>`;
+      } else if (st === 1 && iAmA) {
+        // I created, opponent joined — I must reveal
+        role = 'Created';
+        statusLabel = '🔴 Your turn — Reveal!';
+        statusColor = '#ff4466';
+        const sec = localStorage.getItem(_duelKey('secret'));
+        const myDuelStored = localStorage.getItem(_duelKey('duelId'));
+        if (sec && myDuelStored === id) {
+          action = `<button onclick="myDuelsReveal('${id}')" style="width:100%;margin-top:0.6rem;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;cursor:pointer;background:linear-gradient(135deg,#ff4466,#ff7799);color:#fff;border:none;border-radius:3px;text-transform:uppercase;">⚡ Reveal Now</button>`;
+        } else {
+          action = `<div style="margin-top:0.6rem;font-size:0.68rem;color:#ff8899;font-style:italic;">⚠ Secret not on this device — reveal from where you created it.</div>`;
+        }
+      } else if (st === 1 && iAmB) {
+        // I joined — waiting for creator to reveal
+        role = 'Joined';
+        statusLabel = '🟣 Waiting for reveal';
+        statusColor = '#9d7fee';
+        const joinedAt = Number(d.joinedAt);
+        const now = Math.floor(Date.now()/1000);
+        const remaining = 21600 - (now - joinedAt);
+        if (remaining > 0) {
+          const h = Math.floor(remaining/3600);
+          const m = Math.floor((remaining%3600)/60);
+          const tStr = h > 0 ? (h + 'h ' + m + 'm') : (m + ' min');
+          action = `<div style="margin-top:0.5rem;font-size:0.7rem;color:rgba(255,255,255,0.4);">Opponent has ~${tStr} to reveal, or you can claim the pot.</div>`;
+        } else {
+          action = `<button onclick="myDuelsClaim('${id}')" style="width:100%;margin-top:0.6rem;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;cursor:pointer;background:linear-gradient(135deg,#c8a84a,#e8d088);color:#04021a;border:none;border-radius:3px;text-transform:uppercase;font-weight:600;">🏆 Claim Victory</button>`;
+        }
+      }
+
+      return `
+      <div style="background:rgba(255,255,255,0.03);border:1px solid ${statusColor}33;border-radius:4px;padding:1rem;margin-bottom:0.7rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
+          <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.2em;color:#9d7fee;">DUEL #${id} · ${role}</div>
+          <div style="font-family:'Cinzel',serif;font-size:0.7rem;color:var(--teal);">${stake} zkLTC</div>
+        </div>
+        <div style="font-size:0.8rem;color:${statusColor};font-family:'Cinzel',serif;letter-spacing:0.05em;">${statusLabel}</div>
+        ${action}
+      </div>`;
+    }).join('');
+
+  } catch(e) {
+    console.error('myDuelsScan error:', e);
+    list.innerHTML = '<div style="text-align:center;padding:2rem 0;color:#ff8899;">Scan failed. Try refresh.</div>';
+  }
+}
+
+async function myDuelsReveal(id) {
+  duelMyId = BigInt(id);
+  duelMySecret = localStorage.getItem(_duelKey('secret'));
+  duelMyChoiceNum = parseInt(localStorage.getItem(_duelKey('choice'))||'0');
+  if (typeof duelReveal === 'function') await duelReveal();
+  myDuelsScan();
+}
+
+async function myDuelsClaim(id) {
+  duelJoinedId = BigInt(id);
+  if (typeof duelClaimTimeout === 'function') await duelClaimTimeout();
+  myDuelsScan();
+}
+
+async function myDuelsCancel(id) {
+  if (!duelContract) await initDuelContract();
+  if (!duelContract) { showToast('Contract not ready'); return; }
+  try {
+    showToast('Confirm in MetaMask...');
+    const tx = await duelContract.cancelDuel(id);
+    await tx.wait();
+    showToast('✦ Duel cancelled — stake refunded');
+    myDuelsScan();
+    if (typeof duelLoadOpen === 'function') await duelLoadOpen();
+  } catch(e) {
+    console.error('myDuelsCancel error:', e);
+    showToast(typeof duelFriendlyError === 'function' ? duelFriendlyError(e) : '✖ Cancel failed', true);
+  }
+}
+</script>
+<!-- ═══════════════ END MY DUELS ═══════════════ -->
+
+
+
+<!-- FEEDBACK FLOATING BUTTON -->
+<button id="feedback-fab" onclick="document.getElementById('feedback-modal').style.display='flex'" style="position:fixed;bottom:84px;right:24px;z-index:9990;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#7755cc,#00e5cc);border:none;color:#04021a;font-size:1.5rem;cursor:pointer;box-shadow:0 4px 20px rgba(0,229,204,0.35);display:flex;align-items:center;justify-content:center;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" title="Send feedback">💬</button>
+
+<!-- FEEDBACK MODAL -->
+<div id="feedback-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,1,12,0.85);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1.5rem;" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:linear-gradient(135deg,rgba(12,6,45,0.98),rgba(6,3,28,0.99));border:1px solid rgba(0,229,204,0.25);border-radius:6px;max-width:440px;width:100%;padding:1.8rem;position:relative;box-shadow:0 0 40px rgba(0,229,204,0.1);">
+    <button onclick="document.getElementById('feedback-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;width:28px;height:28px;border-radius:50%;background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;">✕</button>
+
+    <div style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.2em;color:var(--teal);text-transform:uppercase;margin-bottom:0.4rem;">💬 Send Feedback</div>
+    <div style="font-size:0.8rem;color:rgba(255,255,255,0.4);margin-bottom:1.4rem;">Help shape The Silver Void — your input matters.</div>
+
+    <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:#7a9fcc;text-transform:uppercase;margin-bottom:0.5rem;">Category</div>
+    <div style="display:flex;gap:0.4rem;margin-bottom:1.2rem;">
+      <button type="button" class="fb-cat on" data-cat="Bug" onclick="fbSelectCat(this)" style="flex:1;padding:0.5rem;background:rgba(0,229,204,0.12);border:1px solid rgba(0,229,204,0.4);color:var(--teal);font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;border-radius:3px;cursor:pointer;">🐞 BUG</button>
+      <button type="button" class="fb-cat" data-cat="Suggestion" onclick="fbSelectCat(this)" style="flex:1;padding:0.5rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;border-radius:3px;cursor:pointer;">💡 IDEA</button>
+      <button type="button" class="fb-cat" data-cat="UX" onclick="fbSelectCat(this)" style="flex:1;padding:0.5rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;border-radius:3px;cursor:pointer;">🎨 UX</button>
+    </div>
+
+    <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:#7a9fcc;text-transform:uppercase;margin-bottom:0.5rem;">Your message</div>
+    <textarea id="fb-message" placeholder="Describe the bug or share your idea..." style="width:100%;min-height:100px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:3px;color:#fff;padding:0.7rem;font-family:inherit;font-size:0.85rem;resize:vertical;box-sizing:border-box;margin-bottom:1.2rem;"></textarea>
+
+    <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:#7a9fcc;text-transform:uppercase;margin-bottom:0.5rem;">Satisfaction</div>
+    <div id="fb-stars" style="display:flex;gap:0.4rem;margin-bottom:1.5rem;font-size:1.6rem;">
+      <span class="fb-star" data-star="1" onclick="fbSetStars(1)" style="cursor:pointer;color:rgba(255,255,255,0.2);transition:color 0.15s;">★</span>
+      <span class="fb-star" data-star="2" onclick="fbSetStars(2)" style="cursor:pointer;color:rgba(255,255,255,0.2);transition:color 0.15s;">★</span>
+      <span class="fb-star" data-star="3" onclick="fbSetStars(3)" style="cursor:pointer;color:rgba(255,255,255,0.2);transition:color 0.15s;">★</span>
+      <span class="fb-star" data-star="4" onclick="fbSetStars(4)" style="cursor:pointer;color:rgba(255,255,255,0.2);transition:color 0.15s;">★</span>
+      <span class="fb-star" data-star="5" onclick="fbSetStars(5)" style="cursor:pointer;color:rgba(255,255,255,0.2);transition:color 0.15s;">★</span>
+    </div>
+
+    <button id="fb-submit-btn" onclick="fbSubmit()" style="width:100%;padding:0.8rem;font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:0.2em;cursor:pointer;background:linear-gradient(135deg,#7755cc,#00e5cc);color:#04021a;border:none;border-radius:3px;text-transform:uppercase;font-weight:600;">✦ Send Feedback</button>
+  </div>
+</div>
+
+<script>
+let _fbCat = 'Bug';
+let _fbStars = 0;
+function fbSelectCat(btn) {
+  _fbCat = btn.dataset.cat;
+  document.querySelectorAll('.fb-cat').forEach(b => {
+    b.classList.remove('on');
+    b.style.background = 'rgba(255,255,255,0.04)';
+    b.style.borderColor = 'rgba(255,255,255,0.1)';
+    b.style.color = 'rgba(255,255,255,0.4)';
+  });
+  btn.classList.add('on');
+  btn.style.background = 'rgba(0,229,204,0.12)';
+  btn.style.borderColor = 'rgba(0,229,204,0.4)';
+  btn.style.color = 'var(--teal)';
+}
+function fbSetStars(n) {
+  _fbStars = n;
+  document.querySelectorAll('.fb-star').forEach(s => {
+    s.style.color = parseInt(s.dataset.star) <= n ? '#00e5cc' : 'rgba(255,255,255,0.2)';
+  });
+}
+async function fbSubmit() {
+  const msg = document.getElementById('fb-message').value.trim();
+  if (!msg) { alert('Please write a message first.'); return; }
+  const wallet = (typeof connectedAddress !== 'undefined' && connectedAddress) ? connectedAddress : 'not connected';
+  const stars = _fbStars ? _fbStars + '/5' : 'not rated';
+
+  const submitBtn = document.getElementById('fb-submit-btn');
+  const origText = submitBtn ? submitBtn.textContent : '';
+  if (submitBtn) { submitBtn.textContent = 'Sending...'; submitBtn.disabled = true; }
+
+  const payload = {
+    access_key: '772102ad-c76b-4cb9-99cc-36eae582cad5',
+    subject: '[Silver Void Feedback] ' + _fbCat,
+    from_name: 'Silver Void Feedback',
+    category: _fbCat,
+    satisfaction: stars,
+    message: msg,
+    wallet: wallet,
+    page: location.href,
+    device: navigator.userAgent
+  };
+
+  try {
+    const res = await fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success !== false) {
+      if (typeof showToast === 'function') showToast('✦ Feedback sent — thank you!');
+      document.getElementById('feedback-modal').style.display = 'none';
+      document.getElementById('fb-message').value = '';
+      fbSetStars(0);
+    } else {
+      if (typeof showToast === 'function') showToast('✖ Could not send — try again', true);
+      else alert('Could not send. Please try again.');
+    }
+  } catch (e) {
+    console.error('Feedback error:', e);
+    if (typeof showToast === 'function') showToast('✖ Network error — try again', true);
+    else alert('Network error. Please try again.');
+  } finally {
+    if (submitBtn) { submitBtn.textContent = origText; submitBtn.disabled = false; }
+  }
+}
+</script>
 
 </body>
 </html>
