@@ -2629,7 +2629,7 @@ function svIntroParticles() {
       <div style="background:linear-gradient(135deg,rgba(8,4,40,0.9),rgba(4,2,26,0.95));border:1px solid rgba(119,85,204,0.3);border-radius:4px;padding:1.5rem;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;">
           <div style="font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:0.25em;color:#9d7fee;text-transform:uppercase;">⚔ My Duels</div>
-          <button onclick="myDuelsScan()" title="Refresh" style="background:transparent;border:1px solid rgba(119,85,204,0.3);color:rgba(157,127,238,0.7);font-size:0.7rem;padding:0.3rem 0.5rem;border-radius:3px;cursor:pointer;">↻</button>
+          <button onclick="myDuelsScan(true)" title="Refresh" style="background:transparent;border:1px solid rgba(119,85,204,0.3);color:rgba(157,127,238,0.7);font-size:0.7rem;padding:0.3rem 0.5rem;border-radius:3px;cursor:pointer;">↻</button>
         </div>
         <div id="myduels-inline-list" style="min-height:120px;">
           <div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.5rem 0;">Connect your wallet to see your duels.</div>
@@ -2909,7 +2909,7 @@ async function connectWallet(){
       if (typeof duelRestoreState === 'function') await duelRestoreState();
       if (typeof duelRenderHistory === 'function') duelRenderHistory();
       if (typeof featsCheck === 'function') featsCheck();
-      if (typeof myDuelsScan === 'function') myDuelsScan();
+      if (typeof myDuelsScan === 'function') myDuelsScan(true);
       if (typeof myDuelsStartAuto === 'function') myDuelsStartAuto();
     }, 800);
   }catch(e){
@@ -2945,7 +2945,7 @@ function disconnectWallet(){
   if (_dhList) _dhList.innerHTML = '<div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.2rem 0;">Connect wallet to see your history.</div>';
   // Reset My Duels inline list
   const _mdl = document.getElementById('myduels-inline-list');
-  if (_mdl) _mdl.innerHTML = '<div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.5rem 0;">Connect your wallet to see your duels.</div>';
+  if (_mdl) { _mdl._lastHTML = null; _mdl.innerHTML = '<div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.5rem 0;">Connect your wallet to see your duels.</div>'; }
   if (typeof myDuelsStopAuto === 'function') myDuelsStopAuto();
   showToast('Wallet disconnected');
   updateSteps();
@@ -5398,13 +5398,25 @@ function myDuelsStopAuto() {
   if (_myDuelsAutoTimer) { clearInterval(_myDuelsAutoTimer); _myDuelsAutoTimer = null; }
 }
 
-async function myDuelsScan() {
+function _myDuelsSetHTML(list, html) {
+  // Only touch the DOM if the content actually changed — prevents flicker.
+  if (list._lastHTML !== html) {
+    list._lastHTML = html;
+    list.innerHTML = html;
+  }
+}
+
+async function myDuelsScan(showLoading) {
   const list = document.getElementById('myduels-inline-list');
+  if (!list) return;
   if (!connectedAddress || !duelReadContract) {
-    list.innerHTML = '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);">Connect your wallet first.</div>';
+    _myDuelsSetHTML(list, '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);">Connect your wallet first.</div>');
     return;
   }
-  list.innerHTML = '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);font-style:italic;">Scanning the Void...</div>';
+  // Show the loading placeholder only on first/manual load, never on silent auto-refresh.
+  if (showLoading && !list._lastHTML) {
+    list.innerHTML = '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);font-style:italic;">Scanning the Void...</div>';
+  }
 
   try {
     const me = connectedAddress.toLowerCase();
@@ -5437,13 +5449,13 @@ async function myDuelsScan() {
     }
 
     if (active.length === 0) {
-      list.innerHTML = '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);font-style:italic;">No active duels right now.<br><span style="font-size:0.72rem;">Resolved duels appear in your history.</span></div>';
+      _myDuelsSetHTML(list, '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);font-style:italic;">No active duels right now.<br><span style="font-size:0.72rem;">Resolved duels appear in your history.</span></div>');
       return;
     }
 
     active.sort((a,b) => Number(a.id) - Number(b.id));
 
-    list.innerHTML = active.map(({id, d}) => {
+    const html = active.map(({id, d}) => {
       const st = Number(d.status);
       const iAmA = d.playerA.toLowerCase() === me;
       const iAmB = d.playerB.toLowerCase() === me;
@@ -5496,10 +5508,14 @@ async function myDuelsScan() {
         ${action}
       </div>`;
     }).join('');
+    _myDuelsSetHTML(list, html);
 
   } catch(e) {
     console.error('myDuelsScan error:', e);
-    list.innerHTML = '<div style="text-align:center;padding:2rem 0;color:#ff8899;">Scan failed. Try refresh.</div>';
+    // On error, only show the failure message if we have nothing displayed yet.
+    if (!list._lastHTML) {
+      list.innerHTML = '<div style="text-align:center;padding:2rem 0;color:#ff8899;">Scan failed. Try refresh.</div>';
+    }
   }
 }
 
