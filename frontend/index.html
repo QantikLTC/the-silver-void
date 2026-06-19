@@ -4580,11 +4580,15 @@ async function duelCreate() {
     duelMyStatus = 'open';
     duelMyChoiceNum = duelChoice;
 
-    // Persist state so it survives page reload
+    // Persist state so it survives page reload — keyed per-duel-ID so multiple
+    // open duels created from this device can each be revealed correctly.
     localStorage.setItem(_duelKey('duelId'), duelId.toString());
     localStorage.setItem(_duelKey('secret'), duelMySecret);
     localStorage.setItem(_duelKey('choice'), duelChoice.toString());
     localStorage.setItem(_duelKey('status'), 'open');
+    // Per-duel secret store (does not get overwritten by later duels)
+    localStorage.setItem(_duelKey('secret_' + duelId.toString()), duelMySecret);
+    localStorage.setItem(_duelKey('choice_' + duelId.toString()), duelChoice.toString());
 
     document.getElementById('duel-my-none').style.display    = 'none';
     document.getElementById('duel-my-open').style.display    = 'block';
@@ -4748,6 +4752,7 @@ async function duelClaimTimeout() {
 
 // REVEAL
 async function duelReveal() {
+  const _revealedId = duelMyId != null ? duelMyId.toString() : null;
   const _restoredSecret = duelMySecret || localStorage.getItem(_duelKey('secret'));
   if (!duelContract || !duelMyId || !_restoredSecret) { showToast('No active duel'); return; }
   duelMySecret = _restoredSecret;
@@ -4781,6 +4786,7 @@ async function duelReveal() {
 
     duelMyId=null; duelMyStatus=null; duelMySecret=null;
     localStorage.removeItem(_duelKey('duelId')); localStorage.removeItem(_duelKey('secret')); localStorage.removeItem(_duelKey('choice')); localStorage.removeItem(_duelKey('status')); duelMySecret=null;
+    if (_revealedId != null) { localStorage.removeItem(_duelKey('secret_' + _revealedId)); localStorage.removeItem(_duelKey('choice_' + _revealedId)); }
     document.getElementById('duel-my-none').style.display   = 'block';
     document.getElementById('duel-my-reveal').style.display = 'none';
     await duelLoadStats(); await duelLoadOpen();
@@ -5473,9 +5479,12 @@ async function myDuelsScan(showLoading) {
         role = 'Created';
         statusLabel = '🔴 Your turn — Reveal!';
         statusColor = '#ff4466';
-        const sec = localStorage.getItem(_duelKey('secret'));
+        // Look up the secret stored specifically for THIS duel ID first.
+        // Falls back to the legacy single-slot keys for older/in-flight duels.
+        const sec = localStorage.getItem(_duelKey('secret_' + id)) || localStorage.getItem(_duelKey('secret'));
         const myDuelStored = localStorage.getItem(_duelKey('duelId'));
-        if (sec && myDuelStored === id) {
+        const hasPerDuelSecret = !!localStorage.getItem(_duelKey('secret_' + id));
+        if (sec && (hasPerDuelSecret || myDuelStored === id)) {
           action = `<button onclick="myDuelsReveal('${id}')" style="width:100%;margin-top:0.6rem;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;cursor:pointer;background:linear-gradient(135deg,#ff4466,#ff7799);color:#fff;border:none;border-radius:3px;text-transform:uppercase;">⚡ Reveal Now</button>`;
         } else {
           action = `<div style="margin-top:0.6rem;font-size:0.68rem;color:#ff8899;font-style:italic;">⚠ Secret not on this device — reveal from where you created it.</div>`;
@@ -5521,8 +5530,10 @@ async function myDuelsScan(showLoading) {
 
 async function myDuelsReveal(id) {
   duelMyId = BigInt(id);
-  duelMySecret = localStorage.getItem(_duelKey('secret'));
-  duelMyChoiceNum = parseInt(localStorage.getItem(_duelKey('choice'))||'0');
+  // Prefer the secret stored specifically for this duel ID; fall back to the
+  // legacy single-slot keys for compatibility with duels created before this fix.
+  duelMySecret = localStorage.getItem(_duelKey('secret_' + id)) || localStorage.getItem(_duelKey('secret'));
+  duelMyChoiceNum = parseInt(localStorage.getItem(_duelKey('choice_' + id)) || localStorage.getItem(_duelKey('choice')) || '0');
   if (typeof duelReveal === 'function') await duelReveal();
   myDuelsScan();
 }
