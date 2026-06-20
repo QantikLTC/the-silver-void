@@ -2629,7 +2629,7 @@ function svIntroParticles() {
       <div style="background:linear-gradient(135deg,rgba(8,4,40,0.9),rgba(4,2,26,0.95));border:1px solid rgba(119,85,204,0.3);border-radius:4px;padding:1.5rem;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;">
           <div style="font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:0.25em;color:#9d7fee;text-transform:uppercase;">⚔ My Duels</div>
-          <button onclick="myDuelsScan(true)" title="Refresh" style="background:transparent;border:1px solid rgba(119,85,204,0.3);color:rgba(157,127,238,0.7);font-size:0.7rem;padding:0.3rem 0.5rem;border-radius:3px;cursor:pointer;">↻</button>
+          <button onclick="myDuelsScan()" title="Refresh" style="background:transparent;border:1px solid rgba(119,85,204,0.3);color:rgba(157,127,238,0.7);font-size:0.7rem;padding:0.3rem 0.5rem;border-radius:3px;cursor:pointer;">↻</button>
         </div>
         <div id="myduels-inline-list" style="min-height:120px;">
           <div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.5rem 0;">Connect your wallet to see your duels.</div>
@@ -2909,7 +2909,7 @@ async function connectWallet(){
       if (typeof duelRestoreState === 'function') await duelRestoreState();
       if (typeof duelRenderHistory === 'function') duelRenderHistory();
       if (typeof featsCheck === 'function') featsCheck();
-      if (typeof myDuelsScan === 'function') myDuelsScan(true);
+      if (typeof myDuelsScan === 'function') myDuelsScan();
       if (typeof myDuelsStartAuto === 'function') myDuelsStartAuto();
     }, 800);
   }catch(e){
@@ -2945,7 +2945,7 @@ function disconnectWallet(){
   if (_dhList) _dhList.innerHTML = '<div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.2rem 0;">Connect wallet to see your history.</div>';
   // Reset My Duels inline list
   const _mdl = document.getElementById('myduels-inline-list');
-  if (_mdl) { _mdl._lastHTML = null; _mdl.innerHTML = '<div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.5rem 0;">Connect your wallet to see your duels.</div>'; }
+  if (_mdl) _mdl.innerHTML = '<div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.5rem 0;">Connect your wallet to see your duels.</div>';
   if (typeof myDuelsStopAuto === 'function') myDuelsStopAuto();
   showToast('Wallet disconnected');
   updateSteps();
@@ -4536,6 +4536,78 @@ function duelCreateConfirm() {
   document.getElementById('duel-confirm-modal').style.display = 'flex';
 }
 
+// ═══ SECRET BACKUP — encrypted server-side fallback ═══
+// If the secret is lost locally (new device, cleared cache), the wallet
+// can re-sign the same fixed message to re-derive the same AES key and
+// fetch+decrypt the secret from the server. The server only ever stores
+// ciphertext — it cannot read the secret.
+const SECRET_BACKUP_API = '/api/secret';
+const SECRET_SIGN_MESSAGE = 'Silver Void — Secret Backup Key v1';
+let _secretCryptoKey = null; // cached AES-GCM CryptoKey for this session
+
+async function getSecretCryptoKey() {
+  if (_secretCryptoKey) return _secretCryptoKey;
+  if (!signer) throw new Error('Wallet not connected');
+  const signature = await signer.signMessage(SECRET_SIGN_MESSAGE);
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(signature));
+  _secretCryptoKey = await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+  return _secretCryptoKey;
+}
+
+function bufToB64(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+}
+function b64ToBuf(b64) {
+  return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+}
+
+async function encryptSecret(plainSecret) {
+  const key = await getSecretCryptoKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plainSecret));
+  // Pack iv + ciphertext together, base64 — single string for storage
+  return bufToB64(iv) + '.' + bufToB64(ciphertext);
+}
+
+async function decryptSecret(packed) {
+  const [ivB64, ctB64] = packed.split('.');
+  const key = await getSecretCryptoKey();
+  const iv = b64ToBuf(ivB64);
+  const ct = b64ToBuf(ctB64);
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  return new TextDecoder().decode(plain);
+}
+
+// Fire-and-forget backup — never blocks or breaks the duel flow on failure
+async function backupSecretToServer(duelId, plainSecret, choiceNum) {
+  try {
+    const payload = JSON.stringify({ secret: plainSecret, choice: choiceNum });
+    const ciphertext = await encryptSecret(payload);
+    await fetch(SECRET_BACKUP_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet: connectedAddress, duelId: duelId.toString(), ciphertext })
+    });
+  } catch (e) {
+    console.warn('Secret backup failed (non-blocking):', e);
+  }
+}
+
+// Try to recover {secret, choice} from the server backup. Returns null if unavailable.
+async function recoverSecretFromServer(duelId) {
+  try {
+    const res = await fetch(`${SECRET_BACKUP_API}?wallet=${encodeURIComponent(connectedAddress)}&duelId=${encodeURIComponent(duelId.toString())}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.ciphertext) return null;
+    const payload = await decryptSecret(data.ciphertext);
+    return JSON.parse(payload); // { secret, choice }
+  } catch (e) {
+    console.warn('Secret recovery failed:', e);
+    return null;
+  }
+}
+
 function duelCreateProceed() {
   document.getElementById('duel-confirm-modal').style.display = 'none';
   duelCreate();
@@ -4580,15 +4652,15 @@ async function duelCreate() {
     duelMyStatus = 'open';
     duelMyChoiceNum = duelChoice;
 
-    // Persist state so it survives page reload — keyed per-duel-ID so multiple
-    // open duels created from this device can each be revealed correctly.
+    // Persist state so it survives page reload
     localStorage.setItem(_duelKey('duelId'), duelId.toString());
     localStorage.setItem(_duelKey('secret'), duelMySecret);
     localStorage.setItem(_duelKey('choice'), duelChoice.toString());
     localStorage.setItem(_duelKey('status'), 'open');
-    // Per-duel secret store (does not get overwritten by later duels)
-    localStorage.setItem(_duelKey('secret_' + duelId.toString()), duelMySecret);
-    localStorage.setItem(_duelKey('choice_' + duelId.toString()), duelChoice.toString());
+
+    // Silent server-side encrypted backup — safety net if this device's
+    // localStorage is later lost (cache cleared, different browser/device).
+    backupSecretToServer(duelId, duelMySecret, duelChoice);
 
     document.getElementById('duel-my-none').style.display    = 'none';
     document.getElementById('duel-my-open').style.display    = 'block';
@@ -4752,8 +4824,20 @@ async function duelClaimTimeout() {
 
 // REVEAL
 async function duelReveal() {
-  const _revealedId = duelMyId != null ? duelMyId.toString() : null;
-  const _restoredSecret = duelMySecret || localStorage.getItem(_duelKey('secret'));
+  let _restoredSecret = duelMySecret || localStorage.getItem(_duelKey('secret'));
+  // Local secret missing (new device, cleared cache) — try the encrypted server backup.
+  if (!_restoredSecret && duelMyId && connectedAddress) {
+    showToast('Recovering secret — sign to verify...');
+    const recovered = await recoverSecretFromServer(duelMyId);
+    if (recovered && recovered.secret) {
+      _restoredSecret = recovered.secret;
+      duelMyChoiceNum = recovered.choice;
+      // Re-save locally so we don't need to hit the server again this session
+      localStorage.setItem(_duelKey('secret'), _restoredSecret);
+      localStorage.setItem(_duelKey('choice'), String(recovered.choice));
+      localStorage.setItem(_duelKey('duelId'), duelMyId.toString());
+    }
+  }
   if (!duelContract || !duelMyId || !_restoredSecret) { showToast('No active duel'); return; }
   duelMySecret = _restoredSecret;
   try {
@@ -4786,7 +4870,6 @@ async function duelReveal() {
 
     duelMyId=null; duelMyStatus=null; duelMySecret=null;
     localStorage.removeItem(_duelKey('duelId')); localStorage.removeItem(_duelKey('secret')); localStorage.removeItem(_duelKey('choice')); localStorage.removeItem(_duelKey('status')); duelMySecret=null;
-    if (_revealedId != null) { localStorage.removeItem(_duelKey('secret_' + _revealedId)); localStorage.removeItem(_duelKey('choice_' + _revealedId)); }
     document.getElementById('duel-my-none').style.display   = 'block';
     document.getElementById('duel-my-reveal').style.display = 'none';
     await duelLoadStats(); await duelLoadOpen();
@@ -5386,41 +5469,45 @@ function featsOpen() {
 
 <!-- ═══════════════ MY DUELS (inline panel logic) ═══════════════ -->
 <script>
-// Auto-refresh My Duels every 10s while connected
+// Auto-refresh My Duels while connected (slower to spare the RPC)
 let _myDuelsAutoTimer = null;
+let _myDuelsScanning = false;   // overlap guard
+let _myDuelsLoadedOnce = false; // so the "Scanning..." placeholder only shows once
+let _myDuelsLastHTML = '';      // cache to avoid re-rendering identical content
 function myDuelsStartAuto() {
   if (_myDuelsAutoTimer) clearInterval(_myDuelsAutoTimer);
   _myDuelsAutoTimer = setInterval(() => {
-    // Only refresh if wallet still connected and the duel section exists
     if (connectedAddress && document.getElementById('myduels-inline-list')) {
       myDuelsScan();
     } else {
       clearInterval(_myDuelsAutoTimer);
       _myDuelsAutoTimer = null;
     }
-  }, 10000);
+  }, 20000); // every 20s
 }
 function myDuelsStopAuto() {
   if (_myDuelsAutoTimer) { clearInterval(_myDuelsAutoTimer); _myDuelsAutoTimer = null; }
+  _myDuelsLoadedOnce = false;
+  _myDuelsLastHTML = '';
 }
 
-function _myDuelsSetHTML(list, html) {
-  // Only touch the DOM if the content actually changed — prevents flicker.
-  if (list._lastHTML !== html) {
-    list._lastHTML = html;
-    list.innerHTML = html;
-  }
-}
+// Small helper: pause between RPC calls so we don't trip rate limits
+function _sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
-async function myDuelsScan(showLoading) {
+async function myDuelsScan() {
   const list = document.getElementById('myduels-inline-list');
   if (!list) return;
   if (!connectedAddress || !duelReadContract) {
-    _myDuelsSetHTML(list, '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);">Connect your wallet first.</div>');
+    list.innerHTML = '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);">Connect your wallet first.</div>';
+    _myDuelsLastHTML = '';
     return;
   }
-  // Show the loading placeholder only on first/manual load, never on silent auto-refresh.
-  if (showLoading && !list._lastHTML) {
+  // Don't start a new scan while one is already running (prevents RPC overload)
+  if (_myDuelsScanning) return;
+  _myDuelsScanning = true;
+
+  // Only show the placeholder on the very first load — never on auto-refresh (no flicker)
+  if (!_myDuelsLoadedOnce) {
     list.innerHTML = '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);font-style:italic;">Scanning the Void...</div>';
   }
 
@@ -5429,7 +5516,7 @@ async function myDuelsScan(showLoading) {
     const ZERO = '0x0000000000000000000000000000000000000000';
 
     // Probe duels by ID until we hit a non-existent one (playerA == zero address).
-    // This avoids RPC log-query limits.
+    // Calls are sequential with a tiny pause to avoid RPC rate limits.
     const active = [];
     let id = 1;
     let misses = 0;
@@ -5439,9 +5526,9 @@ async function myDuelsScan(showLoading) {
     while (id <= MAX_PROBE && misses < MISS_LIMIT) {
       let d;
       try { d = await duelReadContract.getDuel(id); }
-      catch { misses++; id++; continue; }
+      catch { misses++; id++; await _sleep(60); continue; }
 
-      if (!d || d.playerA === ZERO) { misses++; id++; continue; }
+      if (!d || d.playerA === ZERO) { misses++; id++; await _sleep(60); continue; }
       misses = 0; // reset on a real duel
 
       const st = Number(d.status);
@@ -5452,16 +5539,20 @@ async function myDuelsScan(showLoading) {
         active.push({ id: id.toString(), d });
       }
       id++;
+      await _sleep(60); // gentle pacing between RPC calls
     }
 
+    _myDuelsLoadedOnce = true;
+
     if (active.length === 0) {
-      _myDuelsSetHTML(list, '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);font-style:italic;">No active duels right now.<br><span style="font-size:0.72rem;">Resolved duels appear in your history.</span></div>');
+      const emptyHTML = '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);font-style:italic;">No active duels right now.<br><span style="font-size:0.72rem;">Resolved duels appear in your history.</span></div>';
+      if (emptyHTML !== _myDuelsLastHTML) { list.innerHTML = emptyHTML; _myDuelsLastHTML = emptyHTML; }
       return;
     }
 
     active.sort((a,b) => Number(a.id) - Number(b.id));
 
-    const html = active.map(({id, d}) => {
+    const newHTML = active.map(({id, d}) => {
       const st = Number(d.status);
       const iAmA = d.playerA.toLowerCase() === me;
       const iAmB = d.playerB.toLowerCase() === me;
@@ -5479,15 +5570,14 @@ async function myDuelsScan(showLoading) {
         role = 'Created';
         statusLabel = '🔴 Your turn — Reveal!';
         statusColor = '#ff4466';
-        // Look up the secret stored specifically for THIS duel ID first.
-        // Falls back to the legacy single-slot keys for older/in-flight duels.
-        const sec = localStorage.getItem(_duelKey('secret_' + id)) || localStorage.getItem(_duelKey('secret'));
+        const sec = localStorage.getItem(_duelKey('secret'));
         const myDuelStored = localStorage.getItem(_duelKey('duelId'));
-        const hasPerDuelSecret = !!localStorage.getItem(_duelKey('secret_' + id));
-        if (sec && (hasPerDuelSecret || myDuelStored === id)) {
+        if (sec && myDuelStored === id) {
           action = `<button onclick="myDuelsReveal('${id}')" style="width:100%;margin-top:0.6rem;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;cursor:pointer;background:linear-gradient(135deg,#ff4466,#ff7799);color:#fff;border:none;border-radius:3px;text-transform:uppercase;">⚡ Reveal Now</button>`;
         } else {
-          action = `<div style="margin-top:0.6rem;font-size:0.68rem;color:#ff8899;font-style:italic;">⚠ Secret not on this device — reveal from where you created it.</div>`;
+          // Secret not found locally — try the encrypted server backup (requires a wallet signature to decrypt).
+          action = `<button onclick="myDuelsReveal('${id}')" style="width:100%;margin-top:0.6rem;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;cursor:pointer;background:linear-gradient(135deg,#7755cc,#9d7fee);color:#fff;border:none;border-radius:3px;text-transform:uppercase;">🔑 Recover & Reveal</button>
+            <div style="margin-top:0.4rem;font-size:0.65rem;color:rgba(255,255,255,0.35);font-style:italic;">Secret not on this device — we'll recover it securely from backup.</div>`;
         }
       } else if (st === 1 && iAmB) {
         // I joined — waiting for creator to reveal
@@ -5517,23 +5607,28 @@ async function myDuelsScan(showLoading) {
         ${action}
       </div>`;
     }).join('');
-    _myDuelsSetHTML(list, html);
+
+    // Only touch the DOM if the rendered content actually changed → no flicker
+    if (newHTML !== _myDuelsLastHTML) {
+      list.innerHTML = newHTML;
+      _myDuelsLastHTML = newHTML;
+    }
 
   } catch(e) {
     console.error('myDuelsScan error:', e);
-    // On error, only show the failure message if we have nothing displayed yet.
-    if (!list._lastHTML) {
+    // Don't wipe a good list on a transient RPC error; only show error on first load
+    if (!_myDuelsLoadedOnce) {
       list.innerHTML = '<div style="text-align:center;padding:2rem 0;color:#ff8899;">Scan failed. Try refresh.</div>';
     }
+  } finally {
+    _myDuelsScanning = false;
   }
 }
 
 async function myDuelsReveal(id) {
   duelMyId = BigInt(id);
-  // Prefer the secret stored specifically for this duel ID; fall back to the
-  // legacy single-slot keys for compatibility with duels created before this fix.
-  duelMySecret = localStorage.getItem(_duelKey('secret_' + id)) || localStorage.getItem(_duelKey('secret'));
-  duelMyChoiceNum = parseInt(localStorage.getItem(_duelKey('choice_' + id)) || localStorage.getItem(_duelKey('choice')) || '0');
+  duelMySecret = localStorage.getItem(_duelKey('secret'));
+  duelMyChoiceNum = parseInt(localStorage.getItem(_duelKey('choice'))||'0');
   if (typeof duelReveal === 'function') await duelReveal();
   myDuelsScan();
 }
