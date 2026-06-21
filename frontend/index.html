@@ -6092,6 +6092,7 @@ function avatarRenderInfoFor(id) {
   const art = rankArtUrl(id);
   if (art) return { type: 'image', url: art };
   const f = FEATS.find(x => x.id === id);
+  if (f && f.artUrl) return { type: 'image', url: f.artUrl }; // Duelist Saga avatars
   return f ? { type: 'emoji', icon: f.icon } : { type: 'emoji', icon: DEFAULT_AVATAR.icon };
 }
 
