@@ -2043,7 +2043,7 @@ function svIntroParticles() {
       <li><a href="#" onclick="svIntroReplay();return false;" style="color:rgba(255,255,255,0.45);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'" title="Replay intro">✶ Intro</a></li>
     </ul>
     <button class="nav-btn" id="wallet-btn">Connect Wallet</button>
-    <button id="profile-btn" onclick="profileToggle()" style="display:none;background:transparent;border:1px solid rgba(255,170,68,0.4);color:#ffaa44;width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:1rem;margin-left:0.5rem;transition:all 0.2s;vertical-align:middle;padding:0;overflow:hidden;align-items:center;justify-content:center;" onmouseover="this.style.borderColor='#ffaa44'" onmouseout="this.style.borderColor='rgba(255,170,68,0.4)'" title="Your profile">🌑</button>
+    <button id="profile-btn" onclick="profileToggle()" style="display:none;background:transparent;border:1px solid rgba(0,229,204,0.45);color:var(--teal);width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:1rem;margin-left:0.5rem;transition:all 0.2s;vertical-align:middle;padding:0;overflow:hidden;align-items:center;justify-content:center;" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='rgba(0,229,204,0.45)'" title="Your profile">🌑</button>
     <div class="hamburger" id="hamburger" onclick="toggleMenu()">
       <span></span><span></span><span></span>
     </div>
@@ -5858,10 +5858,10 @@ function displayNameFor(wallet, cachedUsername) {
 
 <!-- ═══════════════ AVATAR GALLERY ═══════════════ -->
 <div id="avatar-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,1,12,0.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1.5rem;" onclick="if(event.target===this)this.style.display='none'">
-  <div class="feats-scroll" style="background:linear-gradient(135deg,rgba(14,7,30,0.99),rgba(7,3,18,0.99));border:1px solid rgba(255,170,68,0.3);border-radius:6px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;padding:1.8rem;position:relative;">
+  <div class="feats-scroll" style="background:linear-gradient(135deg,rgba(14,7,30,0.99),rgba(7,3,18,0.99));border:1px solid rgba(0,229,204,0.25);border-radius:6px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;padding:1.8rem;position:relative;">
     <button onclick="document.getElementById('avatar-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;width:28px;height:28px;border-radius:50%;background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;">✕</button>
 
-    <div style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.18em;color:#ffaa44;text-transform:uppercase;margin-bottom:0.3rem;">🌑 Choose Your Avatar</div>
+    <div style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.18em;color:var(--teal);text-transform:uppercase;margin-bottom:0.3rem;">🌑 Choose Your Avatar</div>
     <div style="font-size:0.8rem;color:rgba(255,255,255,0.4);margin-bottom:1.2rem;">Unlocked by your rank and feats. Switch freely, anytime.</div>
 
     <div id="avatar-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:0.6rem;"></div>
@@ -5965,18 +5965,29 @@ function avatarOpen() {
   const grid = document.getElementById('avatar-grid');
   const all = avatarAllUnlocked();
 
+  // Reuse the existing RANKS_DATA requirement strings so the wording stays
+  // consistent with what's already shown in "Initiate a Burn".
+  const RANK_REQS = { rank_1: 'Requires 0 zkLTC', rank_2: 'Requires ≥ 5 zkLTC burned', rank_3: 'Requires ≥ 20 zkLTC burned', rank_4: 'Requires ≥ 100 zkLTC burned' };
+
   grid.innerHTML = all.map(a => {
     const isActive = a.id === _myAvatarId;
     const inner = a.type === 'image'
-      ? `<img src="${a.url}" style="width:100%;height:100%;border-radius:4px;object-fit:cover;filter:${a.unlocked?'none':'grayscale(1) brightness(0.4)'};" onerror="this.outerHTML='🌑';" />`
+      ? `<img src="${a.url}" style="width:100%;height:100%;border-radius:4px;object-fit:cover;filter:${a.unlocked?'none':'grayscale(1) brightness(0.45) saturate(0.6)'};" onerror="this.outerHTML='🌑';" />`
       : `<span style="font-size:1.8rem;filter:${a.unlocked?'none':'grayscale(1) brightness(0.5)'};opacity:${a.unlocked?'1':'0.5'};">${a.icon}</span>`;
-    const lockOverlay = a.unlocked ? '' : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.35);font-size:1.1rem;">🔒</div>`;
+    // Theme-colored lock (teal-tinted) instead of the default brownish 🔒 emoji
+    const lockOverlay = a.unlocked ? '' : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(4,2,26,0.55);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(0,229,204,0.75)" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      </div>`;
     const clickAttr = a.unlocked ? `onclick="avatarSelect('${a.id}')"` : '';
     const cursor = a.unlocked ? 'cursor:pointer;' : 'cursor:not-allowed;';
+    const caption = a.unlocked ? '' : `<div style="font-size:0.52rem;color:rgba(0,229,204,0.45);text-align:center;margin-top:0.3rem;line-height:1.3;">${RANK_REQS[a.id] || ''}</div>`;
     return `
-    <div ${clickAttr} title="${a.unlocked ? a.name : a.name + ' — locked'}" style="position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:${isActive?'rgba(255,170,68,0.18)':'rgba(255,255,255,0.03)'};border:2px solid ${isActive?'#ffaa44':'rgba(255,255,255,0.08)'};border-radius:6px;${cursor}transition:all 0.15s;overflow:hidden;" ${a.unlocked ? `onmouseover="this.style.borderColor='rgba(255,170,68,0.5)'" onmouseout="this.style.borderColor='${isActive?'#ffaa44':'rgba(255,255,255,0.08)'}'"` : ''}>
-      ${inner}
-      ${lockOverlay}
+    <div>
+      <div ${clickAttr} title="${a.unlocked ? a.name : a.name + ' — ' + (RANK_REQS[a.id]||'locked')}" style="position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:${isActive?'rgba(0,229,204,0.16)':'rgba(255,255,255,0.03)'};border:2px solid ${isActive?'var(--teal)':'rgba(255,255,255,0.08)'};border-radius:6px;${cursor}transition:all 0.15s;overflow:hidden;" ${a.unlocked ? `onmouseover="this.style.borderColor='rgba(0,229,204,0.5)'" onmouseout="this.style.borderColor='${isActive?'var(--teal)':'rgba(255,255,255,0.08)'}'"` : ''}>
+        ${inner}
+        ${lockOverlay}
+      </div>
+      ${caption}
     </div>`;
   }).join('');
 
@@ -6015,28 +6026,28 @@ async function avatarSelect(id) {
   <div style="position:absolute;top:0;left:1rem;right:1rem;height:1px;background:linear-gradient(to right,transparent,rgba(0,229,204,0.4),transparent);"></div>
 
   <div style="display:flex;align-items:center;gap:0.8rem;padding-bottom:1rem;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:0.9rem;">
-    <div id="profile-panel-avatar" style="width:46px;height:46px;border-radius:50%;background:radial-gradient(circle,rgba(255,170,68,0.1),rgba(255,170,68,0.02));border:1px solid rgba(255,170,68,0.4);box-shadow:0 0 12px rgba(255,170,68,0.15);display:flex;align-items:center;justify-content:center;font-size:1.3rem;overflow:hidden;flex-shrink:0;"></div>
+    <div id="profile-panel-avatar" style="width:46px;height:46px;border-radius:50%;background:radial-gradient(circle,rgba(0,229,204,0.12),rgba(0,229,204,0.02));border:1px solid rgba(0,229,204,0.45);box-shadow:0 0 12px rgba(0,229,204,0.18);display:flex;align-items:center;justify-content:center;font-size:1.3rem;overflow:hidden;flex-shrink:0;"></div>
     <div style="flex:1;min-width:0;">
       <div id="profile-panel-name" style="font-family:'Cinzel',serif;font-size:0.78rem;letter-spacing:0.08em;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;">—</div>
-      <div id="profile-panel-rank" style="font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;color:rgba(255,170,68,0.6);margin-top:0.25rem;text-transform:uppercase;">—</div>
+      <div id="profile-panel-rank" style="font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;color:rgba(0,229,204,0.65);margin-top:0.25rem;text-transform:uppercase;">—</div>
     </div>
     <span onclick="document.getElementById('profile-panel').style.display='none';usernameOpen();" style="cursor:pointer;color:rgba(0,229,204,0.5);font-size:0.85rem;flex-shrink:0;transition:color 0.2s;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='rgba(0,229,204,0.5)'" title="Edit name">✏</span>
   </div>
 
   <div style="display:flex;gap:0.4rem;margin-bottom:1rem;">
-    <button id="profile-tab-main" onclick="profilePanelSwitchTab('main')" style="flex:1;padding:0.4rem;font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:rgba(255,170,68,0.1);border:1px solid rgba(255,170,68,0.35);color:#ffaa44;border-radius:2px;">Profile</button>
+    <button id="profile-tab-main" onclick="profilePanelSwitchTab('main')" style="flex:1;padding:0.4rem;font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:rgba(0,229,204,0.1);border:1px solid rgba(0,229,204,0.35);color:var(--teal);border-radius:2px;">Profile</button>
     <button id="profile-tab-stats" onclick="profilePanelSwitchTab('stats')" style="flex:1;padding:0.4rem;font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);border-radius:2px;">My Stats</button>
   </div>
 
   <!-- PROFILE TAB -->
   <div id="profile-tab-content-main">
     <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.7rem;">
-      <span style="width:14px;height:1px;background:rgba(255,170,68,0.4);"></span>
-      <span style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,170,68,0.5);text-transform:uppercase;">Quick Avatar</span>
+      <span style="width:14px;height:1px;background:rgba(0,229,204,0.4);"></span>
+      <span style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.2em;color:rgba(0,229,204,0.55);text-transform:uppercase;">Quick Avatar</span>
     </div>
     <div id="profile-panel-avatars" style="display:grid;grid-template-columns:repeat(6,1fr);gap:0.4rem;margin-bottom:1.1rem;"></div>
 
-    <button onclick="document.getElementById('profile-panel').style.display='none';avatarOpen();" style="width:100%;display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.8rem;background:transparent;border:1px solid rgba(255,170,68,0.2);border-radius:2px;color:rgba(255,170,68,0.85);font-size:0.62rem;letter-spacing:0.12em;cursor:pointer;margin-bottom:0.45rem;font-family:'Cinzel',serif;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,170,68,0.06)';this.style.borderColor='rgba(255,170,68,0.4)'" onmouseout="this.style.background='transparent';this.style.borderColor='rgba(255,170,68,0.2)'">🌑&nbsp;&nbsp;Full Avatar Gallery</button>
+    <button onclick="document.getElementById('profile-panel').style.display='none';avatarOpen();" style="width:100%;display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.8rem;background:transparent;border:1px solid rgba(0,229,204,0.22);border-radius:2px;color:rgba(0,229,204,0.85);font-size:0.62rem;letter-spacing:0.12em;cursor:pointer;margin-bottom:0.45rem;font-family:'Cinzel',serif;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(0,229,204,0.06)';this.style.borderColor='rgba(0,229,204,0.45)'" onmouseout="this.style.background='transparent';this.style.borderColor='rgba(0,229,204,0.22)'">🌑&nbsp;&nbsp;Full Avatar Gallery</button>
     <button onclick="document.getElementById('profile-panel').style.display='none';featsOpen();" style="width:100%;display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.8rem;background:transparent;border:1px solid rgba(200,168,74,0.2);border-radius:2px;color:rgba(200,168,74,0.85);font-size:0.62rem;letter-spacing:0.12em;cursor:pointer;margin-bottom:0.45rem;font-family:'Cinzel',serif;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(200,168,74,0.06)';this.style.borderColor='rgba(200,168,74,0.4)'" onmouseout="this.style.background='transparent';this.style.borderColor='rgba(200,168,74,0.2)'">🏆&nbsp;&nbsp;Hall of Feats</button>
     <button onclick="document.getElementById('profile-panel').style.display='none';if(typeof myDuelsScan==='function')myDuelsScan();document.getElementById('duel').scrollIntoView({behavior:'smooth'});" style="width:100%;display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.8rem;background:transparent;border:1px solid rgba(119,85,204,0.25);border-radius:2px;color:#9d7fee;font-size:0.62rem;letter-spacing:0.12em;cursor:pointer;font-family:'Cinzel',serif;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(119,85,204,0.08)';this.style.borderColor='rgba(119,85,204,0.45)'" onmouseout="this.style.background='transparent';this.style.borderColor='rgba(119,85,204,0.25)'">⚔&nbsp;&nbsp;My Duels</button>
   </div>
@@ -6104,7 +6115,7 @@ function profilePanelSwitchTab(tab) {
   if (tab === 'main') {
     mainContent.style.display = 'block';
     statsContent.style.display = 'none';
-    mainBtn.style.background = 'rgba(255,170,68,0.1)'; mainBtn.style.borderColor = 'rgba(255,170,68,0.35)'; mainBtn.style.color = '#ffaa44';
+    mainBtn.style.background = 'rgba(0,229,204,0.1)'; mainBtn.style.borderColor = 'rgba(0,229,204,0.35)'; mainBtn.style.color = 'var(--teal)';
     statsBtn.style.background = 'transparent'; statsBtn.style.borderColor = 'rgba(255,255,255,0.12)'; statsBtn.style.color = 'rgba(255,255,255,0.4)';
   } else {
     mainContent.style.display = 'none';
@@ -6203,7 +6214,7 @@ function profilePanelRender() {
       const inner = a.type === 'image'
         ? `<img src="${a.url}" style="width:100%;height:100%;border-radius:4px;object-fit:cover;" onerror="this.outerHTML='🌑';" />`
         : `<span style="font-size:1.1rem;">${a.icon}</span>`;
-      return `<div onclick="avatarSelect('${a.id}');profilePanelRender();" title="${a.name}" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:${isActive?'rgba(255,170,68,0.1)':'rgba(255,255,255,0.025)'};border:1px solid ${isActive?'rgba(255,170,68,0.55)':'rgba(255,255,255,0.07)'};box-shadow:${isActive?'0 0 8px rgba(255,170,68,0.25)':'none'};border-radius:3px;cursor:pointer;overflow:hidden;transition:all 0.15s;" onmouseover="this.style.borderColor='rgba(255,170,68,0.4)'" onmouseout="this.style.borderColor='${isActive?'rgba(255,170,68,0.55)':'rgba(255,255,255,0.07)'}'">${inner}</div>`;
+      return `<div onclick="avatarSelect('${a.id}');profilePanelRender();" title="${a.name}" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:${isActive?'rgba(0,229,204,0.12)':'rgba(255,255,255,0.025)'};border:1px solid ${isActive?'rgba(0,229,204,0.55)':'rgba(255,255,255,0.07)'};box-shadow:${isActive?'0 0 8px rgba(0,229,204,0.25)':'none'};border-radius:3px;cursor:pointer;overflow:hidden;transition:all 0.15s;" onmouseover="this.style.borderColor='rgba(0,229,204,0.4)'" onmouseout="this.style.borderColor='${isActive?'rgba(0,229,204,0.55)':'rgba(255,255,255,0.07)'}'">${inner}</div>`;
     }).join('');
   }
 }
