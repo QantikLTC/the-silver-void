@@ -1422,6 +1422,18 @@ body::after {
 }
 @media(max-width:600px){ .lb-thead { grid-template-columns:30px 1fr 90px; } }
 
+/* LIVE DUELS PULSE — nav badge + open challenge cards */
+@keyframes svPulseDot {
+  0%, 100% { transform:scale(1); opacity:1; }
+  50% { transform:scale(1.6); opacity:0.6; }
+}
+@keyframes svPulseCard {
+  0%, 100% { box-shadow:0 0 0 0 rgba(0,229,204,0.25), 0 0 12px rgba(0,229,204,0.08); }
+  50% { box-shadow:0 0 0 4px rgba(0,229,204,0.12), 0 0 22px rgba(0,229,204,0.22); }
+}
+#nav-duels-badge { animation:svPulseDot 1.6s ease-in-out infinite; }
+.duel-card-live { animation:svPulseCard 2.6s ease-in-out infinite; border-color:rgba(0,229,204,0.35) !important; }
+
 /* Table rows */
 .lb-row {
   display:grid; grid-template-columns:40px 1fr 140px 100px;
@@ -2055,7 +2067,7 @@ function svIntroParticles() {
   <div class="menu-brand">The <em>Si<span class="ltc-letter">Ł</span>ver</em> Void</div>
   <a class="menu-item" href="#ritual" onclick="closeMenu()"><span class="mi-icon">⬡</span>The Ritual</a>
   <a class="menu-item" href="#ranks" onclick="closeMenu()"><span class="mi-icon">◆</span>The Order</a>
-  <a class="menu-item" href="#duel" onclick="closeMenu()"><span class="mi-icon">⚔</span>Duels</a>
+  <a class="menu-item" href="#duel" onclick="closeMenu()" style="position:relative;"><span class="mi-icon">⚔</span>Duels<span id="nav-duels-badge-mobile" style="display:none;position:absolute;top:2px;left:18px;width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px rgba(0,229,204,0.8);animation:svPulseDot 1.6s ease-in-out infinite;"></span></a>
   <a class="menu-item" href="#leaderboard" onclick="closeMenu()"><span class="mi-icon">✦</span>Sacrifiants</a>
   <a class="menu-item" href="https://liteforge.explorer.caldera.xyz/address/0x0AD3f776C45FF457d2d8e211A3174A4Db201b656" target="_blank" onclick="closeMenu()"><span class="mi-icon">⛓</span>Contract</a>
   <a class="menu-item" href="#" onclick="closeMenu();svIntroReplay();return false;"><span class="mi-icon">✶</span>Replay Intro</a>
@@ -3852,8 +3864,9 @@ if(window.ethereum){
   // Nav links
   const nl = document.getElementById('nav-links-desktop');
   if(nl) {
-    nl.innerHTML = [['#ritual','The Ritual'],['#ranks','The Order'],['#leaderboard','Sacrifiants'],['#duel','⚔ Duels']]
+    nl.innerHTML = [['#ritual','The Ritual'],['#ranks','The Order'],['#leaderboard','Sacrifiants']]
       .map(([h,t]) => `<li><a href="${h}" style="color:var(--silver-dim);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--silver)'" onmouseout="this.style.color='var(--silver-dim)'">${t}</a></li>`).join('')
+      + `<li><a href="#duel" id="nav-duels-link" style="position:relative;color:var(--silver-dim);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--silver)'" onmouseout="this.style.color='var(--silver-dim)'">⚔ Duels<span id="nav-duels-badge" style="display:none;position:absolute;top:-4px;right:-10px;width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px rgba(0,229,204,0.8);"></span></a></li>`
       + `<li><a href="#" onclick="svIntroReplay();return false;" style="color:rgba(255,255,255,0.45);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'" title="Replay intro">✶ Intro</a></li>`;
     nl.style.display = 'flex';
   }
@@ -5179,6 +5192,8 @@ async function duelLoadOpen() {
     if (ids.length === 0) {
       _duelOpenCache = [];
       document.getElementById('duel-open-count').textContent = '';
+      const _navBadge0 = document.getElementById('nav-duels-badge'); if (_navBadge0) _navBadge0.style.display = 'none';
+      const _navBadge0m = document.getElementById('nav-duels-badge-mobile'); if (_navBadge0m) _navBadge0m.style.display = 'none';
       list.innerHTML = '<div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.2rem 0;">No open challenges. Be the first to create one!</div>';
       return;
     }
@@ -5217,6 +5232,10 @@ async function duelRenderOpen(page) {
   }
 
   document.getElementById('duel-open-count').textContent = filtered.length ? '('+filtered.length+')' : '';
+  const _navBadge = document.getElementById('nav-duels-badge');
+  if (_navBadge) _navBadge.style.display = (_duelOpenCache && _duelOpenCache.length > 0) ? 'block' : 'none';
+  const _navBadgeM = document.getElementById('nav-duels-badge-mobile');
+  if (_navBadgeM) _navBadgeM.style.display = (_duelOpenCache && _duelOpenCache.length > 0) ? 'block' : 'none';
 
   if (filtered.length === 0) {
     list.innerHTML = '<div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.2rem 0;">No open challenges at this stake.</div>';
@@ -5243,6 +5262,7 @@ async function duelRenderOpen(page) {
   pageItems.forEach(d => {
     const isMe = connectedAddress && d.playerA.toLowerCase() === connectedAddress.toLowerCase();
     const div = document.createElement('div');
+    div.className = isMe ? '' : 'duel-card-live';
     div.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:3px;padding:1rem;';
     div.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${isMe?'0':'0.7rem'};">
