@@ -2043,7 +2043,7 @@ function svIntroParticles() {
       <li><a href="#" onclick="svIntroReplay();return false;" style="color:rgba(255,255,255,0.45);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'" title="Replay intro">✶ Intro</a></li>
     </ul>
     <button class="nav-btn" id="wallet-btn">Connect Wallet</button>
-    <button id="feats-btn" onclick="featsOpen()" style="display:none;background:transparent;border:1px solid rgba(200,168,74,0.4);color:#c8a84a;width:38px;height:38px;border-radius:4px;cursor:pointer;font-size:1rem;margin-left:0.5rem;transition:all 0.2s;vertical-align:middle;" onmouseover="this.style.background='rgba(200,168,74,0.12)'" onmouseout="this.style.background='transparent'" title="Hall of Feats">🏆</button>
+    <button id="profile-btn" onclick="profileToggle()" style="display:none;background:transparent;border:1px solid rgba(255,170,68,0.4);color:#ffaa44;width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:1rem;margin-left:0.5rem;transition:all 0.2s;vertical-align:middle;padding:0;overflow:hidden;align-items:center;justify-content:center;" onmouseover="this.style.borderColor='#ffaa44'" onmouseout="this.style.borderColor='rgba(255,170,68,0.4)'" title="Your profile">🌑</button>
     <div class="hamburger" id="hamburger" onclick="toggleMenu()">
       <span></span><span></span><span></span>
     </div>
@@ -2461,9 +2461,15 @@ function svIntroParticles() {
 
   </div>
 </section><section id="leaderboard">
-  <div class="eyebrow" style="justify-content:center;">The Sacrifiants</div>
+  <div class="eyebrow" style="justify-content:center;">The Sacrifiants & The Duelists</div>
   <h2 class="section-h2" style="text-align:center;">Leaderboard</h2>
 
+  <div style="display:flex;justify-content:center;gap:0.6rem;margin-bottom:1.5rem;">
+    <button id="lb-tab-burn" onclick="lbSwitchTab('burn')" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.15em;padding:0.55rem 1.1rem;border-radius:3px;cursor:pointer;background:rgba(0,229,204,0.12);border:1px solid var(--teal);color:var(--teal);text-transform:uppercase;">🔥 Sacrifiants</button>
+    <button id="lb-tab-duel" onclick="lbSwitchTab('duel')" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.15em;padding:0.55rem 1.1rem;border-radius:3px;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);text-transform:uppercase;">⚔ Duelists</button>
+  </div>
+
+  <div id="lb-panel-burn" style="display:block;">
   <div class="lb-wrap">
 
     <!-- SIDEBAR -->
@@ -2532,6 +2538,25 @@ function svIntroParticles() {
 </div>
 
   </div>
+  </div> <!-- end lb-panel-burn -->
+
+  <!-- DUELIST LEADERBOARD PANEL -->
+  <div id="lb-panel-duel" style="display:none;">
+    <div style="max-width:680px;margin:0 auto;">
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(119,85,204,0.25);border-radius:4px;padding:1.5rem;margin-bottom:1.2rem;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.2em;color:#9d7fee;text-transform:uppercase;">Scoring</div>
+          <div style="font-size:0.78rem;color:rgba(255,255,255,0.5);margin-top:0.3rem;">Win +2 · Tie +1 · Loss +0 — all-time</div>
+        </div>
+        <button onclick="duelistLeaderboardRefresh(true)" style="background:transparent;border:1px solid rgba(119,85,204,0.3);color:rgba(157,127,238,0.7);font-size:0.7rem;padding:0.4rem 0.7rem;border-radius:3px;cursor:pointer;">↻ Refresh</button>
+      </div>
+      <div id="lb-duel-updated" style="text-align:center;font-size:0.68rem;color:rgba(255,255,255,0.25);margin-bottom:1rem;font-style:italic;"></div>
+      <div id="lb-duel-rows">
+        <div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;">Scanning the arena...</div>
+      </div>
+    </div>
+  </div>
+
 </section>
 
 
@@ -2899,7 +2924,7 @@ async function connectWallet(){
     btn.textContent=short;
     btn.style.borderColor='var(--teal)'; btn.style.color='var(--teal)';
     btn.title='Tap to disconnect';
-    const _fb = document.getElementById('feats-btn'); if(_fb) _fb.style.display='inline-block';
+    const _pb = document.getElementById('profile-btn'); if(_pb) _pb.style.display='flex';
     await loadUserData();
     await loadChainData();
     showToast('Wallet connected — Welcome to the Void');
@@ -2910,6 +2935,13 @@ async function connectWallet(){
       if (typeof duelRenderHistory === 'function') duelRenderHistory();
       if (typeof featsCheck === 'function') featsCheck();
       if (typeof myDuelsScan === 'function') myDuelsScan();
+      if (typeof refreshDisplayedUsername === 'function') await refreshDisplayedUsername();
+      if (typeof refreshMyAvatar === 'function') await refreshMyAvatar();
+      // If the player has a username, show it on the wallet button instead of the address
+      if (_myUsername) {
+        const _wbtn = document.getElementById('wallet-btn');
+        if (_wbtn) _wbtn.textContent = _myUsername;
+      }
       if (typeof myDuelsStartAuto === 'function') myDuelsStartAuto();
     }, 800);
   }catch(e){
@@ -2922,7 +2954,9 @@ function disconnectWallet(){
   connectedAddress=null; provider=null; signer=null; contract=null;
   const btn=document.getElementById('wallet-btn');
   if(btn){btn.textContent='Connect Wallet'; btn.style.borderColor=''; btn.style.color='';}
-  const _fbtn=document.getElementById('feats-btn'); if(_fbtn) _fbtn.style.display='none';
+  const _pbtn=document.getElementById('profile-btn'); if(_pbtn) _pbtn.style.display='none';
+  _myAvatarId = 'default';
+  _myUsername = null;
   const _xpf=document.getElementById('xpf-profile'); if(_xpf) _xpf.style.width='0%';
   const _xrl=document.getElementById('xp-rank-label'); if(_xrl) _xrl.textContent='Connect wallet to check rank';
   const _xpl=document.getElementById('xp-prog-label'); if(_xpl) _xpl.textContent='—';
@@ -3058,7 +3092,7 @@ async function loadUserData(){
     // Update nav
     const btn=document.getElementById('wallet-btn');
     const short=connectedAddress.slice(0,6)+'...'+connectedAddress.slice(-4);
-    btn.textContent=short;
+    btn.textContent = (typeof _myUsername !== 'undefined' && _myUsername) ? _myUsername : short;
     const _toastRankIdx=Math.min(rankNum>=4?4:Math.max(0,rankNum),4);
     const _toastRankName=(typeof RANKS_DATA!=='undefined'&&RANKS_DATA[_toastRankIdx])?RANKS_DATA[_toastRankIdx].name:rankName;
     const _toastIcon=(typeof RANKS_DATA!=='undefined'&&RANKS_DATA[_toastRankIdx])?RANKS_DATA[_toastRankIdx].icon:'○';
@@ -3289,10 +3323,17 @@ async function loadLeaderboard(){
         rankName=await fc2.getRankName(r);
       }catch(e){}
       const initials=addr.slice(2,4).toUpperCase();
+      const shortAddr = addr.slice(0,6)+'...'+addr.slice(-4);
+      let displayName = shortAddr;
+      try {
+        const uname = typeof usernameFetch === 'function' ? await usernameFetch(addr) : null;
+        if (uname) displayName = uname;
+      } catch(e) {}
       return{
         rank:i+1,
         init:initials,
-        name:addr.slice(0,6)+'...'+addr.slice(-4),
+        name:displayName,
+        addr:shortAddr,
         tier:rankName,
         ltc:burnedEth
       };
@@ -3590,6 +3631,167 @@ async function updateNFTButton(rankNum) {
     if(status) status.textContent = 'Click to see your NFT pool';
   }
 }
+
+// ═══ DUELIST LEADERBOARD (all-time, win+2/tie+1/loss+0) ═══
+// Scans every resolved duel on-chain and tallies a score per wallet.
+// This is heavier than a simple read, so it's cached and only re-scanned
+// periodically (not on every page view) — see DUELIST_LB_REFRESH_MS below.
+const DUELIST_LB_REFRESH_MS = 5 * 60 * 1000; // 5 minutes
+let _duelistLBCache = null;       // { rows: [...], updatedAt: timestamp }
+let _duelistLBScanning = false;
+
+function lbSwitchTab(tab) {
+  const burnPanel = document.getElementById('lb-panel-burn');
+  const duelPanel = document.getElementById('lb-panel-duel');
+  const burnTab = document.getElementById('lb-tab-burn');
+  const duelTab = document.getElementById('lb-tab-duel');
+
+  if (tab === 'burn') {
+    burnPanel.style.display = 'block';
+    duelPanel.style.display = 'none';
+    burnTab.style.background = 'rgba(0,229,204,0.12)'; burnTab.style.borderColor = 'var(--teal)'; burnTab.style.color = 'var(--teal)';
+    duelTab.style.background = 'transparent'; duelTab.style.borderColor = 'rgba(255,255,255,0.15)'; duelTab.style.color = 'rgba(255,255,255,0.4)';
+  } else {
+    burnPanel.style.display = 'none';
+    duelPanel.style.display = 'block';
+    duelTab.style.background = 'rgba(119,85,204,0.15)'; duelTab.style.borderColor = '#7755cc'; duelTab.style.color = '#9d7fee';
+    burnTab.style.background = 'transparent'; burnTab.style.borderColor = 'rgba(255,255,255,0.15)'; burnTab.style.color = 'rgba(255,255,255,0.4)';
+    duelistLeaderboardRefresh(false); // load from cache if fresh, else scan
+  }
+}
+
+async function duelistLeaderboardScan() {
+  if (!duelReadContract) {
+    try { await initDuelContract(); } catch(e) {}
+  }
+  if (!duelReadContract) return [];
+
+  const ZERO = '0x0000000000000000000000000000000000000000';
+  const scores = {}; // wallet (lowercase) -> { wins, ties, losses, score }
+
+  function bump(wallet, field) {
+    const w = wallet.toLowerCase();
+    if (!scores[w]) scores[w] = { wins: 0, ties: 0, losses: 0, score: 0 };
+    scores[w][field]++;
+    scores[w].score = scores[w].wins * 2 + scores[w].ties * 1;
+  }
+
+  let id = 1;
+  let misses = 0;
+  const MAX_PROBE = 2000;   // safety cap — generous for current and near-future duel volume
+  const MISS_LIMIT = 3;
+
+  while (id <= MAX_PROBE && misses < MISS_LIMIT) {
+    let d;
+    try { d = await duelReadContract.getDuel(id); }
+    catch { misses++; id++; continue; }
+
+    if (!d || d.playerA === ZERO) { misses++; id++; continue; }
+    misses = 0;
+
+    const st = Number(d.status);
+    if (st === 2) {
+      // Finished — either a normal win or a timeout claim. d.winner tells us who.
+      const winner = d.winner;
+      const loser = winner.toLowerCase() === d.playerA.toLowerCase() ? d.playerB : d.playerA;
+      if (winner !== ZERO) {
+        bump(winner, 'wins');
+        if (loser && loser !== ZERO) bump(loser, 'losses');
+      }
+    } else if (st === 4) {
+      // Tied — both players get +1
+      bump(d.playerA, 'ties');
+      if (d.playerB && d.playerB !== ZERO) bump(d.playerB, 'ties');
+    }
+    // Open (0), Joined (1), Cancelled (3) are not counted.
+
+    id++;
+  }
+
+  // Build sorted rows with display names
+  const wallets = Object.keys(scores);
+  const rows = await Promise.all(wallets.map(async w => {
+    let displayName = w.slice(0,6) + '...' + w.slice(-4);
+    let avatarHTML = '<span style="font-size:1.4rem;">👤</span>';
+    try {
+      const uname = typeof usernameFetch === 'function' ? await usernameFetch(w) : null;
+      if (uname) displayName = uname;
+    } catch(e) {}
+    try {
+      const avId = typeof avatarFetch === 'function' ? await avatarFetch(w) : null;
+      if (avId) avatarHTML = typeof avatarHTMLFor === 'function' ? avatarHTMLFor(avId, 32) : avatarHTML;
+    } catch(e) {}
+    return { wallet: w, name: displayName, avatar: avatarHTML, ...scores[w] };
+  }));
+
+  rows.sort((a, b) => b.score - a.score || (b.wins - a.wins));
+  return rows;
+}
+
+async function duelistLeaderboardRefresh(force) {
+  const now = Date.now();
+  const isFresh = _duelistLBCache && (now - _duelistLBCache.updatedAt) < DUELIST_LB_REFRESH_MS;
+
+  if (!force && isFresh) {
+    duelistLeaderboardRender(_duelistLBCache.rows, _duelistLBCache.updatedAt);
+    return;
+  }
+  if (_duelistLBScanning) return; // avoid overlapping scans
+  _duelistLBScanning = true;
+
+  const rowsContainer = document.getElementById('lb-duel-rows');
+  if (!isFresh && rowsContainer) {
+    rowsContainer.innerHTML = '<div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;">Scanning the arena...</div>';
+  }
+
+  try {
+    const rows = await duelistLeaderboardScan();
+    _duelistLBCache = { rows, updatedAt: Date.now() };
+    duelistLeaderboardRender(rows, _duelistLBCache.updatedAt);
+  } catch (e) {
+    console.error('Duelist leaderboard scan failed:', e);
+    if (rowsContainer && !isFresh) {
+      rowsContainer.innerHTML = '<div style="text-align:center;padding:2rem 0;color:#ff8899;">Could not load — try refresh.</div>';
+    }
+  } finally {
+    _duelistLBScanning = false;
+  }
+}
+
+function duelistLeaderboardRender(rows, updatedAt) {
+  const container = document.getElementById('lb-duel-rows');
+  const updatedLabel = document.getElementById('lb-duel-updated');
+  if (!container) return;
+
+  if (updatedLabel && updatedAt) {
+    const secAgo = Math.floor((Date.now() - updatedAt) / 1000);
+    const label = secAgo < 60 ? `${secAgo}s ago` : `${Math.floor(secAgo/60)}m ago`;
+    updatedLabel.textContent = `Last updated ${label}`;
+  }
+
+  if (!rows || rows.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;">No resolved duels yet. Be the first to fight!</div>';
+    return;
+  }
+
+  const medal = i => i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+
+  container.innerHTML = rows.slice(0, 50).map((r, i) => `
+    <div style="display:flex;align-items:center;gap:1rem;padding:0.8rem 1rem;background:${i<3?'rgba(119,85,204,0.07)':'rgba(255,255,255,0.02)'};border:1px solid ${i<3?'rgba(119,85,204,0.2)':'rgba(255,255,255,0.05)'};border-radius:4px;margin-bottom:0.5rem;">
+      <div style="font-family:'Cinzel',serif;font-size:0.9rem;color:rgba(255,255,255,0.4);min-width:28px;text-align:center;">${medal(i) || '#'+(i+1)}</div>
+      <div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;">${r.avatar || '<span style="font-size:1.4rem;">👤</span>'}</div>
+      <div style="flex:1;">
+        <div style="font-family:'Cinzel',serif;font-size:0.85rem;color:#fff;">${r.name}</div>
+        <div style="font-size:0.68rem;color:rgba(255,255,255,0.35);margin-top:0.15rem;">${r.wins}W · ${r.ties}T · ${r.losses}L</div>
+      </div>
+      <div style="font-family:'Cinzel',serif;font-size:1rem;color:#9d7fee;font-weight:600;">${r.score} <span style="font-size:0.6rem;color:rgba(255,255,255,0.3);">pts</span></div>
+    </div>
+  `).join('');
+}
+
+// Background refresh every 5 minutes, regardless of which tab is open,
+// so the data is ready the moment the player switches to it.
+setInterval(() => duelistLeaderboardRefresh(false), DUELIST_LB_REFRESH_MS);
 
 // ═══ INIT ═══
 setTimeout(function(){ updateVortex(0.5); }, 100);
@@ -4995,7 +5197,7 @@ function duelSetFilter(f, btn) {
   duelRenderOpen();
 }
 
-function duelRenderOpen(page) {
+async function duelRenderOpen(page) {
   if (page !== undefined) _duelOpenPage = page;
   const list = document.getElementById('duel-list');
   if (!list) return;
@@ -5018,6 +5220,16 @@ function duelRenderOpen(page) {
   const start = _duelOpenPage * _duelOpenPerPage;
   const pageItems = filtered.slice(start, start + _duelOpenPerPage);
 
+  // Pre-fetch display names for the creators shown on this page (usernames if set, else short address)
+  const _nameCache = {};
+  await Promise.all(pageItems.map(async d => {
+    const addr = d.playerA;
+    if (_nameCache[addr]) return;
+    let uname = null;
+    try { uname = typeof usernameFetch === 'function' ? await usernameFetch(addr) : null; } catch(e) {}
+    _nameCache[addr] = uname || (addr.slice(0,6) + '...' + addr.slice(-4));
+  }));
+
   list.innerHTML = '';
   pageItems.forEach(d => {
     const isMe = connectedAddress && d.playerA.toLowerCase() === connectedAddress.toLowerCase();
@@ -5027,7 +5239,7 @@ function duelRenderOpen(page) {
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${isMe?'0':'0.7rem'};">
         <div>
           <div style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.2em;color:#7755cc;">DUEL #${d.id}</div>
-          <div style="color:#8ab0c8;font-size:0.8rem;">${d.playerA.slice(0,6)}...${d.playerA.slice(-4)}</div>
+          <div style="color:#8ab0c8;font-size:0.8rem;">${_nameCache[d.playerA]}</div>
         </div>
         <div style="font-family:'Cinzel',serif;font-size:0.75rem;color:var(--teal);">${ethers.formatEther(d.stake)} zkLTC</div>
       </div>
@@ -5424,8 +5636,8 @@ function featsCheck() {
 function featsUpdateBadge() {
   const unlocked = featsLoad();
   const count = Object.keys(unlocked).length;
-  const btn = document.getElementById('feats-btn');
-  if (btn) btn.title = 'Hall of Feats (' + count + '/' + FEATS.length + ')';
+  const btn = document.getElementById('profile-btn');
+  if (btn) btn.title = 'Your profile — Hall of Feats: ' + count + '/' + FEATS.length;
 }
 
 function featsOpen() {
@@ -5466,6 +5678,529 @@ function featsOpen() {
 }
 </script>
 <!-- ═══════════════ END HALL OF FEATS ═══════════════ -->
+
+<!-- ═══════════════ USERNAME ═══════════════ -->
+<div id="username-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,1,12,0.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1.5rem;" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:linear-gradient(135deg,rgba(8,4,40,0.9),rgba(4,2,26,0.95));border:1px solid rgba(0,229,204,0.3);border-radius:6px;max-width:440px;width:100%;padding:1.8rem;position:relative;">
+    <button onclick="document.getElementById('username-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;width:28px;height:28px;border-radius:50%;background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;">✕</button>
+
+    <div style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.18em;color:var(--teal);text-transform:uppercase;margin-bottom:0.3rem;">✏️ Choose Your Name</div>
+    <div id="username-subtitle" style="font-size:0.8rem;color:rgba(255,255,255,0.4);margin-bottom:1.2rem;">Be known among the Sacrifiants.</div>
+
+    <!-- Locked state -->
+    <div id="username-locked" style="display:none;background:rgba(255,170,68,0.06);border:1px solid rgba(255,170,68,0.2);border-radius:4px;padding:1.2rem;text-align:center;">
+      <div style="font-size:1.6rem;margin-bottom:0.6rem;">🔒</div>
+      <div style="font-size:0.82rem;color:rgba(255,255,255,0.6);line-height:1.6;">Reach <strong style="color:#ffaa44;">Simple Holder</strong> rank (burn ≥ 0.5 zkLTC) to unlock your name.</div>
+    </div>
+
+    <!-- Unlocked state -->
+    <div id="username-unlocked" style="display:none;">
+      <div id="username-current" style="display:none;font-size:0.78rem;color:rgba(255,255,255,0.45);margin-bottom:0.8rem;">Current name: <strong id="username-current-val" style="color:var(--teal);"></strong></div>
+
+      <input id="username-input" type="text" placeholder="YourName" maxlength="16" style="width:100%;padding:0.7rem;font-family:'Cinzel',serif;font-size:0.85rem;background:rgba(255,255,255,0.04);border:1px solid rgba(0,229,204,0.25);border-radius:3px;color:#fff;outline:none;margin-bottom:0.5rem;">
+      <div style="font-size:0.68rem;color:rgba(255,255,255,0.3);margin-bottom:1rem;">3-16 characters · letters, numbers, _ and - only</div>
+
+      <div id="username-fee-note" style="display:none;font-size:0.72rem;color:#ffaa44;margin-bottom:1rem;font-style:italic;">⚠️ Changing your name costs <strong id="username-fee-amount">0.05 zkLTC</strong> (partly burned).</div>
+
+      <div id="username-error" style="display:none;font-size:0.75rem;color:#ff6655;margin-bottom:0.8rem;"></div>
+
+      <button id="username-submit-btn" onclick="usernameSubmit()" style="width:100%;padding:0.75rem;font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.15em;cursor:pointer;background:linear-gradient(135deg,var(--teal),#5a9fff);color:#04021a;border:none;border-radius:3px;text-transform:uppercase;font-weight:600;">Confirm Name</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ USERNAME SYSTEM ═══
+const USERNAME_API = '/api/username';
+const USERNAME_CHANGE_FEE = '0.05'; // zkLTC — charged on-chain before any change after the first
+const CREATOR_ADDRESS = '0x5489667F306a6F03F550FCB129F765f83FaCB24E';
+let _myUsername = null; // cached current username for this wallet
+
+async function usernameFetch(wallet) {
+  try {
+    const res = await fetch(`${USERNAME_API}?wallet=${encodeURIComponent(wallet)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.username || null;
+  } catch (e) {
+    console.warn('usernameFetch failed:', e);
+    return null;
+  }
+}
+
+function usernameOpen() {
+  const locked = document.getElementById('username-locked');
+  const unlocked = document.getElementById('username-unlocked');
+  const currentBox = document.getElementById('username-current');
+  const currentVal = document.getElementById('username-current-val');
+  const feeNote = document.getElementById('username-fee-note');
+  const errBox = document.getElementById('username-error');
+  errBox.style.display = 'none';
+  document.getElementById('username-input').value = '';
+
+  const hasRank = typeof _burnRank !== 'undefined' && _burnRank >= 0;
+
+  if (!hasRank) {
+    locked.style.display = 'block';
+    unlocked.style.display = 'none';
+  } else {
+    locked.style.display = 'none';
+    unlocked.style.display = 'block';
+    if (_myUsername) {
+      currentBox.style.display = 'block';
+      currentVal.textContent = _myUsername;
+      feeNote.style.display = 'block'; // changing an existing name costs a fee
+    } else {
+      currentBox.style.display = 'none';
+      feeNote.style.display = 'none'; // first-time set is free
+    }
+  }
+
+  document.getElementById('username-modal').style.display = 'flex';
+}
+
+async function usernameSubmit() {
+  const input = document.getElementById('username-input');
+  const errBox = document.getElementById('username-error');
+  const btn = document.getElementById('username-submit-btn');
+  const name = input.value.trim();
+  errBox.style.display = 'none';
+
+  if (!connectedAddress) { showToast('Connect wallet first'); return; }
+  if (name.length < 3 || name.length > 16) {
+    errBox.textContent = 'Name must be 3-16 characters.';
+    errBox.style.display = 'block';
+    return;
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+    errBox.textContent = 'Only letters, numbers, _ and - are allowed.';
+    errBox.style.display = 'block';
+    return;
+  }
+
+  const isChange = !!_myUsername; // paying only applies to changing an EXISTING name
+
+  btn.disabled = true;
+  btn.textContent = isChange ? 'Processing payment...' : 'Saving...';
+
+  try {
+    // Changing an existing name costs a fee, paid on-chain to the creator address
+    // before the new name is accepted. First-time naming is free.
+    if (isChange) {
+      if (!duelContract) await initDuelContract();
+      // Reuse the duel contract's payable surface isn't appropriate here —
+      // send a direct value transfer to the creator address instead.
+      const tx = await signer.sendTransaction({
+        to: CREATOR_ADDRESS,
+        value: ethers.parseEther(USERNAME_CHANGE_FEE)
+      });
+      showToast('Confirm in MetaMask...');
+      await tx.wait();
+    }
+
+    btn.textContent = 'Saving...';
+    const res = await fetch(USERNAME_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet: connectedAddress, username: name })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errBox.textContent = data.error || 'Could not save name.';
+      errBox.style.display = 'block';
+      return;
+    }
+
+    _myUsername = data.username;
+    showToast('✦ Name set: ' + _myUsername);
+    document.getElementById('username-modal').style.display = 'none';
+    const _wbtn = document.getElementById('wallet-btn');
+    if (_wbtn) _wbtn.textContent = _myUsername;
+    if (typeof refreshDisplayedUsername === 'function') refreshDisplayedUsername();
+
+  } catch (e) {
+    console.error('usernameSubmit error:', e);
+    errBox.textContent = typeof duelFriendlyError === 'function' ? duelFriendlyError(e) : 'Transaction failed or was rejected.';
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Confirm Name';
+  }
+}
+
+// Call this on wallet connect to load the cached username, and anywhere
+// the displayed name/address needs to refresh after a change.
+async function refreshDisplayedUsername() {
+  if (!connectedAddress) { _myUsername = null; return; }
+  _myUsername = await usernameFetch(connectedAddress);
+}
+
+// Helper other parts of the UI can call: returns the username if set,
+// otherwise falls back to the short truncated address — same pattern
+// used everywhere addresses are currently displayed.
+function displayNameFor(wallet, cachedUsername) {
+  if (cachedUsername) return cachedUsername;
+  if (!wallet) return '—';
+  return wallet.slice(0, 6) + '...' + wallet.slice(-4);
+}
+</script>
+<!-- ═══════════════ END USERNAME ═══════════════ -->
+
+<!-- ═══════════════ AVATAR GALLERY ═══════════════ -->
+<div id="avatar-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,1,12,0.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1.5rem;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="feats-scroll" style="background:linear-gradient(135deg,rgba(14,7,30,0.99),rgba(7,3,18,0.99));border:1px solid rgba(255,170,68,0.3);border-radius:6px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;padding:1.8rem;position:relative;">
+    <button onclick="document.getElementById('avatar-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;width:28px;height:28px;border-radius:50%;background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;">✕</button>
+
+    <div style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.18em;color:#ffaa44;text-transform:uppercase;margin-bottom:0.3rem;">🌑 Choose Your Avatar</div>
+    <div style="font-size:0.8rem;color:rgba(255,255,255,0.4);margin-bottom:1.2rem;">Unlocked by your rank and feats. Switch freely, anytime.</div>
+
+    <div id="avatar-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:0.6rem;"></div>
+  </div>
+</div>
+
+<script>
+// ═══ AVATAR SYSTEM ═══
+// Two kinds of avatars:
+//   - Rank avatars (rank_1..rank_4): use the SAME illustration shown in
+//     "Initiate a Burn" (RANKS_DATA[i].artUrl), cropped to a circle.
+//   - Feat avatars: emoji icons from the FEATS array (no dedicated art yet).
+// IDs map 1:1 to rank/feat IDs already tracked by the Hall of Feats system.
+const AVATAR_API = '/api/avatar';
+let _myAvatarId = 'default';
+
+const DEFAULT_AVATAR = { id: 'default', icon: '👤', name: 'Sacrifiant', type: 'emoji' };
+
+// rank_1..rank_4 -> index 0..3 into RANKS_DATA
+function rankArtUrl(rankFeatId) {
+  const idx = { rank_1: 0, rank_2: 1, rank_3: 2, rank_4: 3 }[rankFeatId];
+  if (idx === undefined || typeof RANKS_DATA === 'undefined' || !RANKS_DATA[idx]) return null;
+  return RANKS_DATA[idx].artUrl;
+}
+
+function avatarAllUnlocked() {
+  const unlocked = typeof featsLoad === 'function' ? featsLoad() : {};
+  const list = [{ ...DEFAULT_AVATAR, unlocked: true }]; // default avatar — used when no rank reached yet
+  // Only rank avatars (rank_1..rank_4) — feat-emoji avatars removed by design.
+  const RANK_FEAT_IDS = ['rank_1', 'rank_2', 'rank_3', 'rank_4'];
+  RANK_FEAT_IDS.forEach(id => {
+    const f = FEATS.find(x => x.id === id);
+    if (!f) return;
+    const isUnlocked = !!unlocked[id];
+    const art = rankArtUrl(id);
+    if (art) {
+      list.push({ id, type: 'image', url: art, name: f.name, unlocked: isUnlocked });
+    }
+  });
+  return list;
+}
+
+// Convenience: only the avatars the player can actually switch to right now.
+function avatarOnlyUnlocked() {
+  return avatarAllUnlocked().filter(a => a.unlocked);
+}
+
+async function avatarFetch(wallet) {
+  try {
+    const res = await fetch(`${AVATAR_API}?wallet=${encodeURIComponent(wallet)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.avatar || null;
+  } catch (e) {
+    console.warn('avatarFetch failed:', e);
+    return null;
+  }
+}
+
+async function refreshMyAvatar() {
+  if (!connectedAddress) { _myAvatarId = 'default'; return; }
+  const saved = await avatarFetch(connectedAddress);
+  _myAvatarId = saved || 'default';
+  avatarUpdateButtonIcon();
+}
+
+// Returns a render descriptor for an avatar id: { type, icon } or { type, url }
+function avatarRenderInfoFor(id) {
+  if (id === 'default') return { type: 'emoji', icon: DEFAULT_AVATAR.icon };
+  const art = rankArtUrl(id);
+  if (art) return { type: 'image', url: art };
+  const f = FEATS.find(x => x.id === id);
+  return f ? { type: 'emoji', icon: f.icon } : { type: 'emoji', icon: DEFAULT_AVATAR.icon };
+}
+
+// Kept for any caller expecting a plain emoji (e.g. leaderboard rows that
+// haven't been upgraded to image avatars yet) — falls back to a generic
+// icon when the avatar is actually an image.
+function avatarIconFor(id) {
+  const info = avatarRenderInfoFor(id);
+  return info.type === 'emoji' ? info.icon : '🌑';
+}
+
+// Renders the small circular avatar as inline HTML (image or emoji), for use
+// in the nav button, leaderboard rows, etc. `size` in px.
+function avatarHTMLFor(id, size) {
+  const info = avatarRenderInfoFor(id);
+  const s = size || 32;
+  if (info.type === 'image') {
+    return `<img src="${info.url}" style="width:${s}px;height:${s}px;border-radius:50%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><span style="display:none;width:${s}px;height:${s}px;border-radius:50%;align-items:center;justify-content:center;font-size:${Math.round(s*0.6)}px;">🌑</span>`;
+  }
+  return `<span style="display:flex;width:${s}px;height:${s}px;align-items:center;justify-content:center;font-size:${Math.round(s*0.6)}px;">${info.icon}</span>`;
+}
+
+function avatarUpdateButtonIcon() {
+  const btn = document.getElementById('profile-btn');
+  if (btn) btn.innerHTML = avatarHTMLFor(_myAvatarId, 36);
+}
+
+function avatarOpen() {
+  const grid = document.getElementById('avatar-grid');
+  const all = avatarAllUnlocked();
+
+  grid.innerHTML = all.map(a => {
+    const isActive = a.id === _myAvatarId;
+    const inner = a.type === 'image'
+      ? `<img src="${a.url}" style="width:100%;height:100%;border-radius:4px;object-fit:cover;filter:${a.unlocked?'none':'grayscale(1) brightness(0.4)'};" onerror="this.outerHTML='🌑';" />`
+      : `<span style="font-size:1.8rem;filter:${a.unlocked?'none':'grayscale(1) brightness(0.5)'};opacity:${a.unlocked?'1':'0.5'};">${a.icon}</span>`;
+    const lockOverlay = a.unlocked ? '' : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.35);font-size:1.1rem;">🔒</div>`;
+    const clickAttr = a.unlocked ? `onclick="avatarSelect('${a.id}')"` : '';
+    const cursor = a.unlocked ? 'cursor:pointer;' : 'cursor:not-allowed;';
+    return `
+    <div ${clickAttr} title="${a.unlocked ? a.name : a.name + ' — locked'}" style="position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:${isActive?'rgba(255,170,68,0.18)':'rgba(255,255,255,0.03)'};border:2px solid ${isActive?'#ffaa44':'rgba(255,255,255,0.08)'};border-radius:6px;${cursor}transition:all 0.15s;overflow:hidden;" ${a.unlocked ? `onmouseover="this.style.borderColor='rgba(255,170,68,0.5)'" onmouseout="this.style.borderColor='${isActive?'#ffaa44':'rgba(255,255,255,0.08)'}'"` : ''}>
+      ${inner}
+      ${lockOverlay}
+    </div>`;
+  }).join('');
+
+  document.getElementById('avatar-modal').style.display = 'flex';
+}
+
+async function avatarSelect(id) {
+  if (!connectedAddress) { showToast('Connect wallet first'); return; }
+  const target = avatarAllUnlocked().find(a => a.id === id);
+  if (target && !target.unlocked) { showToast('🔒 Not unlocked yet', true); return; }
+  try {
+    const res = await fetch(AVATAR_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet: connectedAddress, avatar: id })
+    });
+    if (!res.ok) { showToast('Could not save avatar', true); return; }
+    _myAvatarId = id;
+    avatarUpdateButtonIcon();
+    showToast('✦ Avatar updated');
+    avatarOpen(); // re-render to show the new active selection
+  } catch (e) {
+    console.error('avatarSelect error:', e);
+    showToast('Network error — try again', true);
+  }
+}
+</script>
+<!-- ═══════════════ END AVATAR GALLERY ═══════════════ -->
+
+<!-- ═══════════════ UNIFIED PROFILE PANEL ═══════════════ -->
+<!-- A lightweight dropdown anchored under the avatar button. It shows a
+     quick summary (avatar + name) and routes to the existing, fully working
+     modals (username, avatar gallery, feats) for the actual actions — this
+     avoids duplicating their logic while still giving a single entry point. -->
+<div id="profile-panel" style="display:none;position:fixed;z-index:9997;top:70px;right:1.5rem;width:290px;background:linear-gradient(160deg,rgba(10,6,28,0.97),rgba(4,2,16,0.99));border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1.4rem;box-shadow:0 0 0 1px rgba(255,170,68,0.06),0 20px 60px rgba(0,0,0,0.7),0 0 40px rgba(0,229,204,0.05) inset;backdrop-filter:blur(20px);">
+  <div style="position:absolute;top:0;left:1rem;right:1rem;height:1px;background:linear-gradient(to right,transparent,rgba(0,229,204,0.4),transparent);"></div>
+
+  <div style="display:flex;align-items:center;gap:0.8rem;padding-bottom:1rem;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:0.9rem;">
+    <div id="profile-panel-avatar" style="width:46px;height:46px;border-radius:50%;background:radial-gradient(circle,rgba(255,170,68,0.1),rgba(255,170,68,0.02));border:1px solid rgba(255,170,68,0.4);box-shadow:0 0 12px rgba(255,170,68,0.15);display:flex;align-items:center;justify-content:center;font-size:1.3rem;overflow:hidden;flex-shrink:0;"></div>
+    <div style="flex:1;min-width:0;">
+      <div id="profile-panel-name" style="font-family:'Cinzel',serif;font-size:0.78rem;letter-spacing:0.08em;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;">—</div>
+      <div id="profile-panel-rank" style="font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;color:rgba(255,170,68,0.6);margin-top:0.25rem;text-transform:uppercase;">—</div>
+    </div>
+    <span onclick="document.getElementById('profile-panel').style.display='none';usernameOpen();" style="cursor:pointer;color:rgba(0,229,204,0.5);font-size:0.85rem;flex-shrink:0;transition:color 0.2s;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='rgba(0,229,204,0.5)'" title="Edit name">✏</span>
+  </div>
+
+  <div style="display:flex;gap:0.4rem;margin-bottom:1rem;">
+    <button id="profile-tab-main" onclick="profilePanelSwitchTab('main')" style="flex:1;padding:0.4rem;font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:rgba(255,170,68,0.1);border:1px solid rgba(255,170,68,0.35);color:#ffaa44;border-radius:2px;">Profile</button>
+    <button id="profile-tab-stats" onclick="profilePanelSwitchTab('stats')" style="flex:1;padding:0.4rem;font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);border-radius:2px;">My Stats</button>
+  </div>
+
+  <!-- PROFILE TAB -->
+  <div id="profile-tab-content-main">
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.7rem;">
+      <span style="width:14px;height:1px;background:rgba(255,170,68,0.4);"></span>
+      <span style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,170,68,0.5);text-transform:uppercase;">Quick Avatar</span>
+    </div>
+    <div id="profile-panel-avatars" style="display:grid;grid-template-columns:repeat(6,1fr);gap:0.4rem;margin-bottom:1.1rem;"></div>
+
+    <button onclick="document.getElementById('profile-panel').style.display='none';avatarOpen();" style="width:100%;display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.8rem;background:transparent;border:1px solid rgba(255,170,68,0.2);border-radius:2px;color:rgba(255,170,68,0.85);font-size:0.62rem;letter-spacing:0.12em;cursor:pointer;margin-bottom:0.45rem;font-family:'Cinzel',serif;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,170,68,0.06)';this.style.borderColor='rgba(255,170,68,0.4)'" onmouseout="this.style.background='transparent';this.style.borderColor='rgba(255,170,68,0.2)'">🌑&nbsp;&nbsp;Full Avatar Gallery</button>
+    <button onclick="document.getElementById('profile-panel').style.display='none';featsOpen();" style="width:100%;display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.8rem;background:transparent;border:1px solid rgba(200,168,74,0.2);border-radius:2px;color:rgba(200,168,74,0.85);font-size:0.62rem;letter-spacing:0.12em;cursor:pointer;margin-bottom:0.45rem;font-family:'Cinzel',serif;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(200,168,74,0.06)';this.style.borderColor='rgba(200,168,74,0.4)'" onmouseout="this.style.background='transparent';this.style.borderColor='rgba(200,168,74,0.2)'">🏆&nbsp;&nbsp;Hall of Feats</button>
+    <button onclick="document.getElementById('profile-panel').style.display='none';if(typeof myDuelsScan==='function')myDuelsScan();document.getElementById('duel').scrollIntoView({behavior:'smooth'});" style="width:100%;display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.8rem;background:transparent;border:1px solid rgba(119,85,204,0.25);border-radius:2px;color:#9d7fee;font-size:0.62rem;letter-spacing:0.12em;cursor:pointer;font-family:'Cinzel',serif;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(119,85,204,0.08)';this.style.borderColor='rgba(119,85,204,0.45)'" onmouseout="this.style.background='transparent';this.style.borderColor='rgba(119,85,204,0.25)'">⚔&nbsp;&nbsp;My Duels</button>
+  </div>
+
+  <!-- STATS TAB -->
+  <div id="profile-tab-content-stats" style="display:none;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.7rem;">
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,170,68,0.15);border-radius:3px;padding:0.6rem 0.7rem;">
+        <div style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;color:rgba(255,170,68,0.5);text-transform:uppercase;">Burned</div>
+        <div id="stats-burned" style="font-family:'Cinzel',serif;font-size:0.95rem;color:#fff;margin-top:0.2rem;">—</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(200,168,74,0.15);border-radius:3px;padding:0.6rem 0.7rem;">
+        <div style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;color:rgba(200,168,74,0.5);text-transform:uppercase;">Feats</div>
+        <div id="stats-feats" style="font-family:'Cinzel',serif;font-size:0.95rem;color:#fff;margin-top:0.2rem;">—</div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.6rem;margin-top:0.8rem;">
+      <span style="width:14px;height:1px;background:rgba(119,85,204,0.4);"></span>
+      <span style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.2em;color:#9d7fee;text-transform:uppercase;">Arena record</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.4rem;margin-bottom:0.7rem;">
+      <div style="background:rgba(119,85,204,0.06);border:1px solid rgba(119,85,204,0.18);border-radius:3px;padding:0.5rem;text-align:center;">
+        <div style="font-family:'Cinzel',serif;font-size:0.9rem;color:#9d7fee;" id="stats-wins">—</div>
+        <div style="font-size:0.55rem;color:rgba(255,255,255,0.35);letter-spacing:0.05em;margin-top:0.1rem;">WINS</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:3px;padding:0.5rem;text-align:center;">
+        <div style="font-family:'Cinzel',serif;font-size:0.9rem;color:rgba(255,255,255,0.6);" id="stats-ties">—</div>
+        <div style="font-size:0.55rem;color:rgba(255,255,255,0.35);letter-spacing:0.05em;margin-top:0.1rem;">TIES</div>
+      </div>
+      <div style="background:rgba(255,68,102,0.05);border:1px solid rgba(255,68,102,0.15);border-radius:3px;padding:0.5rem;text-align:center;">
+        <div style="font-family:'Cinzel',serif;font-size:0.9rem;color:#ff8899;" id="stats-losses">—</div>
+        <div style="font-size:0.55rem;color:rgba(255,255,255,0.35);letter-spacing:0.05em;margin-top:0.1rem;">LOSSES</div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(119,85,204,0.08);border:1px solid rgba(119,85,204,0.25);border-radius:3px;padding:0.6rem 0.8rem;">
+      <div>
+        <div style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;color:rgba(157,127,238,0.6);text-transform:uppercase;">Duelist score</div>
+        <div id="stats-rank-position" style="font-size:0.62rem;color:rgba(255,255,255,0.4);margin-top:0.15rem;">—</div>
+      </div>
+      <div id="stats-score" style="font-family:'Cinzel',serif;font-size:1.3rem;color:#9d7fee;font-weight:600;">—</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ UNIFIED PROFILE PANEL ═══
+function profileToggle() {
+  const panel = document.getElementById('profile-panel');
+  const isOpen = panel.style.display === 'block';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    profilePanelRender();
+    profileStatsRender(); // pre-compute so numbers are ready instantly if the user switches tabs
+  }
+}
+
+function profilePanelSwitchTab(tab) {
+  const mainBtn = document.getElementById('profile-tab-main');
+  const statsBtn = document.getElementById('profile-tab-stats');
+  const mainContent = document.getElementById('profile-tab-content-main');
+  const statsContent = document.getElementById('profile-tab-content-stats');
+
+  if (tab === 'main') {
+    mainContent.style.display = 'block';
+    statsContent.style.display = 'none';
+    mainBtn.style.background = 'rgba(255,170,68,0.1)'; mainBtn.style.borderColor = 'rgba(255,170,68,0.35)'; mainBtn.style.color = '#ffaa44';
+    statsBtn.style.background = 'transparent'; statsBtn.style.borderColor = 'rgba(255,255,255,0.12)'; statsBtn.style.color = 'rgba(255,255,255,0.4)';
+  } else {
+    mainContent.style.display = 'none';
+    statsContent.style.display = 'block';
+    statsBtn.style.background = 'rgba(119,85,204,0.12)'; statsBtn.style.borderColor = 'rgba(119,85,204,0.4)'; statsBtn.style.color = '#9d7fee';
+    mainBtn.style.background = 'transparent'; mainBtn.style.borderColor = 'rgba(255,255,255,0.12)'; mainBtn.style.color = 'rgba(255,255,255,0.4)';
+    profileStatsRender(); // refresh in case burn/feats data changed since panel opened
+  }
+}
+
+// Fills the My Stats tab using data already in memory — no blockchain scan,
+// so the numbers appear instantly the moment the tab is opened.
+function profileStatsRender() {
+  const burnedEl = document.getElementById('stats-burned');
+  if (burnedEl) burnedEl.textContent = (typeof _burnTotal !== 'undefined' ? _burnTotal.toFixed(2) : '0.00') + ' zkLTC';
+
+  const featsEl = document.getElementById('stats-feats');
+  if (featsEl) {
+    const unlocked = typeof featsLoad === 'function' ? Object.keys(featsLoad()).length : 0;
+    const total = typeof FEATS !== 'undefined' ? FEATS.length : 0;
+    featsEl.textContent = unlocked + ' / ' + total;
+  }
+
+  // Arena record from local duel history (instant — no chain scan needed for "my own" stats)
+  const history = typeof duelHistoryLoad === 'function' ? duelHistoryLoad() : [];
+  let wins = 0, ties = 0, losses = 0;
+  history.forEach(h => {
+    if (h.isTie) ties++;
+    else if (h.isWin) wins++;
+    else losses++;
+  });
+  const score = wins * 2 + ties * 1;
+
+  const winsEl = document.getElementById('stats-wins'); if (winsEl) winsEl.textContent = wins;
+  const tiesEl = document.getElementById('stats-ties'); if (tiesEl) tiesEl.textContent = ties;
+  const lossesEl = document.getElementById('stats-losses'); if (lossesEl) lossesEl.textContent = losses;
+  const scoreEl = document.getElementById('stats-score'); if (scoreEl) scoreEl.textContent = score;
+
+  // Position in the global duelist leaderboard, if it's already been computed.
+  // We don't trigger a fresh scan here (that's a 5-min-cached, heavier operation) —
+  // we just reflect whatever's already cached so this tab stays instant.
+  const posEl = document.getElementById('stats-rank-position');
+  if (posEl) {
+    if (typeof _duelistLBCache !== 'undefined' && _duelistLBCache && connectedAddress) {
+      const idx = _duelistLBCache.rows.findIndex(r => r.wallet === connectedAddress.toLowerCase());
+      posEl.textContent = idx >= 0 ? ('Rank #' + (idx + 1) + ' on the Duelist board') : 'Not ranked yet';
+    } else {
+      posEl.textContent = 'Visit the Duelist board to rank in';
+    }
+  }
+}
+
+// Close the panel when clicking outside of it (use closest() so clicks on
+// the avatar <img> inside the button — whose target isn't the button itself —
+// are still correctly recognized as "inside the button", not "outside".
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('profile-panel');
+  const btn = document.getElementById('profile-btn');
+  if (!panel || panel.style.display !== 'block') return;
+  const clickedInsidePanel = panel.contains(e.target);
+  const clickedTheButton = btn && (e.target === btn || btn.contains(e.target));
+  if (!clickedInsidePanel && !clickedTheButton) {
+    panel.style.display = 'none';
+  }
+});
+
+function profilePanelRender() {
+  // Header: avatar + name + rank
+  const avatarBox = document.getElementById('profile-panel-avatar');
+  if (avatarBox) avatarBox.innerHTML = avatarHTMLFor(_myAvatarId, 38);
+
+  const nameEl = document.getElementById('profile-panel-name');
+  if (nameEl) {
+    const short = connectedAddress ? connectedAddress.slice(0,6)+'...'+connectedAddress.slice(-4) : '—';
+    nameEl.textContent = _myUsername || short;
+  }
+
+  const rankEl = document.getElementById('profile-panel-rank');
+  if (rankEl) {
+    const rankNames = ['Simple Holder','Apprentice Litecoiner','Devoted Litecoiner','Silver Maximalist'];
+    const rankMoons = ['🌑','🌒','🌓','🌕'];
+    if (typeof _burnRank !== 'undefined' && _burnRank >= 0) {
+      const idx = Math.min(_burnRank, 3);
+      rankEl.textContent = rankMoons[idx] + ' ' + rankNames[idx];
+    } else {
+      rankEl.textContent = '· Unranked ·';
+    }
+  }
+
+  // Quick avatar row — show up to 6 unlocked avatars for fast switching
+  const grid = document.getElementById('profile-panel-avatars');
+  if (grid) {
+    const unlocked = avatarOnlyUnlocked().slice(0, 6);
+    grid.innerHTML = unlocked.map(a => {
+      const isActive = a.id === _myAvatarId;
+      const inner = a.type === 'image'
+        ? `<img src="${a.url}" style="width:100%;height:100%;border-radius:4px;object-fit:cover;" onerror="this.outerHTML='🌑';" />`
+        : `<span style="font-size:1.1rem;">${a.icon}</span>`;
+      return `<div onclick="avatarSelect('${a.id}');profilePanelRender();" title="${a.name}" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:${isActive?'rgba(255,170,68,0.1)':'rgba(255,255,255,0.025)'};border:1px solid ${isActive?'rgba(255,170,68,0.55)':'rgba(255,255,255,0.07)'};box-shadow:${isActive?'0 0 8px rgba(255,170,68,0.25)':'none'};border-radius:3px;cursor:pointer;overflow:hidden;transition:all 0.15s;" onmouseover="this.style.borderColor='rgba(255,170,68,0.4)'" onmouseout="this.style.borderColor='${isActive?'rgba(255,170,68,0.55)':'rgba(255,255,255,0.07)'}'">${inner}</div>`;
+    }).join('');
+  }
+}
+</script>
+<!-- ═══════════════ END UNIFIED PROFILE PANEL ═══════════════ -->
+
 
 <!-- ═══════════════ MY DUELS (inline panel logic) ═══════════════ -->
 <script>
