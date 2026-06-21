@@ -3235,10 +3235,13 @@ function renderLB(list, page){
     const numClass=idx===0?'gold':idx===1?'silver-r':idx===2?'bronze':'';
     const numSymbol=idx===0?'⬡':idx===1?'◆':idx===2?'◈':(idx+1);
     const initials=p.name.slice(2,4).toUpperCase();
+    const avatarBlock = p.avatarHTML
+      ? `<div class="lb-avatar" style="background:${bg};border:1px solid ${bc};overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;">${p.avatarHTML}</div>`
+      : `<div class="lb-avatar" style="background:${bg};border:1px solid ${bc};color:${c}">${initials}</div>`;
     return `<div class="lb-row">
       <div class="lb-rank-num ${numClass}">${numSymbol}</div>
       <div class="lb-user">
-        <div class="lb-avatar" style="background:${bg};border:1px solid ${bc};color:${c}">${initials}</div>
+        ${avatarBlock}
         <div>
           <div class="lb-addr">${p.name}</div>
           <span class="lb-badge-chip" style="background:${bg};border:1px solid ${bc};color:${c}">${p.tier}</span>
@@ -3325,9 +3328,14 @@ async function loadLeaderboard(){
       const initials=addr.slice(2,4).toUpperCase();
       const shortAddr = addr.slice(0,6)+'...'+addr.slice(-4);
       let displayName = shortAddr;
+      let avatarHTML = null;
       try {
         const uname = typeof usernameFetch === 'function' ? await usernameFetch(addr) : null;
         if (uname) displayName = uname;
+      } catch(e) {}
+      try {
+        const avId = typeof avatarFetch === 'function' ? await avatarFetch(addr) : null;
+        if (avId) avatarHTML = typeof avatarHTMLFor === 'function' ? avatarHTMLFor(avId, 32) : null;
       } catch(e) {}
       return{
         rank:i+1,
@@ -3335,7 +3343,8 @@ async function loadLeaderboard(){
         name:displayName,
         addr:shortAddr,
         tier:rankName,
-        ltc:burnedEth
+        ltc:burnedEth,
+        avatarHTML:avatarHTML
       };
     }));
 
