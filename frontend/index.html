@@ -2949,6 +2949,7 @@ async function connectWallet(){
       if (typeof myDuelsScan === 'function') myDuelsScan();
       if (typeof refreshDisplayedUsername === 'function') await refreshDisplayedUsername();
       if (typeof refreshMyAvatar === 'function') await refreshMyAvatar();
+      if (typeof initSagaContract === 'function') await initSagaContract();
       // If the player has a username, show it on the wallet button instead of the address
       if (_myUsername) {
         const _wbtn = document.getElementById('wallet-btn');
@@ -3084,6 +3085,15 @@ async function loadUserData(){
     // Capture burn data for Hall of Feats
     _burnTotal = burnedEth;
     _burnRank = rankIdx;
+    // Re-verify the player's actual on-chain NFT mint status — _nftMinted
+    // alone only reflects mints made THIS session, so a player who minted
+    // in a previous visit would otherwise never see this feat unlock.
+    if (rankIdx >= 0 && connectedAddress) {
+      try {
+        const _statusCheck = typeof checkNFTStatus === 'function' ? await checkNFTStatus(rankIdx) : null;
+        if (_statusCheck && _statusCheck.claimed) _nftMinted = true;
+      } catch (e) { console.warn('NFT mint re-check failed:', e); }
+    }
     if (typeof featsCheck === 'function') featsCheck();
     const customRankName = rankIdx>=0 ? ((typeof RANKS_DATA!=='undefined'&&RANKS_DATA[rankIdx])?RANKS_DATA[rankIdx].name:['Simple Holder','Apprentice Litecoiner','Devoted Litecoiner','Silver Maximalist'][rankIdx]) : '— No rank yet —';
     document.getElementById('xp-rank-label').textContent = rankIdx>=0 ? customRankName+' · Rank '+(rankIdx+1) : '— Burn ≥ 0.5 zkLTC —';
@@ -3594,9 +3604,24 @@ async function checkNFTStatus(rankNum) {
     if(!nc) return { canMint: false, claimed: false };
     // rankNum is 0-3 (index), contract expects 1-4
     const rankId = Math.min(Math.max(rankNum + 1, 1), 4);
-    const can = await nc.canMint(connectedAddress, rankId);
-    const tokenId = await nc.mintedRank(connectedAddress, rankId);
-    return { canMint: can, claimed: tokenId > 0, tokenId: tokenId, rankId: rankId };
+    // Each rank has a small pool of possible NFTs (see POOL_DATA) — the
+    // player picks/rolls one nftId within that pool. To know whether THIS
+    // rank's NFT has been claimed at all, check hasClaimed() across every
+    // nftId in that rank's pool; claimed if any one of them is true.
+    const pool = (typeof POOL_DATA !== 'undefined' && POOL_DATA[rankNum]) ? POOL_DATA[rankNum] : [];
+    let claimed = false;
+    let claimedTokenId = 0;
+    for (let nftId = 0; nftId < pool.length; nftId++) {
+      try {
+        const has = await nc.hasClaimed(connectedAddress, rankId, nftId);
+        if (has) {
+          claimed = true;
+          try { claimedTokenId = await nc.mintedNFT(connectedAddress, rankId, nftId); } catch(e) {}
+          break;
+        }
+      } catch(e) { /* keep checking other nftIds */ }
+    }
+    return { canMint: false, claimed, tokenId: claimedTokenId, rankId };
   } catch(e) { console.error('checkNFTStatus:', e); return { canMint: false, claimed: false }; }
 }
 
@@ -4505,6 +4530,28 @@ document.addEventListener('DOMContentLoaded', function() {
 // ══════════════════════════════════════
 
 const DUEL_CONTRACT = '0x78b70AA24ca90690AD2b21d5c1980F55420A0AA1';
+
+// ── Duelist Saga NFT contract (separate from the duel and rank-NFT contracts) ──
+const SAGA_CONTRACT_ADDRESS = '0x2DF5Df7390a397e383be1446457DB746e0b7826e';
+const SAGA_ABI = [
+  'function mint(uint8 sagaId) external payable',
+  'function eligibleFor(address player, uint8 sagaId) external view returns (bool)',
+  'function hasMinted(address player, uint8 sagaId) external view returns (bool)',
+  'function MINT_PRICE() external view returns (uint256)',
+  'event SagaMinted(address indexed player, uint8 sagaId, uint256 tokenId)'
+];
+let sagaContract = null;
+let sagaReadContract = null;
+async function initSagaContract() {
+  try {
+    if (!sagaReadContract) {
+      sagaReadContract = new ethers.Contract(SAGA_CONTRACT_ADDRESS, SAGA_ABI, new ethers.JsonRpcProvider(DUEL_RPC));
+    }
+    if (signer && !sagaContract) {
+      sagaContract = new ethers.Contract(SAGA_CONTRACT_ADDRESS, SAGA_ABI, signer);
+    }
+  } catch (e) { console.error('initSagaContract failed:', e); }
+}
 const DUEL_ABI = [
   'function createDuel(bytes32 commitA) external payable',
   'function joinDuel(uint256 duelId, uint8 choiceB) external payable',
@@ -5531,24 +5578,24 @@ document.addEventListener('DOMContentLoaded', function() {
 <style>
 .feats-scroll::-webkit-scrollbar { width:8px; }
 .feats-scroll::-webkit-scrollbar-track { background:rgba(255,255,255,0.03); border-radius:4px; }
-.feats-scroll::-webkit-scrollbar-thumb { background:rgba(200,168,74,0.35); border-radius:4px; }
-.feats-scroll::-webkit-scrollbar-thumb:hover { background:rgba(200,168,74,0.55); }
-.feats-scroll { scrollbar-width:thin; scrollbar-color:rgba(200,168,74,0.35) rgba(255,255,255,0.03); }
+.feats-scroll::-webkit-scrollbar-thumb { background:rgba(0,229,204,0.35); border-radius:4px; }
+.feats-scroll::-webkit-scrollbar-thumb:hover { background:rgba(0,229,204,0.55); }
+.feats-scroll { scrollbar-width:thin; scrollbar-color:rgba(0,229,204,0.35) rgba(255,255,255,0.03); }
 </style>
 <div id="feats-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,1,12,0.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1.5rem;" onclick="if(event.target===this)this.style.display='none'">
-  <div class="feats-scroll" style="background:linear-gradient(135deg,rgba(12,8,30,0.99),rgba(6,3,20,0.99));border:1px solid rgba(200,168,74,0.3);border-radius:6px;max-width:560px;width:100%;max-height:85vh;overflow-y:auto;padding:1.8rem;position:relative;box-shadow:0 0 50px rgba(200,168,74,0.08);">
+  <div class="feats-scroll" style="background:linear-gradient(135deg,rgba(12,8,30,0.99),rgba(6,3,20,0.99));border:1px solid rgba(0,229,204,0.25);border-radius:6px;max-width:680px;width:100%;max-height:85vh;overflow-y:auto;padding:1.8rem;position:relative;box-shadow:0 0 50px rgba(0,229,204,0.06);">
     <button onclick="document.getElementById('feats-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;width:28px;height:28px;border-radius:50%;background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;z-index:2;">✕</button>
 
-    <div style="font-family:'Cinzel',serif;font-size:0.95rem;letter-spacing:0.2em;color:#c8a84a;text-transform:uppercase;margin-bottom:0.3rem;">🏆 Hall of Feats</div>
+    <div style="font-family:'Cinzel',serif;font-size:0.95rem;letter-spacing:0.2em;color:var(--teal);text-transform:uppercase;margin-bottom:0.3rem;">🏆 Hall of Feats</div>
     <div style="font-size:0.8rem;color:rgba(255,255,255,0.4);margin-bottom:1.2rem;">Prove your worth in the arena of the Void.</div>
 
-    <div style="background:rgba(200,168,74,0.06);border:1px solid rgba(200,168,74,0.18);border-radius:4px;padding:0.9rem 1.1rem;margin-bottom:1.4rem;">
+    <div style="background:rgba(0,229,204,0.05);border:1px solid rgba(0,229,204,0.15);border-radius:4px;padding:0.9rem 1.1rem;margin-bottom:1.4rem;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
-        <span style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:#c8a84a;text-transform:uppercase;">Progress</span>
+        <span style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:var(--teal);text-transform:uppercase;">Progress</span>
         <span id="feats-count" style="font-family:'Cinzel',serif;font-size:0.8rem;color:#fff;">0 / 0</span>
       </div>
       <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">
-        <div id="feats-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#c8a84a,#e8d088);transition:width 0.6s ease;"></div>
+        <div id="feats-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--teal),#5ef5e0);transition:width 0.6s ease;"></div>
       </div>
     </div>
 
@@ -5583,6 +5630,15 @@ const FEATS = [
   { id:'burn_10',      icon:'🔥', name:'Pyre Keeper',        desc:'Burn 10 zkLTC in total (ritual).', cat:'Burn' },
   { id:'burn_50',      icon:'🌋', name:'Flame Devourer',     desc:'Burn 50 zkLTC in total (ritual).', cat:'Burn' },
   { id:'nft_mint',     icon:'🖼️', name:'Eternal Silver',     desc:'Mint your first rank NFT.', cat:'Burn' },
+  // ── DUELIST SAGA — narrative arc, art-based, NFT-mintable ──
+  { id:'saga_1', icon:'🪄', name:'The Awakening', desc:'Play your first duel.', cat:'Saga',
+    artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeic7e5s67cvg3z4csavcta5ab6rhvuwexe6w6bsr4smzaizkjajiua' },
+  { id:'saga_2', icon:'⚡', name:'Lightning Adept', desc:'Win 15 duels.', cat:'Saga',
+    artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeididnko67dimxkndj72t6l2lroj6hhmh3p7snic46krx3y6hbalkq' },
+  { id:'saga_3', icon:'🏰', name:'Sanctuary Glimpse', desc:'Play 40 duels.', cat:'Saga',
+    artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeih56b32p7aeemmqy3nsfqrvsxqdz36himrcrombgkvnpw5dbkybc4' },
+  { id:'saga_4', icon:'🛡️', name:'Guardian Ascended', desc:'Play 84 duels.', cat:'Saga',
+    artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeiba53ur7xcck2kjjproh4z4tpgrom5n7ywchckzzrnmpvzkarjcle' },
 ];
 
 function featsKey() {
@@ -5639,6 +5695,16 @@ function featsEvaluate() {
     burn_10:    _burnTotal >= 10,
     burn_50:    _burnTotal >= 50,
     nft_mint:   _nftMinted === true,
+    // ── Duelist Saga — narrative arc, art-based feats ──
+    // Note: based on local duel history (same basis as the other Duel feats
+    // above). The NFT mint contract independently re-verifies eligibility
+    // on-chain by scanning the full duel contract, so the actual mint can't
+    // be spoofed even if this local check were ever out of sync (e.g. after
+    // switching devices).
+    saga_1: totalDuels >= 1,
+    saga_2: wins >= 15,
+    saga_3: totalDuels >= 40,
+    saga_4: totalDuels >= 84,
   };
 
   for (const f of FEATS) {
@@ -5669,44 +5735,107 @@ function featsUpdateBadge() {
   if (btn) btn.title = 'Your profile — Hall of Feats: ' + count + '/' + FEATS.length;
 }
 
-function featsOpen() {
+let _sagaMintedCache = {};
+
+async function featsOpen() {
   featsEvaluate(); // make sure it's current
   const unlocked = featsLoad();
   const count = Object.keys(unlocked).filter(k => FEATS.some(f => f.id === k)).length;
   document.getElementById('feats-count').textContent = count + ' / ' + FEATS.length;
   document.getElementById('feats-bar').style.width = (count / FEATS.length * 100) + '%';
 
+  // Preload Saga NFT minted status (read-only, no wallet popup) so the
+  // correct button/state shows immediately, without flicker.
+  _sagaMintedCache = {};
+  if (connectedAddress) {
+    try {
+      await initSagaContract();
+      if (sagaReadContract) {
+        const results = await Promise.all([1,2,3,4].map(id => sagaReadContract.hasMinted(connectedAddress, id).catch(() => false)));
+        results.forEach((minted, i) => { _sagaMintedCache[i+1] = minted; });
+      }
+    } catch (e) { console.warn('Could not preload saga minted status:', e); }
+  }
+
   const renderFeat = (f) => {
     const isUnlocked = !!unlocked[f.id];
     const date = isUnlocked ? new Date(unlocked[f.id]).toLocaleDateString() : '';
+    const iconBlock = f.artUrl
+      ? `<div style="width:48px;height:48px;min-width:48px;border-radius:4px;overflow:hidden;position:relative;">
+           <img src="${f.artUrl}" style="width:100%;height:100%;object-fit:cover;filter:${isUnlocked?'none':'grayscale(1) brightness(0.4) saturate(0.6)'};" onerror="this.style.display='none';" />
+           ${!isUnlocked ? `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(4,2,26,0.45);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(0,229,204,0.75)" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>` : ''}
+         </div>`
+      : `<div style="font-size:1.6rem;min-width:40px;text-align:center;filter:${isUnlocked?'none':'grayscale(1)'};">${isUnlocked?f.icon:'🔒'}</div>`;
+
+    // Saga feats get a mint button once unlocked, replaced by a "Minted" tag once minted.
+    const sagaMintId = f.cat === 'Saga' ? parseInt(f.id.split('_')[1]) : null;
+    const alreadyMinted = sagaMintId && _sagaMintedCache[sagaMintId];
+    const mintRow = (sagaMintId && isUnlocked)
+      ? (alreadyMinted
+          ? `<div style="margin-top:0.5rem;font-size:0.6rem;color:rgba(0,229,204,0.6);font-family:'Cinzel',serif;letter-spacing:0.08em;">✓ NFT MINTED</div>`
+          : `<button onclick="sagaMint(${sagaMintId})" id="saga-mint-btn-${sagaMintId}" style="margin-top:0.6rem;padding:0.4rem 0.8rem;font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.1em;cursor:pointer;background:rgba(0,229,204,0.1);border:1px solid rgba(0,229,204,0.4);color:var(--teal);border-radius:3px;text-transform:uppercase;">🖼 Mint NFT — 0.05 zkLTC</button>`)
+      : '';
+
     return `
-    <div style="display:flex;align-items:center;gap:1rem;padding:0.8rem 1rem;background:${isUnlocked?'rgba(200,168,74,0.07)':'rgba(255,255,255,0.02)'};border:1px solid ${isUnlocked?'rgba(200,168,74,0.25)':'rgba(255,255,255,0.05)'};border-radius:4px;${isUnlocked?'':'opacity:0.5;'}">
-      <div style="font-size:1.6rem;min-width:40px;text-align:center;filter:${isUnlocked?'none':'grayscale(1)'};">${isUnlocked?f.icon:'🔒'}</div>
+    <div style="display:flex;align-items:flex-start;gap:1rem;padding:0.8rem 1rem;background:${isUnlocked?'rgba(0,229,204,0.06)':'rgba(255,255,255,0.02)'};border:1px solid ${isUnlocked?'rgba(0,229,204,0.22)':'rgba(255,255,255,0.05)'};border-radius:4px;${isUnlocked?'':'opacity:0.7;'}">
+      ${iconBlock}
       <div style="flex:1;">
-        <div style="font-family:'Cinzel',serif;font-size:0.8rem;letter-spacing:0.1em;color:${isUnlocked?'#e8d088':'rgba(255,255,255,0.5)'};">${f.name}</div>
+        <div style="font-family:'Cinzel',serif;font-size:0.8rem;letter-spacing:0.1em;color:${isUnlocked?'#5ef5e0':'rgba(255,255,255,0.5)'};">${f.name}</div>
         <div style="font-size:0.72rem;color:rgba(255,255,255,0.35);margin-top:0.15rem;">${f.desc}</div>
+        ${mintRow}
       </div>
-      ${isUnlocked?`<div style="font-size:0.6rem;color:rgba(200,168,74,0.6);font-family:'Cinzel',serif;">${date}</div>`:'<div style="font-size:0.6rem;color:rgba(255,255,255,0.2);font-family:Cinzel,serif;letter-spacing:0.1em;">LOCKED</div>'}
+      ${isUnlocked?`<div style="font-size:0.6rem;color:rgba(0,229,204,0.55);font-family:'Cinzel',serif;">${date}</div>`:'<div style="font-size:0.6rem;color:rgba(255,255,255,0.2);font-family:Cinzel,serif;letter-spacing:0.1em;">LOCKED</div>'}
     </div>`;
   };
 
   const catHeader = (label, icon) => `
-    <div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;color:#c8a84a;text-transform:uppercase;margin:1.2rem 0 0.6rem;padding-bottom:0.4rem;border-bottom:1px solid rgba(200,168,74,0.15);">${icon} ${label}</div>`;
+    <div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;color:var(--teal);text-transform:uppercase;margin:1.2rem 0 0.6rem;padding-bottom:0.4rem;border-bottom:1px solid rgba(0,229,204,0.13);">${icon} ${label}</div>`;
 
   const duelFeats = FEATS.filter(f => f.cat === 'Duel');
   const burnFeats = FEATS.filter(f => f.cat === 'Burn');
+  const sagaFeats = FEATS.filter(f => f.cat === 'Saga');
 
   const grid = document.getElementById('feats-grid');
   grid.innerHTML =
     catHeader('Arena · Duels', '⚔️') +
-    '<div style="display:flex;flex-direction:column;gap:0.6rem;">' + duelFeats.map(renderFeat).join('') + '</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:0.6rem;">' + duelFeats.map(renderFeat).join('') + '</div>' +
     catHeader('Ritual · The Burn', '🔥') +
-    '<div style="display:flex;flex-direction:column;gap:0.6rem;">' + burnFeats.map(renderFeat).join('') + '</div>';
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:0.6rem;">' + burnFeats.map(renderFeat).join('') + '</div>' +
+    catHeader('The Duelist Saga', '📖') +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:0.6rem;">' + sagaFeats.map(renderFeat).join('') + '</div>';
 
   document.getElementById('feats-modal').style.display = 'flex';
 }
 </script>
 <!-- ═══════════════ END HALL OF FEATS ═══════════════ -->
+
+<script>
+// ═══ DUELIST SAGA — NFT MINT ═══
+async function sagaMint(sagaId) {
+  if (!connectedAddress) { showToast('Connect wallet first'); return; }
+  await initSagaContract();
+  if (!sagaContract) { showToast('Saga contract not ready'); return; }
+
+  const btn = document.getElementById('saga-mint-btn-' + sagaId);
+  const origText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Confirm in MetaMask...'; }
+
+  try {
+    const tx = await sagaContract.mint(sagaId, { value: ethers.parseEther('0.05') });
+    if (btn) btn.textContent = 'Minting...';
+    await tx.wait();
+
+    _sagaMintedCache[sagaId] = true;
+    showToast('✦ Saga NFT minted!');
+    featsOpen(); // re-render so the button becomes "✓ NFT MINTED"
+  } catch (e) {
+    console.error('sagaMint error:', e);
+    showToast(typeof duelFriendlyError === 'function' ? duelFriendlyError(e) : '✖ Mint failed', true);
+    if (btn) { btn.disabled = false; btn.textContent = origText; }
+  }
+}
+</script>
+<!-- ═══════════════ END DUELIST SAGA MINT ═══════════════ -->
 
 <!-- ═══════════════ USERNAME ═══════════════ -->
 <div id="username-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,1,12,0.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1.5rem;" onclick="if(event.target===this)this.style.display='none'">
@@ -5910,7 +6039,7 @@ function rankArtUrl(rankFeatId) {
 function avatarAllUnlocked() {
   const unlocked = typeof featsLoad === 'function' ? featsLoad() : {};
   const list = [{ ...DEFAULT_AVATAR, unlocked: true }]; // default avatar — used when no rank reached yet
-  // Only rank avatars (rank_1..rank_4) — feat-emoji avatars removed by design.
+  // Rank avatars (rank_1..rank_4) — feat-emoji avatars removed by design.
   const RANK_FEAT_IDS = ['rank_1', 'rank_2', 'rank_3', 'rank_4'];
   RANK_FEAT_IDS.forEach(id => {
     const f = FEATS.find(x => x.id === id);
@@ -5920,6 +6049,15 @@ function avatarAllUnlocked() {
     if (art) {
       list.push({ id, type: 'image', url: art, name: f.name, unlocked: isUnlocked });
     }
+  });
+  // Duelist Saga avatars (saga_1..saga_4) — same image used for the Hall of
+  // Feats card and the avatar itself.
+  const SAGA_FEAT_IDS = ['saga_1', 'saga_2', 'saga_3', 'saga_4'];
+  SAGA_FEAT_IDS.forEach(id => {
+    const f = FEATS.find(x => x.id === id);
+    if (!f || !f.artUrl) return;
+    const isUnlocked = !!unlocked[id];
+    list.push({ id, type: 'image', url: f.artUrl, name: f.name, unlocked: isUnlocked });
   });
   return list;
 }
@@ -5987,7 +6125,8 @@ function avatarOpen() {
 
   // Reuse the existing RANKS_DATA requirement strings so the wording stays
   // consistent with what's already shown in "Initiate a Burn".
-  const RANK_REQS = { rank_1: 'Requires 0 zkLTC', rank_2: 'Requires ≥ 5 zkLTC burned', rank_3: 'Requires ≥ 20 zkLTC burned', rank_4: 'Requires ≥ 100 zkLTC burned' };
+  const RANK_REQS = { rank_1: 'Requires 0 zkLTC', rank_2: 'Requires ≥ 5 zkLTC burned', rank_3: 'Requires ≥ 20 zkLTC burned', rank_4: 'Requires ≥ 100 zkLTC burned',
+    saga_1: 'Play your first duel', saga_2: 'Win 15 duels', saga_3: 'Play 40 duels', saga_4: 'Play 84 duels' };
 
   grid.innerHTML = all.map(a => {
     const isActive = a.id === _myAvatarId;
