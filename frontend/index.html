@@ -1924,6 +1924,11 @@ body::after {
           <div style="font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:0.15em;color:#fff;margin-bottom:0.4rem;">ENTER THE ARENA</div>
           <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);">Duel · Stake · Burn · Conquer</div>
         </button>
+        <button onclick="svIntroGotoStore()" style="flex:1;min-width:200px;max-width:280px;padding:1.5rem 1rem;background:linear-gradient(135deg,rgba(255,170,68,0.1),rgba(255,170,68,0.02));border:1px solid rgba(255,170,68,0.35);border-radius:5px;cursor:pointer;transition:all 0.25s;" onmouseover="this.style.background='linear-gradient(135deg,rgba(255,170,68,0.2),rgba(255,170,68,0.05))';this.style.borderColor='#ffaa44'" onmouseout="this.style.background='linear-gradient(135deg,rgba(255,170,68,0.1),rgba(255,170,68,0.02))';this.style.borderColor='rgba(255,170,68,0.35)'">
+          <div style="font-size:2rem;margin-bottom:0.6rem;">🏪</div>
+          <div style="font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:0.15em;color:#fff;margin-bottom:0.4rem;">VISIT THE STORE</div>
+          <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);">Browse · Buy · Sell Relics</div>
+        </button>
       </div>
     </div>
 
@@ -1975,6 +1980,12 @@ function svIntroGoto(sectionId) {
   svIntroEnd(() => {
     const el = document.getElementById(sectionId);
     if (el) el.scrollIntoView({behavior:'smooth'});
+  });
+}
+
+function svIntroGotoStore() {
+  svIntroEnd(() => {
+    if (typeof storeOpen === 'function') storeOpen();
   });
 }
 
@@ -2045,7 +2056,10 @@ function svIntroParticles() {
 <canvas id="bg-canvas" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:0.9;"></canvas>
 <!-- NAV -->
 <nav>
-  <div class="nav-brand">The <em>Si<span class="ltc-letter">Ł</span>ver</em> Void</div>
+  <div style="display:flex;align-items:center;gap:1.2rem;">
+    <div class="nav-brand">The <em>Si<span class="ltc-letter">Ł</span>ver</em> Void</div>
+    <a href="#" onclick="if(typeof storeClose==='function')storeClose();svIntroReplay();return false;" style="font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.3em;text-transform:uppercase;color:rgba(255,255,255,0.45);text-decoration:none;transition:color 0.3s;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'" title="Replay intro">✶ Intro</a>
+  </div>
   <div style="display:flex;align-items:center;gap:0.6rem;">
     <ul id="nav-links-desktop" style="display:flex;list-style:none;gap:2.5rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.3em;text-transform:uppercase;">
       <li><a href="#ritual" style="color:rgba(255,255,255,0.75);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='#ffffff'" onmouseout="this.style.color='rgba(255,255,255,0.75)'">The Ritual</a></li>
@@ -2065,12 +2079,13 @@ function svIntroParticles() {
 <!-- MENU OVERLAY -->
 <div class="menu-overlay" id="menu-overlay">
   <div class="menu-brand">The <em>Si<span class="ltc-letter">Ł</span>ver</em> Void</div>
-  <a class="menu-item" href="#ritual" onclick="closeMenu()"><span class="mi-icon">⬡</span>The Ritual</a>
-  <a class="menu-item" href="#ranks" onclick="closeMenu()"><span class="mi-icon">◆</span>The Order</a>
-  <a class="menu-item" href="#duel" onclick="closeMenu()" style="position:relative;"><span class="mi-icon">⚔</span>Duels<span id="nav-duels-badge-mobile" style="display:none;position:absolute;top:2px;left:18px;width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px rgba(0,229,204,0.8);animation:svPulseDot 1.6s ease-in-out infinite;"></span></a>
-  <a class="menu-item" href="#leaderboard" onclick="closeMenu()"><span class="mi-icon">✦</span>Sacrifiants</a>
+  <a class="menu-item" href="#ritual" onclick="closeMenu();if(typeof storeClose==='function')storeClose();"><span class="mi-icon">⬡</span>The Ritual</a>
+  <a class="menu-item" href="#ranks" onclick="closeMenu();if(typeof storeClose==='function')storeClose();"><span class="mi-icon">◆</span>The Order</a>
+  <a class="menu-item" href="#duel" onclick="closeMenu();if(typeof storeClose==='function')storeClose();" style="position:relative;"><span class="mi-icon">⚔</span>Duels<span id="nav-duels-badge-mobile" style="display:none;position:absolute;top:2px;left:18px;width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px rgba(0,229,204,0.8);animation:svPulseDot 1.6s ease-in-out infinite;"></span></a>
+  <a class="menu-item" href="#" onclick="closeMenu();storeOpen();return false;" style="color:var(--teal);"><span class="mi-icon">🏪</span>The Void Store</a>
+  <a class="menu-item" href="#leaderboard" onclick="closeMenu();if(typeof storeClose==='function')storeClose();"><span class="mi-icon">✦</span>Sacrifiants</a>
   <a class="menu-item" href="https://liteforge.explorer.caldera.xyz/address/0x0AD3f776C45FF457d2d8e211A3174A4Db201b656" target="_blank" onclick="closeMenu()"><span class="mi-icon">⛓</span>Contract</a>
-  <a class="menu-item" href="#" onclick="closeMenu();svIntroReplay();return false;"><span class="mi-icon">✶</span>Replay Intro</a>
+  <a class="menu-item" href="#" onclick="closeMenu();if(typeof storeClose==='function')storeClose();svIntroReplay();return false;"><span class="mi-icon">✶</span>Replay Intro</a>
   <div class="menu-bottom">LiteForge Testnet · Chain ID 4441</div>
 </div>
 
@@ -2588,6 +2603,41 @@ function svIntroParticles() {
       <p style="font-family:'Cormorant Garamond',serif;font-size:1rem;font-style:italic;color:rgba(255,255,255,0.4);margin-top:0.4rem;">Stake 0.1 zkLTC. Choose your weapon. The chain decides.</p>
     </div>
 
+    <!-- ═══════════════ GET STARTED — 3 STEPS ═══════════════ -->
+    <div style="margin-bottom:2.5rem;">
+      <div style="background:linear-gradient(135deg,rgba(10,6,28,0.7),rgba(4,2,16,0.85));border:1px solid rgba(0,229,204,0.2);border-radius:6px;padding:1.8rem 1.6rem;">
+        <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:1.4rem;">
+          <span style="width:18px;height:1px;background:rgba(0,229,204,0.5);"></span>
+          <span style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;color:var(--teal);text-transform:uppercase;">Get Started in 3 Steps</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.2rem;">
+
+          <div style="display:flex;flex-direction:column;">
+            <div style="font-family:'Cinzel',serif;font-size:1.4rem;color:rgba(0,229,204,0.3);margin-bottom:0.4rem;">01</div>
+            <div style="font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.05em;color:#fff;margin-bottom:0.5rem;">Connect & Add Network</div>
+            <div style="font-size:0.78rem;color:rgba(255,255,255,0.45);line-height:1.6;margin-bottom:0.8rem;flex:1;">Link MetaMask and add the LiteForge network in one click.</div>
+            <button onclick="addNetworkToWallet()" style="width:100%;padding:0.55rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.1em;cursor:pointer;background:rgba(0,229,204,0.1);border:1px solid rgba(0,229,204,0.4);color:var(--teal);border-radius:3px;text-transform:uppercase;">+ Add Network</button>
+          </div>
+
+          <div style="display:flex;flex-direction:column;">
+            <div style="font-family:'Cinzel',serif;font-size:1.4rem;color:rgba(0,229,204,0.3);margin-bottom:0.4rem;">02</div>
+            <div style="font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.05em;color:#fff;margin-bottom:0.5rem;">Get Free zkLTC</div>
+            <div style="font-size:0.78rem;color:rgba(255,255,255,0.45);line-height:1.6;margin-bottom:0.8rem;flex:1;">Claim free testnet tokens to burn or stake in duels.</div>
+            <a href="https://testnet.litvm.com" target="_blank" style="display:block;width:100%;padding:0.55rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.1em;cursor:pointer;background:rgba(0,229,204,0.1);border:1px solid rgba(0,229,204,0.4);color:var(--teal);border-radius:3px;text-transform:uppercase;text-align:center;text-decoration:none;box-sizing:border-box;">Open Faucet ↗</a>
+          </div>
+
+          <div style="display:flex;flex-direction:column;">
+            <div style="font-family:'Cinzel',serif;font-size:1.4rem;color:rgba(0,229,204,0.3);margin-bottom:0.4rem;">03</div>
+            <div style="font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.05em;color:#fff;margin-bottom:0.5rem;">Pick & Duel</div>
+            <div style="font-size:0.78rem;color:rgba(255,255,255,0.45);line-height:1.6;margin-bottom:0.8rem;flex:1;">Choose Rock, Paper, or Scissors. Stake. Challenge someone.</div>
+            <button onclick="document.getElementById('duel-create-anchor').scrollIntoView({behavior:'smooth'})" style="width:100%;padding:0.55rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.1em;cursor:pointer;background:rgba(0,229,204,0.1);border:1px solid rgba(0,229,204,0.4);color:var(--teal);border-radius:3px;text-transform:uppercase;">↓ Jump In</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div id="duel-create-anchor"></div>
+
     <!-- DUEL STATS -->
     <div style="display:flex;gap:1rem;margin-bottom:2rem;">
       <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1rem;text-align:center;">
@@ -2779,6 +2829,39 @@ function svIntroParticles() {
 const CONTRACT_ADDRESS = '0x0AD3f776C45FF457d2d8e211A3174A4Db201b656';
 const LITEFORGE_CHAIN_ID = 4441;
 const RPC = 'https://liteforge.rpc.caldera.xyz/http';
+
+// Standalone "Add Network" button handler — same params used inside
+// connectWallet(), but usable on its own before the player even connects.
+async function addNetworkToWallet() {
+  if (!window.ethereum) { showToast('Please install MetaMask first', true); return; }
+  try {
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if (parseInt(chainId, 16) === LITEFORGE_CHAIN_ID) {
+      showToast('✦ Already on LiteForge Testnet');
+      return;
+    }
+    try {
+      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x' + LITEFORGE_CHAIN_ID.toString(16) }] });
+      showToast('✦ Switched to LiteForge Testnet');
+    } catch (e) {
+      await window.ethereum.request({
+        method: 'wallet_addEthereumChain',
+        params: [{
+          chainId: '0x' + LITEFORGE_CHAIN_ID.toString(16),
+          chainName: 'LiteForge Testnet',
+          nativeCurrency: { name: 'zkLTC', symbol: 'zkLTC', decimals: 18 },
+          rpcUrls: [RPC],
+          blockExplorerUrls: ['https://liteforge.explorer.caldera.xyz']
+        }]
+      });
+      showToast('✦ LiteForge Testnet added');
+    }
+  } catch (e) {
+    console.error('addNetworkToWallet error:', e);
+    showToast('Could not add network — try manually in MetaMask', true);
+  }
+}
+
 const ABI = [
   {"inputs":[],"name":"burn","outputs":[],"stateMutability":"payable","type":"function"},
   {"inputs":[],"name":"getStats","outputs":[{"internalType":"uint256","name":"_totalBurned","type":"uint256"},{"internalType":"uint256","name":"_totalBurners","type":"uint256"},{"internalType":"uint256","name":"_totalBurns","type":"uint256"}],"stateMutability":"view","type":"function"},
@@ -2950,12 +3033,20 @@ async function connectWallet(){
       if (typeof refreshDisplayedUsername === 'function') await refreshDisplayedUsername();
       if (typeof refreshMyAvatar === 'function') await refreshMyAvatar();
       if (typeof initSagaContract === 'function') await initSagaContract();
+      if (typeof initStoreContract === 'function') await initStoreContract();
       // If the player has a username, show it on the wallet button instead of the address
       if (_myUsername) {
         const _wbtn = document.getElementById('wallet-btn');
         if (_wbtn) _wbtn.textContent = _myUsername;
       }
       if (typeof myDuelsStartAuto === 'function') myDuelsStartAuto();
+      // If the Store's "Sell" tab is open right now, refresh it — otherwise
+      // it would keep showing "Connect your wallet" even after connecting,
+      // since storeScanMyNFTs() only used to run on tab-click.
+      const _sellTab = document.getElementById('store-tab-content-sell');
+      if (_sellTab && _sellTab.style.display === 'block' && typeof storeScanMyNFTs === 'function') {
+        storeScanMyNFTs();
+      }
     }, 800);
   }catch(e){
     btn.textContent='Connect Wallet'; btn.style.borderColor=''; btn.style.color='';
@@ -3586,12 +3677,17 @@ const NFT_ABI = [
   'function hasClaimed(address wallet, uint8 rankId, uint8 nftId) external view returns (bool)',
   'function mintedNFT(address wallet, uint8 rankId, uint8 nftId) external view returns (uint256)',
   'function tokenURI(uint256 tokenId) external view returns (string)',
+  'function ownerOf(uint256 tokenId) external view returns (address)',
   'event RankNFTMinted(address indexed minter, uint8 rank, uint8 nftId, uint256 tokenId)'
 ];
 let nftContract = null;
 let prevRank = -1;
 
+let nftReadContract = null;
 async function initNFTContract() {
+  if (!nftReadContract) {
+    nftReadContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_ABI, new ethers.JsonRpcProvider(DUEL_RPC));
+  }
   if(!signer) return null;
   if(!nftContract) nftContract = new ethers.Contract(NFT_CONTRACT_ADDRESS, NFT_ABI, signer);
   return nftContract;
@@ -3848,7 +3944,24 @@ setInterval(()=>{loadChainData();loadLeaderboard();},30000);
 if(window.ethereum){
   window.ethereum.on('accountsChanged',async(accounts)=>{
     if(!accounts.length){disconnectWallet();}
-    else{connectedAddress=accounts[0];provider=new ethers.BrowserProvider(window.ethereum);signer=await provider.getSigner();contract=new ethers.Contract(CONTRACT_ADDRESS,ABI,signer);await loadUserData();}
+    else{
+      connectedAddress=accounts[0];provider=new ethers.BrowserProvider(window.ethereum);signer=await provider.getSigner();contract=new ethers.Contract(CONTRACT_ADDRESS,ABI,signer);
+      // Reset every signer-bound contract instance — they were cached with
+      // the PREVIOUS wallet's signer, which caused stale "not the owner"
+      // errors after switching accounts without a full page reload.
+      nftContract = null;
+      sagaContract = null;
+      storeContract = null;
+      if (typeof initNFTContract === 'function') await initNFTContract();
+      if (typeof initSagaContract === 'function') await initSagaContract();
+      if (typeof initStoreContract === 'function') await initStoreContract();
+      await loadUserData();
+      // If the Store's Sell tab is open, refresh it with the new wallet's relics.
+      const _sellTab = document.getElementById('store-tab-content-sell');
+      if (_sellTab && _sellTab.style.display === 'block' && typeof storeScanMyNFTs === 'function') {
+        storeScanMyNFTs();
+      }
+    }
   });
 }
 
@@ -3890,9 +4003,9 @@ if(window.ethereum){
   const nl = document.getElementById('nav-links-desktop');
   if(nl) {
     nl.innerHTML = [['#ritual','The Ritual'],['#ranks','The Order'],['#leaderboard','Sacrifiants']]
-      .map(([h,t]) => `<li><a href="${h}" style="color:var(--silver-dim);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--silver)'" onmouseout="this.style.color='var(--silver-dim)'">${t}</a></li>`).join('')
-      + `<li><a href="#duel" id="nav-duels-link" style="position:relative;color:var(--silver-dim);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--silver)'" onmouseout="this.style.color='var(--silver-dim)'">⚔ Duels<span id="nav-duels-badge" style="display:none;position:absolute;top:-4px;right:-10px;width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px rgba(0,229,204,0.8);"></span></a></li>`
-      + `<li><a href="#" onclick="svIntroReplay();return false;" style="color:rgba(255,255,255,0.45);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'" title="Replay intro">✶ Intro</a></li>`;
+      .map(([h,t]) => `<li><a href="${h}" onclick="if(typeof storeClose==='function')storeClose();" style="color:var(--silver-dim);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--silver)'" onmouseout="this.style.color='var(--silver-dim)'">${t}</a></li>`).join('')
+      + `<li><a href="#duel" id="nav-duels-link" onclick="if(typeof storeClose==='function')storeClose();" style="position:relative;color:var(--silver-dim);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--silver)'" onmouseout="this.style.color='var(--silver-dim)'">⚔ Duels<span id="nav-duels-badge" style="display:none;position:absolute;top:-4px;right:-10px;width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px rgba(0,229,204,0.8);"></span></a></li>`
+      + `<li><a href="#" onclick="storeOpen();return false;" style="color:var(--teal);text-decoration:none;transition:all 0.3s;text-shadow:0 0 8px rgba(0,229,204,0.3);" onmouseover="this.style.textShadow='0 0 14px rgba(0,229,204,0.6)'" onmouseout="this.style.textShadow='0 0 8px rgba(0,229,204,0.3)'">🏪 Store</a></li>`;
     nl.style.display = 'flex';
   }
 
@@ -4532,12 +4645,17 @@ document.addEventListener('DOMContentLoaded', function() {
 const DUEL_CONTRACT = '0x78b70AA24ca90690AD2b21d5c1980F55420A0AA1';
 
 // ── Duelist Saga NFT contract (separate from the duel and rank-NFT contracts) ──
-const SAGA_CONTRACT_ADDRESS = '0x2DF5Df7390a397e383be1446457DB746e0b7826e';
+const SAGA_CONTRACT_ADDRESS = '0xBCe2079dFE9D8ef7ca5acC7690Da3aC4417A6145';
 const SAGA_ABI = [
   'function mint(uint8 sagaId) external payable',
   'function eligibleFor(address player, uint8 sagaId) external view returns (bool)',
   'function hasMinted(address player, uint8 sagaId) external view returns (bool)',
   'function MINT_PRICE() external view returns (uint256)',
+  'function ownerOf(uint256 tokenId) external view returns (address)',
+  'function tokenSagaId(uint256 tokenId) external view returns (uint8)',
+  'function totalSupply() external view returns (uint256)',
+  'function tokenURI(uint256 tokenId) external view returns (string)',
+  'function balanceOf(address owner) external view returns (uint256)',
   'event SagaMinted(address indexed player, uint8 sagaId, uint256 tokenId)'
 ];
 let sagaContract = null;
@@ -4552,6 +4670,39 @@ async function initSagaContract() {
     }
   } catch (e) { console.error('initSagaContract failed:', e); }
 }
+
+// ── The Void Store — generic NFT marketplace ──
+const STORE_CONTRACT_ADDRESS = '0xc3f26f69e704f5c0feC4D5B5f4bA5f39154Afb01';
+const STORE_ABI = [
+  'function list(address nftContract, uint256 tokenId, uint256 price) external payable returns (uint256 listingId)',
+  'function cancel(uint256 listingId) external',
+  'function buy(uint256 listingId) external payable',
+  'function getListing(uint256 listingId) external view returns (tuple(address seller, address nftContract, uint256 tokenId, uint256 price, bool active))',
+  'function nextListingId() external view returns (uint256)',
+  'function LISTING_COST() external view returns (uint256)',
+  'event Listed(uint256 indexed listingId, address indexed seller, address indexed nftContract, uint256 tokenId, uint256 price)',
+  'event Cancelled(uint256 indexed listingId)',
+  'event Sold(uint256 indexed listingId, address indexed buyer, address indexed seller, uint256 price)'
+];
+// Minimal ERC-721 ABI for approve / ownership checks needed before listing
+const ERC721_MIN_ABI = [
+  'function ownerOf(uint256 tokenId) external view returns (address)',
+  'function getApproved(uint256 tokenId) external view returns (address)',
+  'function approve(address to, uint256 tokenId) external'
+];
+let storeContract = null;
+let storeReadContract = null;
+async function initStoreContract() {
+  try {
+    if (!storeReadContract) {
+      storeReadContract = new ethers.Contract(STORE_CONTRACT_ADDRESS, STORE_ABI, new ethers.JsonRpcProvider(DUEL_RPC));
+    }
+    if (signer && !storeContract) {
+      storeContract = new ethers.Contract(STORE_CONTRACT_ADDRESS, STORE_ABI, signer);
+    }
+  } catch (e) { console.error('initStoreContract failed:', e); }
+}
+
 const DUEL_ABI = [
   'function createDuel(bytes32 commitA) external payable',
   'function joinDuel(uint256 duelId, uint8 choiceB) external payable',
@@ -5772,7 +5923,10 @@ async function featsOpen() {
     const alreadyMinted = sagaMintId && _sagaMintedCache[sagaMintId];
     const mintRow = (sagaMintId && isUnlocked)
       ? (alreadyMinted
-          ? `<div style="margin-top:0.5rem;font-size:0.6rem;color:rgba(0,229,204,0.6);font-family:'Cinzel',serif;letter-spacing:0.08em;">✓ NFT MINTED</div>`
+          ? `<div style="margin-top:0.5rem;display:flex;align-items:center;gap:0.6rem;">
+               <span style="font-size:0.6rem;color:rgba(0,229,204,0.6);font-family:'Cinzel',serif;letter-spacing:0.08em;">✓ NFT MINTED</span>
+               <button onclick="document.getElementById('feats-modal').style.display='none';storeOpen('${SAGA_CONTRACT_ADDRESS}')" style="font-size:0.55rem;letter-spacing:0.05em;cursor:pointer;background:transparent;border:1px solid rgba(0,229,204,0.3);color:rgba(0,229,204,0.7);border-radius:2px;padding:0.2rem 0.5rem;font-family:'Cinzel',serif;text-transform:uppercase;">🏪 List for sale</button>
+             </div>`
           : `<button onclick="sagaMint(${sagaMintId})" id="saga-mint-btn-${sagaMintId}" style="margin-top:0.6rem;padding:0.4rem 0.8rem;font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.1em;cursor:pointer;background:rgba(0,229,204,0.1);border:1px solid rgba(0,229,204,0.4);color:var(--teal);border-radius:3px;text-transform:uppercase;">🖼 Mint NFT — 0.05 zkLTC</button>`)
       : '';
 
@@ -5836,6 +5990,535 @@ async function sagaMint(sagaId) {
 }
 </script>
 <!-- ═══════════════ END DUELIST SAGA MINT ═══════════════ -->
+
+<!-- ═══════════════ THE VOID STORE — full page ═══════════════ -->
+<section id="store-page" style="display:none;padding:3rem 0 5rem;">
+  <div style="max-width:1000px;margin:0 auto;padding:0 1.5rem;">
+
+    <div style="text-align:center;margin-bottom:1.2rem;">
+      <div style="display:flex;align-items:center;justify-content:center;gap:0.6rem;margin-bottom:0.3rem;">
+        <span style="width:14px;height:1px;background:rgba(0,229,204,0.5);"></span>
+        <span style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;color:var(--teal);text-transform:uppercase;">The Duelist Saga</span>
+        <span style="width:14px;height:1px;background:rgba(0,229,204,0.5);"></span>
+      </div>
+      <div style="font-family:'Cinzel',serif;font-size:1.6rem;letter-spacing:0.08em;color:#fff;text-transform:uppercase;">The Void Store</div>
+      <div style="font-size:0.78rem;color:rgba(255,255,255,0.4);font-style:italic;margin-top:0.2rem;">Every sale feeds the void. 80% to the seller, 17% burned forever, 3% to the order.</div>
+    </div>
+    <div style="display:flex;justify-content:center;margin-bottom:1.6rem;">
+      <button onclick="storeClose()" style="background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.1em;padding:0.5rem 1rem;border-radius:3px;cursor:pointer;text-transform:uppercase;flex-shrink:0;">← Back to the Void</button>
+    </div>
+
+    <!-- TABS -->
+    <div style="display:flex;gap:0.5rem;margin-bottom:1.6rem;">
+      <button id="store-tab-browse" onclick="storeSwitchTab('browse')" style="flex:1;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:rgba(0,229,204,0.1);border:1px solid rgba(0,229,204,0.35);color:var(--teal);border-radius:3px;">Browse</button>
+      <button id="store-tab-sell" onclick="storeSwitchTab('sell')" style="flex:1;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);border-radius:3px;">Sell</button>
+    </div>
+
+    <!-- BROWSE TAB -->
+    <div id="store-tab-content-browse">
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;">
+        <span style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:rgba(255,255,255,0.4);text-transform:uppercase;">All Relics — by rarity</span>
+        <button onclick="storeRefreshListings()" style="background:transparent;border:1px solid rgba(0,229,204,0.3);color:rgba(0,229,204,0.7);font-size:0.6rem;padding:0.35rem 0.6rem;border-radius:3px;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:0.05em;">↻ Refresh</button>
+      </div>
+      <div id="store-listings-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.9rem;">
+        <div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;grid-column:1/-1;">Scanning the store...</div>
+      </div>
+    </div>
+
+    <!-- SELL TAB -->
+    <div id="store-tab-content-sell" style="display:none;">
+      <div style="max-width:560px;background:linear-gradient(135deg,rgba(10,6,28,0.7),rgba(4,2,16,0.85));border:1px solid rgba(0,229,204,0.2);border-radius:6px;padding:1.2rem;">
+
+        <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:rgba(0,229,204,0.6);text-transform:uppercase;margin-bottom:0.7rem;">Choose a relic to sell</div>
+        <div id="store-sell-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:0.5rem;margin-bottom:1.1rem;">
+          <div style="grid-column:1/-1;text-align:center;padding:1.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;font-size:0.75rem;">Connect your wallet to see your relics.</div>
+        </div>
+
+        <div id="store-sell-selected" style="display:none;background:rgba(0,229,204,0.05);border:1px solid rgba(0,229,204,0.2);border-radius:3px;padding:0.7rem 0.9rem;margin-bottom:0.9rem;display:flex;align-items:center;gap:0.7rem;">
+          <div id="store-sell-selected-thumb" style="width:36px;height:36px;border-radius:3px;overflow:hidden;flex-shrink:0;"></div>
+          <div style="flex:1;">
+            <div style="font-size:0.6rem;color:rgba(0,229,204,0.6);letter-spacing:0.05em;">SELLING</div>
+            <div id="store-sell-selected-name" style="font-size:0.78rem;color:#fff;font-family:'Cinzel',serif;"></div>
+          </div>
+        </div>
+        <!-- Hidden — filled automatically when a relic is picked from the gallery above -->
+        <input id="store-sell-contract" type="hidden">
+        <input id="store-sell-tokenid" type="hidden">
+
+        <div style="margin-bottom:0.9rem;">
+          <div style="font-size:0.6rem;color:rgba(0,229,204,0.6);letter-spacing:0.05em;margin-bottom:0.3rem;">PRICE (zkLTC)</div>
+          <input id="store-sell-price" type="number" step="0.001" placeholder="e.g. 1.2" style="width:100%;padding:0.5rem 0.7rem;font-size:0.75rem;background:rgba(255,255,255,0.04);border:1px solid rgba(0,229,204,0.25);border-radius:3px;color:#fff;outline:none;box-sizing:border-box;">
+        </div>
+
+        <div style="font-size:0.65rem;color:rgba(255,170,68,0.6);margin-bottom:1rem;font-style:italic;">⚠ Listing costs 0.0075 zkLTC (0.005 burned + 0.0025 to the order).</div>
+        <div id="store-sell-error" style="display:none;font-size:0.7rem;color:#ff6655;margin-bottom:0.8rem;"></div>
+
+        <button id="store-approve-btn" onclick="storeApprove()" style="width:100%;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;cursor:pointer;background:transparent;border:1px solid rgba(157,127,238,0.4);color:#9d7fee;border-radius:3px;text-transform:uppercase;margin-bottom:0.5rem;">1. Approve NFT</button>
+        <button id="store-list-btn" onclick="storeList()" disabled style="width:100%;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;cursor:not-allowed;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.25);border-radius:3px;text-transform:uppercase;transition:all 0.2s;">2. List for Sale</button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<script>
+// ═══ THE VOID STORE ═══
+let _storeListingsCache = [];
+
+const STORE_MAIN_SECTIONS = ['hero', 'ritual', 'ranks', 'leaderboard', 'duel'];
+
+function storeOpen(prefillContract, prefillTokenId) {
+  STORE_MAIN_SECTIONS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  document.getElementById('store-page').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'instant' });
+
+  if (prefillContract) {
+    storeSwitchTab('sell');
+    document.getElementById('store-sell-contract').value = prefillContract;
+    if (prefillTokenId !== undefined) document.getElementById('store-sell-tokenid').value = prefillTokenId;
+    // Try to show a matching preview once the gallery scan completes
+    setTimeout(() => {
+      const match = _storeMyNFTs.findIndex(n => n.contract.toLowerCase() === prefillContract.toLowerCase());
+      if (match >= 0) storeSelectMyNFT(match);
+    }, 1200);
+  } else {
+    storeSwitchTab('browse');
+  }
+}
+
+function storeClose() {
+  document.getElementById('store-page').style.display = 'none';
+  STORE_MAIN_SECTIONS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = '';
+  });
+}
+
+function storeSwitchTab(tab) {
+  const browseBtn = document.getElementById('store-tab-browse');
+  const sellBtn = document.getElementById('store-tab-sell');
+  const browseContent = document.getElementById('store-tab-content-browse');
+  const sellContent = document.getElementById('store-tab-content-sell');
+
+  if (tab === 'browse') {
+    browseContent.style.display = 'block';
+    sellContent.style.display = 'none';
+    browseBtn.style.background = 'rgba(0,229,204,0.1)'; browseBtn.style.borderColor = 'rgba(0,229,204,0.35)'; browseBtn.style.color = 'var(--teal)';
+    sellBtn.style.background = 'transparent'; sellBtn.style.borderColor = 'rgba(255,255,255,0.12)'; sellBtn.style.color = 'rgba(255,255,255,0.4)';
+    storeRefreshListings();
+  } else {
+    sellContent.style.display = 'block';
+    browseContent.style.display = 'none';
+    sellBtn.style.background = 'rgba(0,229,204,0.1)'; sellBtn.style.borderColor = 'rgba(0,229,204,0.35)'; sellBtn.style.color = 'var(--teal)';
+    browseBtn.style.background = 'transparent'; browseBtn.style.borderColor = 'rgba(255,255,255,0.12)'; browseBtn.style.color = 'rgba(255,255,255,0.4)';
+    storeScanMyNFTs();
+  }
+}
+
+// Maps a known NFT (by contract + saga feat id / rank) to its rarity tier,
+// real artwork, and a friendly name — used to make the store visually rich
+// for the two NFT families we know about (Duelist Saga + ranks). Unknown
+// NFTs from other contracts fall back to a generic "Common" placeholder.
+const STORE_RARITY_ORDER = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+const STORE_RARITY_COLOR = {
+  legendary: '#ffaa44', epic: '#ffaa44', rare: '#9d7fee', uncommon: '#9d7fee', common: 'rgba(0,229,204,0.8)'
+};
+
+async function storeResolveRelic(nftContractAddr, tokenId) {
+  // Duelist Saga NFTs — read the real sagaId directly from the contract,
+  // rather than guessing from tokenId (which was unreliable).
+  if (nftContractAddr.toLowerCase() === SAGA_CONTRACT_ADDRESS.toLowerCase()) {
+    const sagaMeta = {
+      1: { name: 'The Awakening', feat: 'saga_1', rarity: 'common' },
+      2: { name: 'Lightning Adept', feat: 'saga_2', rarity: 'rare' },
+      3: { name: 'Sanctuary Glimpse', feat: 'saga_3', rarity: 'epic' },
+      4: { name: 'Guardian Ascended', feat: 'saga_4', rarity: 'legendary' },
+    };
+    try {
+      await initSagaContract();
+      const sagaId = Number(await sagaReadContract.tokenSagaId(tokenId));
+      const m = sagaMeta[sagaId] || sagaMeta[1];
+      const f = FEATS.find(x => x.id === m.feat);
+      return { name: m.name, rarity: m.rarity, artUrl: f ? f.artUrl : null, family: 'Saga' };
+    } catch (e) {
+      console.warn('Could not resolve saga NFT metadata:', e);
+      return { name: 'Duelist Saga Relic', rarity: 'common', artUrl: null, family: 'Saga' };
+    }
+  }
+
+  // Rank NFTs — find which (rank, nftId) this exact tokenId belongs to by
+  // checking mintedNFT() for the seller across all pool entries. Same
+  // reliable approach used for the "My Relics" scan, not a tokenId guess.
+  if (nftContractAddr.toLowerCase() === NFT_CONTRACT_ADDRESS.toLowerCase()) {
+    const rankNames = ['Simple Holder', 'Apprentice Litecoiner', 'Devoted Litecoiner', 'Silver Maximalist'];
+    try {
+      await initNFTContract();
+      const owner = await nftReadContract.ownerOf(tokenId);
+      for (let rankIdx = 0; rankIdx < 4; rankIdx++) {
+        const pool = (typeof POOL_DATA !== 'undefined' && POOL_DATA[rankIdx]) || [];
+        for (let nftId = 0; nftId < pool.length; nftId++) {
+          try {
+            const has = await nftReadContract.hasClaimed(owner, rankIdx + 1, nftId);
+            if (!has) continue;
+            const tid = Number(await nftReadContract.mintedNFT(owner, rankIdx + 1, nftId));
+            if (tid === Number(tokenId)) {
+              return { name: pool[nftId].name, rarity: pool[nftId].rarity, artUrl: pool[nftId].artUrl, family: 'Rank' };
+            }
+          } catch (e) {}
+        }
+      }
+      // Fallback if no exact pool match was found (e.g. an old duplicate
+      // mint from before pool changes). We can't reliably determine this
+      // specific token's rank without more contract surface than is
+      // currently exposed, so we show a generic rank-1 image rather than
+      // risk another guess. Functionally correct (still sellable/buyable),
+      // just not the exact art for tokens minted before recent pool changes.
+      return {
+        name: 'Rank Relic #' + tokenId,
+        rarity: 'common',
+        artUrl: rankArtUrl('rank_1'),
+        family: 'Rank'
+      };
+    } catch (e) {
+      console.warn('Could not resolve rank NFT metadata:', e);
+      return { name: 'Rank Relic #' + tokenId, rarity: 'common', artUrl: null, family: 'Rank' };
+    }
+  }
+  return { name: 'Unknown Relic', rarity: 'common', artUrl: null, family: 'External' };
+}
+
+function storeRelicCard(l, relic) {
+  const priceStr = ethers.formatEther(l.price);
+  const shortSeller = l.seller.slice(0,6) + '...' + l.seller.slice(-4);
+  const isMine = connectedAddress && l.seller.toLowerCase() === connectedAddress.toLowerCase();
+  const color = STORE_RARITY_COLOR[relic.rarity] || STORE_RARITY_COLOR.common;
+  const img = relic.artUrl
+    ? `<img src="${relic.artUrl}" onclick="event.stopPropagation();storeZoomImage('${relic.artUrl}')" style="position:absolute;width:100%;height:100%;object-fit:cover;cursor:zoom-in;" onerror="this.style.display='none';" title="Click to view full image" />`
+    : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.6rem;background:linear-gradient(135deg,rgba(0,229,204,0.1),rgba(119,85,204,0.06));">🖼</div>`;
+  return `
+  <div style="position:relative;border-radius:4px;overflow:hidden;aspect-ratio:1;box-shadow:0 0 0 1.5px ${color}66;">
+    ${img}
+    <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(4,2,26,0.95),transparent 55%);pointer-events:none;"></div>
+    <div style="position:absolute;top:6px;left:6px;font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.08em;color:${color};text-transform:uppercase;">${relic.rarity}</div>
+    <div style="position:absolute;bottom:8px;left:8px;right:8px;">
+      <div style="font-family:'Cinzel',serif;font-size:0.7rem;color:#fff;">${relic.name}</div>
+      <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);margin:0.1rem 0 0.3rem;">${shortSeller}</div>
+      <div style="font-family:'Cinzel',serif;font-size:0.72rem;color:${color};margin-bottom:0.4rem;">${priceStr} zkLTC</div>
+      ${isMine
+        ? `<button onclick="storeCancel(${l.id})" style="width:100%;padding:0.3rem;font-size:0.55rem;letter-spacing:0.05em;cursor:pointer;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.6);border-radius:2px;font-family:'Cinzel',serif;text-transform:uppercase;">Cancel</button>`
+        : `<button onclick="storeBuy(${l.id})" style="width:100%;padding:0.3rem;font-size:0.55rem;letter-spacing:0.05em;cursor:pointer;background:rgba(0,0,0,0.4);border:1px solid ${color}88;color:${color};border-radius:2px;font-family:'Cinzel',serif;text-transform:uppercase;">Buy Now</button>`}
+    </div>
+  </div>`;
+}
+
+// Fullscreen lightbox — click anywhere to close. Lets the player see the
+// full, uncropped artwork instead of a cropped card thumbnail.
+function storeZoomImage(url) {
+  let lightbox = document.getElementById('store-lightbox');
+  if (!lightbox) {
+    lightbox = document.createElement('div');
+    lightbox.id = 'store-lightbox';
+    lightbox.style.cssText = 'display:none;position:fixed;inset:0;z-index:10000;background:rgba(2,1,12,0.94);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:2rem;cursor:zoom-out;';
+    lightbox.onclick = () => { lightbox.style.display = 'none'; };
+    document.body.appendChild(lightbox);
+  }
+  lightbox.innerHTML = `<img src="${url}" style="max-width:90vw;max-height:90vh;object-fit:contain;border-radius:6px;box-shadow:0 0 60px rgba(0,229,204,0.15);" />`;
+  lightbox.style.display = 'flex';
+}
+
+// Scans listings by probing IDs (same pattern as duel scanning elsewhere —
+// no indexer/subgraph available on this testnet).
+async function storeRefreshListings() {
+  const grid = document.getElementById('store-listings-grid');
+  if (!storeReadContract) await initStoreContract();
+  if (!storeReadContract) {
+    grid.innerHTML = '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);grid-column:1/-1;">Store contract not ready.</div>';
+    return;
+  }
+
+  try {
+    const total = await storeReadContract.nextListingId();
+    const active = [];
+    for (let id = 1; id < Number(total); id++) {
+      try {
+        const l = await storeReadContract.getListing(id);
+        if (l.active) {
+          active.push({
+            id,
+            seller: l.seller,
+            nftContract: l.nftContract,
+            tokenId: l.tokenId,
+            price: l.price,
+            active: l.active
+          });
+        }
+      } catch (e) {}
+    }
+    _storeListingsCache = active;
+
+    if (active.length === 0) {
+      grid.innerHTML = '<div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;grid-column:1/-1;">No relics for sale yet. Be the first to list one.</div>';
+      return;
+    }
+
+    // Resolve rarity/art for every listing, then sort rarest-first.
+    const resolved = await Promise.all(active.map(async l => ({ l, relic: await storeResolveRelic(l.nftContract, l.tokenId) })));
+    resolved.sort((a, b) => STORE_RARITY_ORDER.indexOf(a.relic.rarity) - STORE_RARITY_ORDER.indexOf(b.relic.rarity));
+
+    // Single unified grid for every listing, regardless of rarity — the
+    // carousel was hard to read when multiple items shared the same rarity,
+    // so everything now lives in one consistent view, just sorted rarest-first.
+    grid.innerHTML = resolved.length
+      ? resolved.map(({l, relic}) => storeRelicCard(l, relic)).join('')
+      : '<div style="text-align:center;padding:1.5rem 0;color:rgba(255,255,255,0.25);font-style:italic;grid-column:1/-1;">No relics listed yet.</div>';
+
+  } catch (e) {
+    console.error('storeRefreshListings error:', e);
+    grid.innerHTML = '<div style="text-align:center;padding:2rem 0;color:#ff8899;grid-column:1/-1;">Could not load listings — try refresh.</div>';
+  }
+}
+
+// Scans the connected wallet's own Saga + rank NFTs and renders them as a
+// clickable gallery, so the player never has to know or paste a contract
+// address / tokenId manually — clicking a relic fills the hidden fields.
+let _storeMyNFTs = [];
+
+async function storeScanMyNFTs() {
+  const gallery = document.getElementById('store-sell-gallery');
+  if (!connectedAddress) {
+    gallery.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;font-size:0.75rem;">Connect your wallet to see your relics.</div>';
+    return;
+  }
+  gallery.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;font-size:0.75rem;">Scanning your relics...</div>';
+
+  const owned = [];
+  const sagaNames = ['The Awakening', 'Lightning Adept', 'Sanctuary Glimpse', 'Guardian Ascended'];
+  const sagaFeatIds = ['saga_1', 'saga_2', 'saga_3', 'saga_4'];
+
+  // Saga NFTs — check each of the 4 possible sagaIds via hasMinted, then
+  // find the matching tokenId by scanning ownerOf (small, bounded loop).
+  try {
+    await initSagaContract();
+    if (sagaReadContract) {
+      const total = Number(await sagaReadContract.totalSupply().catch(() => 0));
+      for (let tid = 1; tid <= total; tid++) {
+        try {
+          const owner = await sagaReadContract.ownerOf(tid);
+          if (owner.toLowerCase() !== connectedAddress.toLowerCase()) continue;
+          const sagaId = Number(await sagaReadContract.tokenSagaId(tid));
+          const featId = sagaFeatIds[sagaId - 1];
+          const f = FEATS.find(x => x.id === featId);
+          owned.push({
+            contract: SAGA_CONTRACT_ADDRESS, tokenId: tid,
+            name: sagaNames[sagaId - 1] || ('Saga #' + sagaId),
+            artUrl: f ? f.artUrl : null
+          });
+        } catch (e) {}
+      }
+    }
+  } catch (e) { console.warn('Saga NFT scan failed:', e); }
+
+  // Rank NFTs — probe tokenIds 1..N via ownerOf() to find EVERY token this
+  // wallet owns (including old duplicate mints from before pool changes),
+  // not just one per (rank, nftId) like mintedNFT() alone would give.
+  // Then map each owned tokenId back to its (rank, nftId) via mintedNFT()
+  // so we know which name/art to show.
+  try {
+    await initNFTContract();
+    if (nftContract && typeof POOL_DATA !== 'undefined') {
+      const rankNames = ['Simple Holder', 'Apprentice Litecoiner', 'Devoted Litecoiner', 'Silver Maximalist'];
+
+      // Step 1: build a lookup of tokenId -> {rankIdx, nftId} by checking
+      // every (rank, nftId) this wallet has claimed at least once.
+      const tokenMeta = {}; // tokenId -> { rankIdx, nftId }
+      for (let rankIdx = 0; rankIdx < 4; rankIdx++) {
+        const pool = POOL_DATA[rankIdx] || [];
+        for (let nftId = 0; nftId < pool.length; nftId++) {
+          try {
+            const has = await nftContract.hasClaimed(connectedAddress, rankIdx + 1, nftId);
+            if (!has) continue;
+            const tid = Number(await nftContract.mintedNFT(connectedAddress, rankIdx + 1, nftId));
+            if (tid > 0) tokenMeta[tid] = { rankIdx, nftId };
+          } catch (e) {}
+        }
+      }
+
+      // Step 2: probe a range of tokenIds via ownerOf to catch every token
+      // actually held by this wallet — including old duplicate mints whose
+      // tokenId might not be the "latest" one mintedNFT() would report.
+      const MAX_PROBE = 300; // generous for current + near-future mint volume
+      let misses = 0;
+      for (let tid = 1; tid <= MAX_PROBE && misses < 5; tid++) {
+        let owner;
+        try { owner = await nftContract.ownerOf(tid); }
+        catch { misses++; continue; }
+        misses = 0;
+        if (!owner || owner.toLowerCase() !== connectedAddress.toLowerCase()) continue;
+
+        const meta = tokenMeta[tid];
+        const rankIdx = meta ? meta.rankIdx : 0; // fallback to rank 0 if we couldn't map it
+        const pool = POOL_DATA[rankIdx] || [];
+        const poolEntry = meta ? pool[meta.nftId] : null;
+        owned.push({
+          contract: NFT_CONTRACT_ADDRESS, tokenId: tid,
+          name: poolEntry ? poolEntry.name : (rankNames[rankIdx] + ' (#' + tid + ')'),
+          artUrl: poolEntry ? poolEntry.artUrl : rankArtUrl('rank_' + (rankIdx + 1))
+        });
+      }
+    }
+  } catch (e) { console.warn('Rank NFT scan failed:', e); }
+
+  _storeMyNFTs = owned;
+
+  if (owned.length === 0) {
+    gallery.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;font-size:0.75rem;">You don\'t own any listable relics yet.</div>';
+    return;
+  }
+
+  gallery.innerHTML = owned.map((nft, i) => {
+    const img = nft.artUrl
+      ? `<img src="${nft.artUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='🖼';" />`
+      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;">🖼</div>`;
+    return `
+    <div onclick="storeSelectMyNFT(${i})" title="${nft.name}" style="aspect-ratio:1;border-radius:4px;overflow:hidden;cursor:pointer;border:2px solid rgba(0,229,204,0.2);transition:border-color 0.15s;" onmouseover="this.style.borderColor='rgba(0,229,204,0.6)'" onmouseout="this.style.borderColor='rgba(0,229,204,0.2)'">
+      ${img}
+    </div>`;
+  }).join('');
+}
+
+function storeSelectMyNFT(idx) {
+  const nft = _storeMyNFTs[idx];
+  if (!nft) return;
+  document.getElementById('store-sell-contract').value = nft.contract;
+  document.getElementById('store-sell-tokenid').value = nft.tokenId;
+
+  const selectedBox = document.getElementById('store-sell-selected');
+  const thumb = document.getElementById('store-sell-selected-thumb');
+  const nameEl = document.getElementById('store-sell-selected-name');
+  thumb.innerHTML = nft.artUrl ? `<img src="${nft.artUrl}" style="width:100%;height:100%;object-fit:cover;" />` : '🖼';
+  nameEl.textContent = nft.name;
+  selectedBox.style.display = 'flex';
+
+  // Approval is per-token — re-lock "List for Sale" until this specific NFT is approved.
+  const listBtn = document.getElementById('store-list-btn');
+  listBtn.disabled = true;
+  listBtn.style.cursor = 'not-allowed';
+  listBtn.style.background = 'rgba(255,255,255,0.03)';
+  listBtn.style.border = '1px solid rgba(255,255,255,0.1)';
+  listBtn.style.color = 'rgba(255,255,255,0.25)';
+}
+
+async function storeApprove() {
+  if (!connectedAddress) { showToast('Connect wallet first'); return; }
+  const contractAddr = document.getElementById('store-sell-contract').value.trim();
+  const tokenId = document.getElementById('store-sell-tokenid').value.trim();
+  const errBox = document.getElementById('store-sell-error');
+  errBox.style.display = 'none';
+
+  if (!ethers.isAddress(contractAddr)) { errBox.textContent = 'Pick a relic from the gallery above first.'; errBox.style.display = 'block'; return; }
+  if (!tokenId) { errBox.textContent = 'Pick a relic from the gallery above first.'; errBox.style.display = 'block'; return; }
+
+  const btn = document.getElementById('store-approve-btn');
+  btn.disabled = true; btn.textContent = 'Confirm in MetaMask...';
+  try {
+    const nft = new ethers.Contract(contractAddr, ERC721_MIN_ABI, signer);
+    const owner = await nft.ownerOf(tokenId);
+    if (owner.toLowerCase() !== connectedAddress.toLowerCase()) {
+      throw new Error('You do not own this token');
+    }
+    const tx = await nft.approve(STORE_CONTRACT_ADDRESS, tokenId);
+    await tx.wait();
+    showToast('✦ Approved — you can now list it');
+    const listBtn = document.getElementById('store-list-btn');
+    listBtn.disabled = false;
+    listBtn.style.cursor = 'pointer';
+    listBtn.style.background = 'rgba(0,229,204,0.1)';
+    listBtn.style.border = '1px solid rgba(0,229,204,0.4)';
+    listBtn.style.color = 'var(--teal)';
+  } catch (e) {
+    console.error('storeApprove error:', e);
+    errBox.textContent = e.message && e.message.includes('own') ? e.message : (typeof duelFriendlyError === 'function' ? duelFriendlyError(e) : 'Approval failed.');
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = '1. Approve NFT';
+  }
+}
+
+async function storeList() {
+  if (!connectedAddress) { showToast('Connect wallet first'); return; }
+  await initStoreContract();
+  if (!storeContract) { showToast('Store contract not ready'); return; }
+
+  const contractAddr = document.getElementById('store-sell-contract').value.trim();
+  const tokenId = document.getElementById('store-sell-tokenid').value.trim();
+  const price = document.getElementById('store-sell-price').value.trim();
+  const errBox = document.getElementById('store-sell-error');
+  errBox.style.display = 'none';
+
+  if (!ethers.isAddress(contractAddr)) { errBox.textContent = 'Pick a relic from the gallery above first.'; errBox.style.display = 'block'; return; }
+  if (!tokenId) { errBox.textContent = 'Pick a relic from the gallery above first.'; errBox.style.display = 'block'; return; }
+  if (!price || parseFloat(price) <= 0) { errBox.textContent = 'Enter a valid price.'; errBox.style.display = 'block'; return; }
+
+  const btn = document.getElementById('store-list-btn');
+  btn.disabled = true; btn.textContent = 'Confirm in MetaMask...';
+  try {
+    const listingCost = await storeContract.LISTING_COST();
+    const priceWei = ethers.parseEther(price);
+    const tx = await storeContract.list(contractAddr, tokenId, priceWei, { value: listingCost });
+    btn.textContent = 'Listing...';
+    await tx.wait();
+    showToast('✦ Listed in The Void Store!');
+    document.getElementById('store-sell-contract').value = '';
+    document.getElementById('store-sell-tokenid').value = '';
+    document.getElementById('store-sell-price').value = '';
+    storeSwitchTab('browse');
+  } catch (e) {
+    console.error('storeList error:', e);
+    errBox.textContent = typeof duelFriendlyError === 'function' ? duelFriendlyError(e) : 'Listing failed.';
+    errBox.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = '2. List for Sale';
+  }
+}
+
+async function storeBuy(listingId) {
+  if (!connectedAddress) { showToast('Connect wallet first'); return; }
+  await initStoreContract();
+  if (!storeContract) { showToast('Store contract not ready'); return; }
+  try {
+    const listing = await storeReadContract.getListing(listingId);
+    showToast('Confirm in MetaMask...');
+    const tx = await storeContract.buy(listingId, { value: listing.price });
+    await tx.wait();
+    showToast('✦ Purchase complete!');
+    storeRefreshListings();
+  } catch (e) {
+    console.error('storeBuy error:', e);
+    showToast(typeof duelFriendlyError === 'function' ? duelFriendlyError(e) : '✖ Purchase failed', true);
+  }
+}
+
+async function storeCancel(listingId) {
+  await initStoreContract();
+  if (!storeContract) { showToast('Store contract not ready'); return; }
+  try {
+    showToast('Confirm in MetaMask...');
+    const tx = await storeContract.cancel(listingId);
+    await tx.wait();
+    showToast('✦ Listing cancelled');
+    storeRefreshListings();
+  } catch (e) {
+    console.error('storeCancel error:', e);
+    showToast(typeof duelFriendlyError === 'function' ? duelFriendlyError(e) : '✖ Cancel failed', true);
+  }
+}
+</script>
+<!-- ═══════════════ END THE VOID STORE ═══════════════ -->
+
 
 <!-- ═══════════════ USERNAME ═══════════════ -->
 <div id="username-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,1,12,0.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1.5rem;" onclick="if(event.target===this)this.style.display='none'">
@@ -6036,20 +6719,48 @@ function rankArtUrl(rankFeatId) {
   return RANKS_DATA[idx].artUrl;
 }
 
+let _avatarPoolCache = null; // cached claim status per (rankIdx, nftId) for the connected wallet
+
+// Pre-fetch claim status for every pool NFT — called once before opening
+// any avatar UI, so avatarAllUnlocked() itself can stay synchronous.
+async function avatarRefreshPoolCache() {
+  _avatarPoolCache = {};
+  if (!connectedAddress) return;
+  try {
+    await initNFTContract();
+    if (!nftReadContract) return;
+    for (let rankIdx = 0; rankIdx < 4; rankIdx++) {
+      const pool = POOL_DATA[rankIdx] || [];
+      for (let nftId = 0; nftId < pool.length; nftId++) {
+        try {
+          const has = await nftReadContract.hasClaimed(connectedAddress, rankIdx + 1, nftId);
+          _avatarPoolCache[rankIdx + '_' + nftId] = has;
+        } catch (e) { _avatarPoolCache[rankIdx + '_' + nftId] = false; }
+      }
+    }
+  } catch (e) { console.warn('avatarRefreshPoolCache failed:', e); }
+}
+
 function avatarAllUnlocked() {
   const unlocked = typeof featsLoad === 'function' ? featsLoad() : {};
   const list = [{ ...DEFAULT_AVATAR, unlocked: true }]; // default avatar — used when no rank reached yet
-  // Rank avatars (rank_1..rank_4) — feat-emoji avatars removed by design.
-  const RANK_FEAT_IDS = ['rank_1', 'rank_2', 'rank_3', 'rank_4'];
-  RANK_FEAT_IDS.forEach(id => {
-    const f = FEATS.find(x => x.id === id);
-    if (!f) return;
-    const isUnlocked = !!unlocked[id];
-    const art = rankArtUrl(id);
-    if (art) {
-      list.push({ id, type: 'image', url: art, name: f.name, unlocked: isUnlocked });
-    }
-  });
+  // One avatar per pool NFT (Common/Rare/Epic/etc. within each rank),
+  // unlocked only if this specific NFT was actually minted by the wallet —
+  // not just "reached this rank" as before.
+  const rankNames = ['Simple Holder', 'Apprentice Litecoiner', 'Devoted Litecoiner', 'Silver Maximalist'];
+  for (let rankIdx = 0; rankIdx < 4; rankIdx++) {
+    const pool = (typeof POOL_DATA !== 'undefined' && POOL_DATA[rankIdx]) || [];
+    pool.forEach((entry, nftId) => {
+      const isUnlocked = !!(_avatarPoolCache && _avatarPoolCache[rankIdx + '_' + nftId]);
+      list.push({
+        id: 'rank_' + (rankIdx + 1) + '_' + nftId,
+        type: 'image',
+        url: entry.artUrl,
+        name: entry.name + ' (' + rankNames[rankIdx] + ')',
+        unlocked: isUnlocked
+      });
+    });
+  }
   // Duelist Saga avatars (saga_1..saga_4) — same image used for the Hall of
   // Feats card and the avatar itself.
   const SAGA_FEAT_IDS = ['saga_1', 'saga_2', 'saga_3', 'saga_4'];
@@ -6089,6 +6800,14 @@ async function refreshMyAvatar() {
 // Returns a render descriptor for an avatar id: { type, icon } or { type, url }
 function avatarRenderInfoFor(id) {
   if (id === 'default') return { type: 'emoji', icon: DEFAULT_AVATAR.icon };
+  // New format: rank_<rankNum>_<nftId> — e.g. "rank_1_2" = rank 1, pool entry 2
+  const poolMatch = /^rank_(\d)_(\d+)$/.exec(id);
+  if (poolMatch) {
+    const rankIdx = parseInt(poolMatch[1], 10) - 1;
+    const nftId = parseInt(poolMatch[2], 10);
+    const pool = (typeof POOL_DATA !== 'undefined' && POOL_DATA[rankIdx]) || [];
+    if (pool[nftId]) return { type: 'image', url: pool[nftId].artUrl };
+  }
   const art = rankArtUrl(id);
   if (art) return { type: 'image', url: art };
   const f = FEATS.find(x => x.id === id);
@@ -6120,14 +6839,17 @@ function avatarUpdateButtonIcon() {
   if (btn) btn.innerHTML = avatarHTMLFor(_myAvatarId, 36);
 }
 
-function avatarOpen() {
+async function avatarOpen() {
   const grid = document.getElementById('avatar-grid');
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;font-size:0.75rem;">Loading your relics...</div>';
+  document.getElementById('avatar-modal').style.display = 'flex';
+  await avatarRefreshPoolCache();
   const all = avatarAllUnlocked();
 
-  // Reuse the existing RANKS_DATA requirement strings so the wording stays
-  // consistent with what's already shown in "Initiate a Burn".
-  const RANK_REQS = { rank_1: 'Requires 0 zkLTC', rank_2: 'Requires ≥ 5 zkLTC burned', rank_3: 'Requires ≥ 20 zkLTC burned', rank_4: 'Requires ≥ 100 zkLTC burned',
-    saga_1: 'Play your first duel', saga_2: 'Win 15 duels', saga_3: 'Play 40 duels', saga_4: 'Play 84 duels' };
+  // Saga feats still use the burn/duel-based requirement text; rank pool
+  // NFTs now show a generic "mint to unlock" hint instead, since each one
+  // unlocks individually by being minted, not by reaching a rank threshold.
+  const SAGA_REQS = { saga_1: 'Play your first duel', saga_2: 'Win 15 duels', saga_3: 'Play 40 duels', saga_4: 'Play 84 duels' };
 
   grid.innerHTML = all.map(a => {
     const isActive = a.id === _myAvatarId;
@@ -6140,18 +6862,17 @@ function avatarOpen() {
       </div>`;
     const clickAttr = a.unlocked ? `onclick="avatarSelect('${a.id}')"` : '';
     const cursor = a.unlocked ? 'cursor:pointer;' : 'cursor:not-allowed;';
-    const caption = a.unlocked ? '' : `<div style="font-size:0.52rem;color:rgba(0,229,204,0.45);text-align:center;margin-top:0.3rem;line-height:1.3;">${RANK_REQS[a.id] || ''}</div>`;
+    const reqText = SAGA_REQS[a.id] || (a.id.startsWith('rank_') ? 'Mint this relic to unlock' : '');
+    const caption = a.unlocked ? '' : `<div style="font-size:0.52rem;color:rgba(0,229,204,0.45);text-align:center;margin-top:0.3rem;line-height:1.3;">${reqText}</div>`;
     return `
     <div>
-      <div ${clickAttr} title="${a.unlocked ? a.name : a.name + ' — ' + (RANK_REQS[a.id]||'locked')}" style="position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:${isActive?'rgba(0,229,204,0.16)':'rgba(255,255,255,0.03)'};border:2px solid ${isActive?'var(--teal)':'rgba(255,255,255,0.08)'};border-radius:6px;${cursor}transition:all 0.15s;overflow:hidden;" ${a.unlocked ? `onmouseover="this.style.borderColor='rgba(0,229,204,0.5)'" onmouseout="this.style.borderColor='${isActive?'var(--teal)':'rgba(255,255,255,0.08)'}'"` : ''}>
+      <div ${clickAttr} title="${a.unlocked ? a.name : a.name + ' — ' + (reqText||'locked')}" style="position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:${isActive?'rgba(0,229,204,0.16)':'rgba(255,255,255,0.03)'};border:2px solid ${isActive?'var(--teal)':'rgba(255,255,255,0.08)'};border-radius:6px;${cursor}transition:all 0.15s;overflow:hidden;" ${a.unlocked ? `onmouseover="this.style.borderColor='rgba(0,229,204,0.5)'" onmouseout="this.style.borderColor='${isActive?'var(--teal)':'rgba(255,255,255,0.08)'}'"` : ''}>
         ${inner}
         ${lockOverlay}
       </div>
       ${caption}
     </div>`;
   }).join('');
-
-  document.getElementById('avatar-modal').style.display = 'flex';
 }
 
 async function avatarSelect(id) {
@@ -6256,11 +6977,12 @@ async function avatarSelect(id) {
 
 <script>
 // ═══ UNIFIED PROFILE PANEL ═══
-function profileToggle() {
+async function profileToggle() {
   const panel = document.getElementById('profile-panel');
   const isOpen = panel.style.display === 'block';
   panel.style.display = isOpen ? 'none' : 'block';
   if (!isOpen) {
+    await avatarRefreshPoolCache();
     profilePanelRender();
     profileStatsRender(); // pre-compute so numbers are ready instantly if the user switches tabs
   }
