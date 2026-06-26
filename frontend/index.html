@@ -3104,14 +3104,28 @@ async function loadChainData(){
   try{
     const [totalBurned,totalBurners,totalBurns]=await readContract.getStats();
 
-    // Add duel contract burns to the global total
+    // Read the actual balance of the dead-burn address directly — every
+    // burn source (ritual, duels, AND The Void Store) sends to this same
+    // address, so its balance is the true combined total without needing
+    // to track each contract's internal counter separately.
+    const DEAD_ADDRESS = '0x000000000000000000000000000000000000dEaD';
     let combinedBurned = totalBurned;
     try {
-      if (typeof duelReadContract !== 'undefined' && duelReadContract) {
-        const duelBurned = await duelReadContract.totalBurned();
-        combinedBurned = totalBurned + duelBurned;
-      }
-    } catch(de) { /* duel contract not ready — use main total only */ }
+      const deadBalance = await readProvider.getBalance(DEAD_ADDRESS);
+      // Use the on-chain balance if it's at least as large as our known
+      // ritual total — protects against a misconfigured/empty RPC response
+      // silently showing a lower number than what we already know is true.
+      if (deadBalance >= totalBurned) combinedBurned = deadBalance;
+    } catch (de) {
+      // Fallback: add duel contract burns to the ritual total if the direct
+      // balance read isn't available for any reason.
+      try {
+        if (typeof duelReadContract !== 'undefined' && duelReadContract) {
+          const duelBurned = await duelReadContract.totalBurned();
+          combinedBurned = totalBurned + duelBurned;
+        }
+      } catch(dde) { /* duel contract not ready — use ritual total only */ }
+    }
 
     const fmt=parseFloat(ethers.formatEther(combinedBurned)).toLocaleString('en',{maximumFractionDigits:3});
     ['hero-total','hero-total-pc','void-n'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=fmt;});
@@ -3402,14 +3416,20 @@ async function loadLeaderboard(){
     try{
       const [tb,totalBurners,totalBurns]=await fc2.getStats();
       burnerCount=Number(totalBurners);
-      // Add duel contract burns to the displayed total
+      // Read the dead-burn address balance directly — captures ritual +
+      // duels + Store burns automatically, same approach as loadChainData().
       let combinedTb = tb;
       try {
-        if (typeof duelReadContract !== 'undefined' && duelReadContract) {
-          const duelBurned = await duelReadContract.totalBurned();
-          combinedTb = tb + duelBurned;
-        }
-      } catch(de) {}
+        const deadBalance = await fp.getBalance('0x000000000000000000000000000000000000dEaD');
+        if (deadBalance >= tb) combinedTb = deadBalance;
+      } catch (de) {
+        try {
+          if (typeof duelReadContract !== 'undefined' && duelReadContract) {
+            const duelBurned = await duelReadContract.totalBurned();
+            combinedTb = tb + duelBurned;
+          }
+        } catch(dde) {}
+      }
       // Update sidebar stats
       const lbTotal=document.getElementById('lb-total');
       const lbBurners=document.getElementById('lb-burners');
