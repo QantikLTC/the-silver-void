@@ -6,7 +6,7 @@
 
 Engrave your legacy in the history of Litecoin.
 
-🔗 **Live Demo** → [the-silver-void.vercel.app](https://the-silver-void.vercel.app)
+🔗 **Live Demo** → https://www.thesilvervoid.com/
 
 ---
 
