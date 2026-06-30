@@ -5392,9 +5392,18 @@ async function duelReveal() {
     }
 
     duelShowResult(isWin, isTie, choiceA, choiceB);
-    // Save to persistent history
+    // Save to persistent history — read the REAL stake from the contract
+    // rather than duelSelectedStake, which is a single shared variable that
+    // gets overwritten every time a new duel is created. If this reveal
+    // happens after creating another duel in between, that shared variable
+    // would hold the wrong stake by the time we got here.
+    let realStake = duelSelectedStake; // fallback if the contract read fails
+    try {
+      const d = await duelContract.getDuel(duelMyId);
+      realStake = ethers.formatEther(d.stake);
+    } catch (e) { console.warn('Could not read real stake for history, using fallback:', e); }
     const _hist = duelHistoryLoad();
-    _hist.unshift({ duelId: duelMyId ? duelMyId.toString() : '?', isWin, isTie, myChoice: duelMyChoiceNum, oppChoice: choiceB, stake: duelSelectedStake, ts: Date.now(), role: 'creator' });
+    _hist.unshift({ duelId: duelMyId ? duelMyId.toString() : '?', isWin, isTie, myChoice: duelMyChoiceNum, oppChoice: choiceB, stake: realStake, ts: Date.now(), role: 'creator' });
     duelHistorySave(_hist);
     duelRenderHistory();
     if (typeof featsCheck === 'function') featsCheck();
@@ -5555,29 +5564,72 @@ async function duelRenderOpen(page) {
   const start = _duelOpenPage * _duelOpenPerPage;
   const pageItems = filtered.slice(start, start + _duelOpenPerPage);
 
-  // Pre-fetch display names for the creators shown on this page (usernames if set, else short address)
+  // Pre-fetch display names, avatars, and rank for the creators shown on this page
   const _nameCache = {};
+  const _rankCache = {}; // addr -> { idx, name, color }
+  const RANK_NAMES = ['Simple Holder','Apprentice Litecoiner','Devoted Litecoiner','Silver Maximalist'];
+  const RANK_STARS = ['★','★★','★★★','★★★★'];
+  const RANK_MOONS = ['🌑','🌒','🌓','🌕'];
   await Promise.all(pageItems.map(async d => {
     const addr = d.playerA;
     if (_nameCache[addr]) return;
     let uname = null;
     try { uname = typeof usernameFetch === 'function' ? await usernameFetch(addr) : null; } catch(e) {}
     _nameCache[addr] = uname || (addr.slice(0,6) + '...' + addr.slice(-4));
+    try {
+      const r = Number(await readContract.getRank(addr));
+      if (r >= 0) {
+        const idx = Math.min(r, 3);
+        _rankCache[addr] = { idx, name: RANK_NAMES[idx], stars: RANK_STARS[idx], moon: RANK_MOONS[idx], color: getRankColor(RANK_NAMES[idx] + ' ' + RANK_STARS[idx]) };
+      }
+    } catch (e) {}
   }));
+
+  // Relative time label — "just now", "5m ago", "2h ago"
+  function relTime(unixSeconds) {
+    const diff = Math.floor(Date.now() / 1000) - Number(unixSeconds);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    return Math.floor(diff / 86400) + 'd ago';
+  }
 
   list.innerHTML = '';
   pageItems.forEach(d => {
     const isMe = connectedAddress && d.playerA.toLowerCase() === connectedAddress.toLowerCase();
+    const stakeNum = parseFloat(ethers.formatEther(d.stake));
+    const isHighStakes = stakeNum >= 1;
+    const rank = _rankCache[d.playerA];
+
     const div = document.createElement('div');
     div.className = isMe ? '' : 'duel-card-live';
-    div.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:3px;padding:1rem;';
+    div.style.cssText = isHighStakes
+      ? 'background:linear-gradient(135deg,rgba(200,168,74,0.1),rgba(255,255,255,0.02));border:1px solid rgba(200,168,74,0.4);border-radius:4px;padding:1rem;position:relative;overflow:hidden;'
+      : 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:3px;padding:1rem;position:relative;';
+
+    const highStakesBadge = isHighStakes
+      ? `<div style="position:absolute;top:0;right:0;background:rgba(200,168,74,0.22);color:#e8d088;font-size:0.5rem;letter-spacing:0.1em;padding:0.2rem 0.6rem;border-bottom-left-radius:4px;font-family:'Cinzel',serif;">HIGH STAKES</div>`
+      : '';
+
+    const avatarHTML = rank
+      ? `<div style="width:38px;height:38px;min-width:38px;border-radius:50%;background:radial-gradient(circle,${rank.color}33,${rank.color}0a);border:1px solid ${rank.color};display:flex;align-items:center;justify-content:center;font-size:1.1rem;">${rank.moon}</div>`
+      : `<div style="width:38px;height:38px;min-width:38px;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;">👤</div>`;
+
+    const rankBadge = rank
+      ? `<span style="font-size:0.6rem;color:${rank.color};margin-left:0.4rem;">${rank.stars} ${rank.name}</span>`
+      : '';
+
     div.innerHTML = `
+      ${highStakesBadge}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${isMe?'0':'0.7rem'};">
-        <div>
-          <div style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.2em;color:#7755cc;">DUEL #${d.id}</div>
-          <div style="color:#8ab0c8;font-size:0.8rem;">${_nameCache[d.playerA]}</div>
+        <div style="display:flex;align-items:center;gap:0.7rem;">
+          ${avatarHTML}
+          <div>
+            <div style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.2em;color:#7755cc;">DUEL #${d.id} · ${relTime(d.createdAt)}</div>
+            <div style="color:#8ab0c8;font-size:0.8rem;">${_nameCache[d.playerA]}${rankBadge}</div>
+          </div>
         </div>
-        <div style="font-family:'Cinzel',serif;font-size:0.75rem;color:var(--teal);">${ethers.formatEther(d.stake)} zkLTC</div>
+        <div style="font-family:'Cinzel',serif;font-size:${isHighStakes?'0.9rem':'0.75rem'};color:${isHighStakes?'#c8a84a':'var(--teal)'};">${ethers.formatEther(d.stake)} zkLTC</div>
       </div>
       ${!isMe ? `
         <div style="font-size:0.7rem;color:rgba(255,255,255,0.25);margin-bottom:0.5rem;font-style:italic;">Choose your weapon:</div>
