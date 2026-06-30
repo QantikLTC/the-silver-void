@@ -1444,6 +1444,14 @@ body::after {
 .lb-row:hover { background:rgba(0,229,204,0.02); }
 @media(max-width:600px){ .lb-row { grid-template-columns:30px 1fr 90px; } }
 
+/* Top-3 tinted bands — gold / silver / bronze */
+.lb-row.gold { background:linear-gradient(to right,rgba(200,168,74,0.1),rgba(200,168,74,0.02)); border-left:2px solid #c8a84a; }
+.lb-row.silver-r { background:linear-gradient(to right,rgba(143,168,190,0.08),rgba(143,168,190,0.02)); border-left:2px solid #8fa8be; }
+.lb-row.bronze { background:linear-gradient(to right,rgba(160,112,48,0.08),rgba(160,112,48,0.02)); border-left:2px solid #a07030; }
+.lb-row.gold:hover { background:linear-gradient(to right,rgba(200,168,74,0.16),rgba(200,168,74,0.04)); }
+.lb-row.silver-r:hover { background:linear-gradient(to right,rgba(143,168,190,0.14),rgba(143,168,190,0.04)); }
+.lb-row.bronze:hover { background:linear-gradient(to right,rgba(160,112,48,0.14),rgba(160,112,48,0.04)); }
+
 /* Rank number */
 .lb-rank-num {
   font-family:'Cinzel',serif; font-size:0.65rem; font-weight:600;
@@ -2335,7 +2343,7 @@ function svIntroParticles() {
         <div class="rcc-label">Your Current Rank</div>
         <div class="rcc-badge-box">
           <div class="rcc-icon-container">
-            <div id="rcc-lor-icon" style="width:100%;aspect-ratio:3/4;overflow:hidden;border-radius:4px;background:rgba(6,4,28,0.6);display:flex;align-items:center;justify-content:center;margin-bottom:0.6rem;opacity:0.25;"><img src="https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" /></div>
+            <div id="rcc-lor-icon" style="width:100%;aspect-ratio:3/4;overflow:hidden;border-radius:4px;background:rgba(6,4,28,0.6);display:flex;align-items:center;justify-content:center;margin-bottom:0.6rem;opacity:0.25;"><img src="https://gateway.pinata.cloud/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" /></div>
           </div>
           <div class="rcc-info">
             <div id="rcc-rank-name" style="color:rgba(255,255,255,0.25);font-weight:bold;font-family:'Cinzel',serif;">— Not connected —</div>
@@ -2400,7 +2408,7 @@ function svIntroParticles() {
       <!-- RANK 0 -->
       <div class="lor-rcard lor-c0" onclick="toggleNFTPool(event,0,'#8ab0c8')" style="cursor:pointer;">
         <div class="lor-card-art" style="position:relative;overflow:hidden;">
-          <div class="lor-card-art-img"><img src="https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy" alt="Rank 0"></div>
+          <div class="lor-card-art-img"><img src="https://gateway.pinata.cloud/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy" alt="Rank 0"></div>
           <div class="lor-art-glow" style="position:absolute;inset:0;z-index:1;background:linear-gradient(to bottom,transparent 40%,rgba(4,2,26,0.85) 100%);"></div>
         </div>
         <div class="lor-card-body">
@@ -2419,7 +2427,7 @@ function svIntroParticles() {
       <div class="lor-rcard lor-c1" onclick="toggleNFTPool(event,1,'#00e5cc')" style="cursor:pointer;">
         <div class="lor-card-art" style="position:relative;overflow:hidden;">
           <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,30,28,0.15) 0%,rgba(0,20,20,0.55) 100%);z-index:1;"></div>
-          <div class="lor-card-art-img"><img src="https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeib2a5dsgetiq55b7pxvmkddbscran2phkl3fjetqpdl5bpjl6cp5a" alt="Rank I"></div>
+          <div class="lor-card-art-img"><img src="https://gateway.pinata.cloud/ipfs/bafybeib2a5dsgetiq55b7pxvmkddbscran2phkl3fjetqpdl5bpjl6cp5a" alt="Rank I"></div>
         </div>
         <div class="lor-card-body">
           <div class="lor-rank-label">Rank 2 &middot; Novice</div>
@@ -2436,7 +2444,7 @@ function svIntroParticles() {
       <!-- RANK II -->
       <div class="lor-rcard lor-c2" onclick="toggleNFTPool(event,2,'#5a9fff')" style="cursor:pointer;">
         <div class="lor-card-art-img">
-          <img src="https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeiex5rrboz6yhh2efgjkwlcjwgfc2mdqvvsgawfvagzwf7lqjalkbe" alt="Rank II">
+          <img src="https://gateway.pinata.cloud/ipfs/bafybeiex5rrboz6yhh2efgjkwlcjwgfc2mdqvvsgawfvagzwf7lqjalkbe" alt="Rank II">
         </div>
         <div class="lor-card-body">
           <div class="lor-rank-label">Rank 3 &middot; Adept</div>
@@ -2453,7 +2461,7 @@ function svIntroParticles() {
       <!-- RANK III -->
       <div class="lor-rcard lor-c3" onclick="toggleNFTPool(event,3,'#7755cc')" style="cursor:pointer;">
         <div class="lor-card-art-img">
-          <img src="https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeih7a7esome33rby4spi3d4xgdiiqeqqmy5zkmfqggiml4eah4ebty" alt="Rank III">
+          <img src="https://gateway.pinata.cloud/ipfs/bafybeih7a7esome33rby4spi3d4xgdiiqeqqmy5zkmfqggiml4eah4ebty" alt="Rank III">
         </div>
         <div class="lor-card-body">
           <div class="lor-rank-label">Rank 4 &middot; Elite</div>
@@ -2878,28 +2886,28 @@ const RANKS_DATA = [
     tag:'RANK 1 · INITIATE', name:'Simple Holder', req:'Requires 0 zkLTC',
     lore:"You hold Litecoin. The original silver to Bitcoin's gold. Your journey into the Void begins here.",
     color:'#8ab0c8', icon:'○', stars:1, xpMax:'1,000', xpPct:0,
-    artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy',
+    artUrl:'https://gateway.pinata.cloud/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy',
     nftName:'The Cryptographic Key', nftIcon:'🔑', nftDesc:'The first key to the Silver Void.'
   },
   {
     tag:'RANK 2 · NOVICE', name:'Apprentice Litecoiner', req:'Requires ≥ 5 zkLTC burned',
     lore:'Litecoin has survived every bear market, every obituary. You burn to prove your conviction runs deeper than price.',
     color:'#00e5cc', icon:'⚡', stars:2, xpMax:'5,000', xpPct:25,
-    artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeib2a5dsgetiq55b7pxvmkddbscran2phkl3fjetqpdl5bpjl6cp5a',
+    artUrl:'https://gateway.pinata.cloud/ipfs/bafybeib2a5dsgetiq55b7pxvmkddbscran2phkl3fjetqpdl5bpjl6cp5a',
     nftName:'The Alchemical Crucible', nftIcon:'⚗', nftDesc:'The crucible of transmutation.'
   },
   {
     tag:'RANK 3 · ADEPT', name:'Devoted Litecoiner', req:'Requires ≥ 20 zkLTC burned',
     lore:'MimbleWimble. Lightning Network. Decades of relentless development. You are the infrastructure behind the revolution.',
     color:'#5a9fff', icon:'◈', stars:3, xpMax:'20,000', xpPct:55,
-    artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeiex5rrboz6yhh2efgjkwlcjwgfc2mdqvvsgawfvagzwf7lqjalkbe',
+    artUrl:'https://gateway.pinata.cloud/ipfs/bafybeiex5rrboz6yhh2efgjkwlcjwgfc2mdqvvsgawfvagzwf7lqjalkbe',
     nftName:'The Node Shield', nftIcon:'🛡', nftDesc:'An impenetrable fortress of the chain.'
   },
   {
     tag:'RANK 4 · ELITE', name:'Silver Maximalist', req:'Requires ≥ 100 zkLTC burned',
     lore:'84 million coins. The fastest settlement layer. The most battle-tested chain after Bitcoin. You are its eternal guardian.',
     color:'#7755cc', icon:'◆', stars:4, xpMax:'∞', xpPct:100,
-    artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeih7a7esome33rby4spi3d4xgdiiqeqqmy5zkmfqggiml4eah4ebty',
+    artUrl:'https://gateway.pinata.cloud/ipfs/bafybeih7a7esome33rby4spi3d4xgdiiqeqqmy5zkmfqggiml4eah4ebty',
     nftName:'The Eternal Catalyst', nftIcon:'💎', nftDesc:'The legendary silver weapon of the Void.'
   },
 ];
@@ -3064,7 +3072,7 @@ function disconnectWallet(){
   const _xrl=document.getElementById('xp-rank-label'); if(_xrl) _xrl.textContent='Connect wallet to check rank';
   const _xpl=document.getElementById('xp-prog-label'); if(_xpl) _xpl.textContent='—';
   // Reset right column to disconnected state
-  const iconEl=document.getElementById('rcc-lor-icon'); if(iconEl){iconEl.innerHTML='<img src="https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;opacity:0.4;" />';}
+  const iconEl=document.getElementById('rcc-lor-icon'); if(iconEl){iconEl.innerHTML='<img src="https://gateway.pinata.cloud/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;opacity:0.4;" />';}
   const nmEl=document.getElementById('rcc-rank-name'); if(nmEl){nmEl.textContent='— Not connected —';nmEl.style.color='rgba(255,255,255,0.25)';}
   const reqEl=document.getElementById('rcc-rank-req'); if(reqEl){reqEl.textContent='Connect wallet';reqEl.style.color='rgba(255,255,255,0.45)';}
   const loreEl=document.getElementById('rcc-lore'); if(loreEl) loreEl.textContent='Connect wallet to reveal your rank in the Order.';
@@ -3364,7 +3372,7 @@ function renderLB(list, page){
     const avatarBlock = p.avatarHTML
       ? `<div class="lb-avatar" style="background:${bg};border:1px solid ${bc};overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;">${p.avatarHTML}</div>`
       : `<div class="lb-avatar" style="background:${bg};border:1px solid ${bc};color:${c}">${initials}</div>`;
-    return `<div class="lb-row">
+    return `<div class="lb-row ${numClass}">
       <div class="lb-rank-num ${numClass}">${numSymbol}</div>
       <div class="lb-user">
         ${avatarBlock}
@@ -3935,19 +3943,27 @@ function duelistLeaderboardRender(rows, updatedAt) {
     return;
   }
 
-  const medal = i => i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-
-  container.innerHTML = rows.slice(0, 50).map((r, i) => `
-    <div style="display:flex;align-items:center;gap:1rem;padding:0.8rem 1rem;background:${i<3?'rgba(119,85,204,0.07)':'rgba(255,255,255,0.02)'};border:1px solid ${i<3?'rgba(119,85,204,0.2)':'rgba(255,255,255,0.05)'};border-radius:4px;margin-bottom:0.5rem;">
-      <div style="font-family:'Cinzel',serif;font-size:0.9rem;color:rgba(255,255,255,0.4);min-width:28px;text-align:center;">${medal(i) || '#'+(i+1)}</div>
-      <div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;">${r.avatar || '<span style="font-size:1.4rem;">👤</span>'}</div>
-      <div style="flex:1;">
-        <div style="font-family:'Cinzel',serif;font-size:0.85rem;color:#fff;">${r.name}</div>
-        <div style="font-size:0.68rem;color:rgba(255,255,255,0.35);margin-top:0.15rem;">${r.wins}W · ${r.ties}T · ${r.losses}L</div>
+  const tableRows = rows.slice(0, 50).map((r, i) => {
+    const numClass = i===0?'gold':i===1?'silver-r':i===2?'bronze':'';
+    const numSymbol = i===0?'⬡':i===1?'◆':i===2?'◈':(i+1);
+    const avatarBlock = r.avatar
+      ? `<div class="lb-avatar" style="background:rgba(119,85,204,0.12);border:1px solid rgba(119,85,204,0.35);overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;">${r.avatar}</div>`
+      : `<div class="lb-avatar" style="background:rgba(119,85,204,0.12);border:1px solid rgba(119,85,204,0.35);color:#9d7fee;">${(r.name||'??').slice(0,2).toUpperCase()}</div>`;
+    return `<div class="lb-row ${numClass}">
+      <div class="lb-rank-num ${numClass}">${numSymbol}</div>
+      <div class="lb-user">
+        ${avatarBlock}
+        <div>
+          <div class="lb-addr">${r.name}</div>
+          <span class="lb-badge-chip" style="background:rgba(119,85,204,0.12);border:1px solid rgba(119,85,204,0.35);color:#9d7fee;">${r.wins}W · ${r.ties}T · ${r.losses}L</span>
+        </div>
       </div>
-      <div style="font-family:'Cinzel',serif;font-size:1rem;color:#9d7fee;font-weight:600;">${r.score} <span style="font-size:0.6rem;color:rgba(255,255,255,0.3);">pts</span></div>
-    </div>
-  `).join('');
+      <div class="lb-amount">${r.score}<span class="lb-unit">pts</span></div>
+      <div class="lb-tier" style="color:#9d7fee;"></div>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = tableRows;
 }
 
 // Background refresh every 5 minutes, regardless of which tab is open,
@@ -4242,21 +4258,21 @@ function triggerRankUp(n) {
 // ══ NFT POOL DATA ══
 const POOL_DATA = [
   [ // Rank 0 — Simple Holder
-    { rarity:'common', name:'The Litecoin Revelation', icon:'○', odds:'70%', artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy' },
-    { rarity:'rare',   name:'My First Coin',           icon:'◇', odds:'25%', artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeihqpwfgljm5lnq2ztag43bqobbcehsbqiszajg7lwi3fjmcbhvrvu' },
-    { rarity:'epic',   name:'The Voyage Begins',       icon:'◉', odds:'5%', artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeialzivo7vvpuwtar5a3ywjto2bnj4avic4vmrys4hrygyahpdsrnm' },
+    { rarity:'common', name:'The Litecoin Revelation', icon:'○', odds:'70%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy' },
+    { rarity:'rare',   name:'My First Coin',           icon:'◇', odds:'25%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeihqpwfgljm5lnq2ztag43bqobbcehsbqiszajg7lwi3fjmcbhvrvu' },
+    { rarity:'epic',   name:'The Voyage Begins',       icon:'◉', odds:'5%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeialzivo7vvpuwtar5a3ywjto2bnj4avic4vmrys4hrygyahpdsrnm' },
   ],
   [ // Rank I — Apprentice
-    { rarity:'common', name:'Spreading the Word',          icon:'◌', odds:'70%', artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeicpwxcjnwk3sfjrfcb6mv67q5sbp7eckslrvxmpbt2ejrgy3rgm2i' },
-    { rarity:'rare',   name:"Don't be afraid of FUD",      icon:'◎', odds:'25%', artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeiguzgo6mgabgejzwovmhrh42qmelht57ij6u75gcqipybhtvquyru' },
-    { rarity:'epic',   name:'Strengthening the Chain',     icon:'Ł', odds:'5%', artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeib2a5dsgetiq55b7pxvmkddbscran2phkl3fjetqpdl5bpjl6cp5a' },
+    { rarity:'common', name:'Spreading the Word',          icon:'◌', odds:'70%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeicpwxcjnwk3sfjrfcb6mv67q5sbp7eckslrvxmpbt2ejrgy3rgm2i' },
+    { rarity:'rare',   name:"Don't be afraid of FUD",      icon:'◎', odds:'25%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeiguzgo6mgabgejzwovmhrh42qmelht57ij6u75gcqipybhtvquyru' },
+    { rarity:'epic',   name:'Strengthening the Chain',     icon:'Ł', odds:'5%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeib2a5dsgetiq55b7pxvmkddbscran2phkl3fjetqpdl5bpjl6cp5a' },
   ],
   [ // Rank II — Devoted
-    { rarity:'rare',  name:'Kill the FUD!',      icon:'⊕', odds:'90%', artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeihx6rva74ucbfp4oz2pzo2jt5bzhovvphdxjxhixk6enmepu424tm' },
-    { rarity:'epic',  name:'MimbleWimble user',  icon:'◈', odds:'10%', artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeiex5rrboz6yhh2efgjkwlcjwgfc2mdqvvsgawfvagzwf7lqjalkbe' },
+    { rarity:'rare',  name:'Kill the FUD!',      icon:'⊕', odds:'90%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeihx6rva74ucbfp4oz2pzo2jt5bzhovvphdxjxhixk6enmepu424tm' },
+    { rarity:'epic',  name:'MimbleWimble user',  icon:'◈', odds:'10%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeiex5rrboz6yhh2efgjkwlcjwgfc2mdqvvsgawfvagzwf7lqjalkbe' },
   ],
   [ // Rank III — Silver Maximalist
-    { rarity:'epic', name:'The silver throne', icon:'◆', odds:'100%', artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeih7a7esome33rby4spi3d4xgdiiqeqqmy5zkmfqggiml4eah4ebty' },
+    { rarity:'epic', name:'The silver throne', icon:'◆', odds:'100%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeih7a7esome33rby4spi3d4xgdiiqeqqmy5zkmfqggiml4eah4ebty' },
   ],
 ];
 
@@ -5802,13 +5818,13 @@ const FEATS = [
   { id:'nft_mint',     icon:'🖼️', name:'Eternal Silver',     desc:'Mint your first rank NFT.', cat:'Burn' },
   // ── DUELIST SAGA — narrative arc, art-based, NFT-mintable ──
   { id:'saga_1', icon:'🪄', name:'The Awakening', desc:'Play your first duel.', cat:'Saga',
-    artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeic7e5s67cvg3z4csavcta5ab6rhvuwexe6w6bsr4smzaizkjajiua' },
+    artUrl:'https://gateway.pinata.cloud/ipfs/bafybeic7e5s67cvg3z4csavcta5ab6rhvuwexe6w6bsr4smzaizkjajiua' },
   { id:'saga_2', icon:'⚡', name:'Lightning Adept', desc:'Win 15 duels.', cat:'Saga',
-    artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeididnko67dimxkndj72t6l2lroj6hhmh3p7snic46krx3y6hbalkq' },
+    artUrl:'https://gateway.pinata.cloud/ipfs/bafybeididnko67dimxkndj72t6l2lroj6hhmh3p7snic46krx3y6hbalkq' },
   { id:'saga_3', icon:'🏰', name:'Sanctuary Glimpse', desc:'Play 40 duels.', cat:'Saga',
-    artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeih56b32p7aeemmqy3nsfqrvsxqdz36himrcrombgkvnpw5dbkybc4' },
+    artUrl:'https://gateway.pinata.cloud/ipfs/bafybeih56b32p7aeemmqy3nsfqrvsxqdz36himrcrombgkvnpw5dbkybc4' },
   { id:'saga_4', icon:'🛡️', name:'Guardian Ascended', desc:'Play 84 duels.', cat:'Saga',
-    artUrl:'https://beige-defiant-boa-301.mypinata.cloud/ipfs/bafybeiba53ur7xcck2kjjproh4z4tpgrom5n7ywchckzzrnmpvzkarjcle' },
+    artUrl:'https://gateway.pinata.cloud/ipfs/bafybeiba53ur7xcck2kjjproh4z4tpgrom5n7ywchckzzrnmpvzkarjcle' },
 ];
 
 function featsKey() {
