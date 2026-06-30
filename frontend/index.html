@@ -1444,6 +1444,27 @@ body::after {
 .lb-row:hover { background:rgba(0,229,204,0.02); }
 @media(max-width:600px){ .lb-row { grid-template-columns:30px 1fr 90px; } }
 
+/* Duelist table — extra dedicated columns for Wins / Ties / Losses / Score */
+.lb-row-duel {
+  display:grid; grid-template-columns:40px 1fr 64px 64px 64px 90px;
+  padding:0.85rem 1.5rem; border-bottom:1px solid rgba(255,255,255,0.03);
+  align-items:center; transition:background 0.2s;
+}
+.lb-row-duel:last-child { border-bottom:none; }
+.lb-row-duel:hover { background:rgba(0,229,204,0.02); }
+.lb-row-duel.gold { background:linear-gradient(to right,rgba(200,168,74,0.1),rgba(200,168,74,0.02)); border-left:2px solid #c8a84a; }
+.lb-row-duel.silver-r { background:linear-gradient(to right,rgba(143,168,190,0.08),rgba(143,168,190,0.02)); border-left:2px solid #8fa8be; }
+.lb-row-duel.bronze { background:linear-gradient(to right,rgba(160,112,48,0.08),rgba(160,112,48,0.02)); border-left:2px solid #a07030; }
+.lb-row-duel.gold:hover { background:linear-gradient(to right,rgba(200,168,74,0.16),rgba(200,168,74,0.04)); }
+.lb-row-duel.silver-r:hover { background:linear-gradient(to right,rgba(143,168,190,0.14),rgba(143,168,190,0.04)); }
+.lb-row-duel.bronze:hover { background:linear-gradient(to right,rgba(160,112,48,0.14),rgba(160,112,48,0.04)); }
+.lb-stat-col { text-align:center; font-family:'Cinzel',serif; font-size:0.78rem; }
+.lb-stat-col-label { display:block; font-size:0.5rem; letter-spacing:0.1em; color:rgba(255,255,255,0.25); text-transform:uppercase; margin-bottom:0.15rem; }
+@media(max-width:700px){
+  .lb-row-duel { grid-template-columns:30px 1fr 44px 44px 44px 70px; padding:0.7rem 0.8rem; }
+  .lb-stat-col { font-size:0.68rem; }
+}
+
 /* Top-3 tinted bands — gold / silver / bronze */
 .lb-row.gold { background:linear-gradient(to right,rgba(200,168,74,0.1),rgba(200,168,74,0.02)); border-left:2px solid #c8a84a; }
 .lb-row.silver-r { background:linear-gradient(to right,rgba(143,168,190,0.08),rgba(143,168,190,0.02)); border-left:2px solid #8fa8be; }
@@ -2577,18 +2598,45 @@ function svIntroParticles() {
 
   <!-- DUELIST LEADERBOARD PANEL -->
   <div id="lb-panel-duel" style="display:none;">
-    <div style="max-width:680px;margin:0 auto;">
-      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(119,85,204,0.25);border-radius:4px;padding:1.5rem;margin-bottom:1.2rem;display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.2em;color:#9d7fee;text-transform:uppercase;">Scoring</div>
-          <div style="font-size:0.78rem;color:rgba(255,255,255,0.5);margin-top:0.3rem;">Win +2 · Tie +1 · Loss +0 — all-time</div>
+    <div class="lb-wrap">
+
+      <!-- LEFT SIDEBAR -->
+      <div class="lb-sidebar">
+
+        <!-- Stats -->
+        <div class="lb-stats-card">
+          <div class="lb-stat-item">
+            <span class="lb-stat-label">Duels Played</span>
+            <div class="lb-stat-val" id="lb-duel-total-played">—</div>
+          </div>
+          <div class="lb-stat-item">
+            <span class="lb-stat-label">zkLTC Burned</span>
+            <div class="lb-stat-val" id="lb-duel-total-burned">—<span class="lb-stat-unit">zkLTC</span></div>
+          </div>
+          <div class="lb-stat-item">
+            <span class="lb-stat-label">Total Players</span>
+            <div class="lb-stat-val" id="lb-duel-total-players">—</div>
+          </div>
         </div>
-        <button onclick="duelistLeaderboardRefresh(true)" style="background:transparent;border:1px solid rgba(119,85,204,0.3);color:rgba(157,127,238,0.7);font-size:0.7rem;padding:0.4rem 0.7rem;border-radius:3px;cursor:pointer;">↻ Refresh</button>
+
+        <!-- Scoring -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(119,85,204,0.25);border-radius:4px;padding:1.2rem;">
+          <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.2em;color:#9d7fee;text-transform:uppercase;margin-bottom:0.4rem;">Scoring</div>
+          <div style="font-size:0.78rem;color:rgba(255,255,255,0.5);">Win +2 · Tie +1 · Loss +0 — all-time</div>
+        </div>
+
+        <!-- Live / refresh -->
+        <button onclick="duelistLeaderboardRefresh(true)" style="background:transparent;border:1px solid rgba(119,85,204,0.3);color:rgba(157,127,238,0.7);font-size:0.7rem;padding:0.6rem 0.7rem;border-radius:3px;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:0.1em;text-transform:uppercase;">↻ Refresh</button>
+        <div id="lb-duel-updated" style="text-align:center;font-size:0.68rem;color:rgba(255,255,255,0.25);font-style:italic;"></div>
       </div>
-      <div id="lb-duel-updated" style="text-align:center;font-size:0.68rem;color:rgba(255,255,255,0.25);margin-bottom:1rem;font-style:italic;"></div>
-      <div id="lb-duel-rows">
-        <div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;">Scanning the arena...</div>
+
+      <!-- TABLE -->
+      <div class="lb-table-wrap">
+        <div id="lb-duel-rows">
+          <div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;">Scanning the arena...</div>
+        </div>
       </div>
+
     </div>
   </div>
 
@@ -3833,7 +3881,7 @@ async function duelistLeaderboardScan() {
   if (!duelReadContract) {
     try { await initDuelContract(); } catch(e) {}
   }
-  if (!duelReadContract) return [];
+  if (!duelReadContract) return { rows: [], totalPlayed: 0, totalBurnedZkltc: 0, totalPlayers: 0 };
 
   const ZERO = '0x0000000000000000000000000000000000000000';
   const scores = {}; // wallet (lowercase) -> { wins, ties, losses, score }
@@ -3894,7 +3942,14 @@ async function duelistLeaderboardScan() {
   }));
 
   rows.sort((a, b) => b.score - a.score || (b.wins - a.wins));
-  return rows;
+
+  // Sidebar stats — read straight from the contract for accuracy, falling
+  // back to derived values from the scan if the contract calls fail.
+  let totalPlayed = 0, totalBurnedZkltc = 0;
+  try { totalPlayed = Number(await duelReadContract.totalDuels()); } catch(e) {}
+  try { totalBurnedZkltc = parseFloat(ethers.formatEther(await duelReadContract.totalBurned())); } catch(e) {}
+
+  return { rows, totalPlayed, totalBurnedZkltc, totalPlayers: wallets.length };
 }
 
 async function duelistLeaderboardRefresh(force) {
@@ -3902,7 +3957,7 @@ async function duelistLeaderboardRefresh(force) {
   const isFresh = _duelistLBCache && (now - _duelistLBCache.updatedAt) < DUELIST_LB_REFRESH_MS;
 
   if (!force && isFresh) {
-    duelistLeaderboardRender(_duelistLBCache.rows, _duelistLBCache.updatedAt);
+    duelistLeaderboardRender(_duelistLBCache.rows, _duelistLBCache.updatedAt, _duelistLBCache);
     return;
   }
   if (_duelistLBScanning) return; // avoid overlapping scans
@@ -3914,9 +3969,9 @@ async function duelistLeaderboardRefresh(force) {
   }
 
   try {
-    const rows = await duelistLeaderboardScan();
-    _duelistLBCache = { rows, updatedAt: Date.now() };
-    duelistLeaderboardRender(rows, _duelistLBCache.updatedAt);
+    const scanResult = await duelistLeaderboardScan();
+    _duelistLBCache = { ...scanResult, updatedAt: Date.now() };
+    duelistLeaderboardRender(_duelistLBCache.rows, _duelistLBCache.updatedAt, _duelistLBCache);
   } catch (e) {
     console.error('Duelist leaderboard scan failed:', e);
     if (rowsContainer && !isFresh) {
@@ -3927,7 +3982,7 @@ async function duelistLeaderboardRefresh(force) {
   }
 }
 
-function duelistLeaderboardRender(rows, updatedAt) {
+function duelistLeaderboardRender(rows, updatedAt, stats) {
   const container = document.getElementById('lb-duel-rows');
   const updatedLabel = document.getElementById('lb-duel-updated');
   if (!container) return;
@@ -3938,10 +3993,30 @@ function duelistLeaderboardRender(rows, updatedAt) {
     updatedLabel.textContent = `Last updated ${label}`;
   }
 
+  // Sidebar stats — Duels Played / zkLTC Burned / Total Players
+  if (stats) {
+    const playedEl = document.getElementById('lb-duel-total-played');
+    const burnedEl = document.getElementById('lb-duel-total-burned');
+    const playersEl = document.getElementById('lb-duel-total-players');
+    if (playedEl) playedEl.textContent = (stats.totalPlayed ?? 0).toString();
+    if (burnedEl) burnedEl.innerHTML = (stats.totalBurnedZkltc ?? 0).toFixed(3) + '<span class="lb-stat-unit">zkLTC</span>';
+    if (playersEl) playersEl.textContent = (stats.totalPlayers ?? 0).toString();
+  }
+
   if (!rows || rows.length === 0) {
     container.innerHTML = '<div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;">No resolved duels yet. Be the first to fight!</div>';
     return;
   }
+
+  const headerRow = `
+    <div class="lb-row-duel" style="border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:0.6rem;">
+      <div></div>
+      <div style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.15em;color:rgba(255,255,255,0.3);text-transform:uppercase;">Duelist</div>
+      <div class="lb-stat-col" style="color:rgba(157,200,127,0.7);">W</div>
+      <div class="lb-stat-col" style="color:rgba(255,255,255,0.35);">T</div>
+      <div class="lb-stat-col" style="color:rgba(255,136,153,0.7);">L</div>
+      <div class="lb-stat-col" style="color:#9d7fee;">Score</div>
+    </div>`;
 
   const tableRows = rows.slice(0, 50).map((r, i) => {
     const numClass = i===0?'gold':i===1?'silver-r':i===2?'bronze':'';
@@ -3949,21 +4024,20 @@ function duelistLeaderboardRender(rows, updatedAt) {
     const avatarBlock = r.avatar
       ? `<div class="lb-avatar" style="background:rgba(119,85,204,0.12);border:1px solid rgba(119,85,204,0.35);overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;">${r.avatar}</div>`
       : `<div class="lb-avatar" style="background:rgba(119,85,204,0.12);border:1px solid rgba(119,85,204,0.35);color:#9d7fee;">${(r.name||'??').slice(0,2).toUpperCase()}</div>`;
-    return `<div class="lb-row ${numClass}">
+    return `<div class="lb-row-duel ${numClass}">
       <div class="lb-rank-num ${numClass}">${numSymbol}</div>
       <div class="lb-user">
         ${avatarBlock}
-        <div>
-          <div class="lb-addr">${r.name}</div>
-          <span class="lb-badge-chip" style="background:rgba(119,85,204,0.12);border:1px solid rgba(119,85,204,0.35);color:#9d7fee;">${r.wins}W · ${r.ties}T · ${r.losses}L</span>
-        </div>
+        <div class="lb-addr">${r.name}</div>
       </div>
-      <div class="lb-amount">${r.score}<span class="lb-unit">pts</span></div>
-      <div class="lb-tier" style="color:#9d7fee;"></div>
+      <div class="lb-stat-col" style="color:rgba(157,200,127,0.9);">${r.wins}</div>
+      <div class="lb-stat-col" style="color:rgba(255,255,255,0.5);">${r.ties}</div>
+      <div class="lb-stat-col" style="color:rgba(255,136,153,0.9);">${r.losses}</div>
+      <div class="lb-amount" style="color:#9d7fee;">${r.score}<span class="lb-unit" style="color:rgba(157,127,238,0.5);">pts</span></div>
     </div>`;
   }).join('');
 
-  container.innerHTML = tableRows;
+  container.innerHTML = headerRow + tableRows;
 }
 
 // Background refresh every 5 minutes, regardless of which tab is open,
