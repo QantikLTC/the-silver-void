@@ -3877,6 +3877,7 @@ async function updateNFTButton(rankNum) {
 const DUELIST_LB_REFRESH_MS = 5 * 60 * 1000; // 5 minutes
 let _duelistLBCache = null;       // { rows: [...], updatedAt: timestamp }
 let _duelistLBScanning = false;
+let _arenaBgScanWallet = null; // wallet address for which we've already fired the background Arena-record scan this page load — prevents re-triggering forever for wallets with zero duels played
 
 function lbSwitchTab(tab) {
   const burnPanel = document.getElementById('lb-panel-burn');
@@ -7479,9 +7480,19 @@ function profileStatsRender() {
     // Kick off a background scan so the next time this tab opens (or the
     // Duelist board is visited) we have the real numbers cached. Fire and
     // forget — this tab must stay instant, so we don't await it.
-    if (connectedAddress && typeof duelistLeaderboardRefresh === 'function') {
+    //
+    // Guarded to run AT MOST ONCE per wallet per page load: a wallet that
+    // has genuinely never played a duel will never get a cacheRow (the
+    // scan only creates rows for wallets with at least one finished duel),
+    // so without this guard the .then() callback below would re-render,
+    // land back in this same "no cacheRow" branch, and re-trigger the scan
+    // — forever. That infinite loop is what was freezing the tab.
+    if (connectedAddress && typeof duelistLeaderboardRefresh === 'function'
+        && !_duelistLBScanning && _arenaBgScanWallet !== connectedAddress) {
+      _arenaBgScanWallet = connectedAddress;
       duelistLeaderboardRefresh(false).then(() => {
-        if (document.getElementById('profile-panel')?.style.display === 'block') profileStatsRender();
+        const stillOpen = document.getElementById('profile-panel');
+        if (stillOpen && stillOpen.style.display === 'block') profileStatsRender();
       }).catch(() => {});
     }
   }
