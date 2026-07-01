@@ -1431,6 +1431,12 @@ body::after {
   0%, 100% { box-shadow:0 0 0 0 rgba(0,229,204,0.25), 0 0 12px rgba(0,229,204,0.08); }
   50% { box-shadow:0 0 0 4px rgba(0,229,204,0.12), 0 0 22px rgba(0,229,204,0.22); }
 }
+@keyframes svTickerScroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+#activity-ticker-track.scrolling { animation: svTickerScroll 32s linear infinite; }
+#activity-ticker-track:hover.scrolling { animation-play-state: paused; }
 #nav-duels-badge { animation:svPulseDot 1.6s ease-in-out infinite; }
 .duel-card-live { animation:svPulseCard 2.6s ease-in-out infinite; border-color:rgba(0,229,204,0.35) !important; }
 
@@ -2105,6 +2111,21 @@ function svIntroParticles() {
   </div>
 </nav>
 
+<!-- ═══════════════ GLOBAL ACTIVITY TICKER (Store + Duels) ═══════════════ -->
+<!-- Lives outside the section-toggle system (STORE_MAIN_SECTIONS) so it
+     stays visible whether the visitor is browsing the main site or the
+     Store page — it's the one place a sale should always be advertised. -->
+<div id="activity-ticker" style="display:none;background:#0a0620;border-bottom:1px solid rgba(0,229,204,0.15);overflow:hidden;position:relative;z-index:5;">
+  <div style="max-width:1100px;margin:0 auto;padding:0.55rem 1.2rem;display:flex;align-items:center;gap:0.7rem;">
+    <span style="width:6px;height:6px;border-radius:50%;background:#ff4444;display:inline-block;flex-shrink:0;animation:svPulseDot 1.5s ease infinite;"></span>
+    <div style="flex:1;overflow:hidden;position:relative;">
+      <div id="activity-ticker-track" style="display:flex;gap:2.2rem;white-space:nowrap;width:max-content;">
+        <span style="font-size:0.75rem;color:rgba(255,255,255,0.3);font-style:italic;">Loading recent activity...</span>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MENU OVERLAY -->
 <div class="menu-overlay" id="menu-overlay">
   <div class="menu-brand">The <em>Si<span class="ltc-letter">Ł</span>ver</em> Void</div>
@@ -2211,7 +2232,7 @@ function svIntroParticles() {
     </blockquote>
     <div class="hero-counter">
       <div class="hc-item">
-        <span class="hc-val"><span id="hero-total">—</span><span class="u">zkLTC</span></span>
+        <span class="hc-val"><span id="hero-total" style="color:#ff6655;">—</span><span class="u">zkLTC</span></span>
         <span class="hc-label">Destroyed</span>
       </div>
       <div class="hc-sep"></div>
@@ -2231,7 +2252,7 @@ function svIntroParticles() {
       <div class="hero-counter-pc">
         <div class="hcpc-main">
           <div class="hcpc-unit" style="margin-bottom:0.3rem;">zkLTC</div>
-          <div class="hcpc-val" id="hero-total-pc">—</div>
+          <div class="hcpc-val" id="hero-total-pc" style="color:#ff6655;">—</div>
           <span class="hcpc-label">Total Destroyed</span>
         </div>
         <div class="hcpc-row">
@@ -2535,7 +2556,7 @@ function svIntroParticles() {
       <div class="lb-stats-card">
         <div class="lb-stat-item">
           <span class="lb-stat-label">Total Destroyed</span>
-          <div class="lb-stat-val" id="lb-total">—<span class="lb-stat-unit">zkLTC</span></div>
+          <div class="lb-stat-val" id="lb-total" style="color:#ff6655;">—<span class="lb-stat-unit">zkLTC</span></div>
         </div>
         <div class="lb-stat-item">
           <span class="lb-stat-label">Sacrifiants</span>
@@ -2606,12 +2627,12 @@ function svIntroParticles() {
         <!-- Stats -->
         <div class="lb-stats-card">
           <div class="lb-stat-item">
-            <span class="lb-stat-label">Duels Played</span>
-            <div class="lb-stat-val" id="lb-duel-total-played">—</div>
+            <span class="lb-stat-label">zkLTC Burned</span>
+            <div class="lb-stat-val" id="lb-duel-total-burned" style="color:#ff6655;">—<span class="lb-stat-unit">zkLTC</span></div>
           </div>
           <div class="lb-stat-item">
-            <span class="lb-stat-label">zkLTC Burned</span>
-            <div class="lb-stat-val" id="lb-duel-total-burned">—<span class="lb-stat-unit">zkLTC</span></div>
+            <span class="lb-stat-label">Duels Played</span>
+            <div class="lb-stat-val" id="lb-duel-total-played">—</div>
           </div>
           <div class="lb-stat-item">
             <span class="lb-stat-label">Total Players</span>
@@ -2704,8 +2725,8 @@ function svIntroParticles() {
         <span id="duel-stat-ties" style="font-family:'Cinzel',serif;font-size:1.3rem;color:var(--teal);display:block;">—</span>
         <span style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,255,255,0.2);font-family:'Cinzel',serif;text-transform:uppercase;display:block;margin-top:0.25rem;">Ties</span>
       </div>
-      <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1rem;text-align:center;">
-        <span id="duel-stat-burned" style="font-family:'Cinzel',serif;font-size:1.3rem;color:var(--teal);display:block;">—</span>
+      <div style="flex:1;background:linear-gradient(135deg,rgba(255,102,85,0.07),rgba(255,102,85,0.02));border:1px solid rgba(255,102,85,0.18);border-radius:4px;padding:1rem;text-align:center;">
+        <span id="duel-stat-burned" style="font-family:'Cinzel',serif;font-size:1.3rem;color:#ff6655;display:block;">—</span>
         <span style="font-size:0.55rem;letter-spacing:0.2em;color:rgba(255,255,255,0.2);font-family:'Cinzel',serif;text-transform:uppercase;display:block;margin-top:0.25rem;">zkLTC Burned</span>
       </div>
       <div style="flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1rem;text-align:center;">
@@ -4905,6 +4926,150 @@ async function initDuelContract() {
   duelContract = new ethers.Contract(DUEL_CONTRACT, DUEL_ABI, signer);
 }
 
+// ═══ GLOBAL ACTIVITY TICKER — mixes Store sales + Duel outcomes ═══
+// Deliberately leaves out individual sacrifice/burn events: the ritual
+// contract's ABI only exposes read functions (getStats, getTopBurners),
+// no event for a single burn is declared, so there's no reliable "who
+// burned what, when" source to poll without guessing an event signature.
+let _tickerBlockCache = new Map();
+
+async function _tickerBlockTime(bn) {
+  if (_tickerBlockCache.has(bn)) return _tickerBlockCache.get(bn);
+  try {
+    const block = await readProvider.getBlock(bn);
+    const t = block ? block.timestamp : null;
+    _tickerBlockCache.set(bn, t);
+    return t;
+  } catch (e) { return null; }
+}
+
+function _tickerRelTime(unixSeconds) {
+  if (unixSeconds == null) return '';
+  const diff = Math.floor(Date.now() / 1000) - Number(unixSeconds);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  return Math.floor(diff / 86400) + 'd ago';
+}
+
+function _tickerShortAddr(a) {
+  return a ? a.slice(0, 5) + '...' + a.slice(-4) : '—';
+}
+
+async function loadActivityTicker() {
+  const bar = document.getElementById('activity-ticker');
+  const track = document.getElementById('activity-ticker-track');
+  if (!bar || !track) return;
+
+  try {
+    if (!storeReadContract && typeof initStoreContract === 'function') await initStoreContract();
+
+    const items = [];
+
+    // Store sales
+    if (storeReadContract) {
+      try {
+        const sold = await storeReadContract.queryFilter('Sold', 0, 'latest');
+        for (const ev of sold.slice(-20)) {
+          items.push({ type: 'sale', blockNumber: ev.blockNumber, ev });
+        }
+      } catch (e) { console.warn('ticker: Sold events unavailable', e.message); }
+    }
+
+    // Duel outcomes (wins + ties)
+    if (duelReadContract) {
+      try {
+        const [revealed, tied] = await Promise.all([
+          duelReadContract.queryFilter('DuelRevealed', 0, 'latest'),
+          duelReadContract.queryFilter('DuelTied', 0, 'latest')
+        ]);
+        for (const ev of revealed.slice(-20)) items.push({ type: 'duel', blockNumber: ev.blockNumber, ev });
+        for (const ev of tied.slice(-20)) items.push({ type: 'tie', blockNumber: ev.blockNumber, ev });
+      } catch (e) { console.warn('ticker: duel events unavailable', e.message); }
+    }
+
+    if (items.length === 0) { bar.style.display = 'none'; return; }
+
+    // Most recent first, cap at 12 so the strip stays readable
+    items.sort((a, b) => b.blockNumber - a.blockNumber);
+    const latest = items.slice(0, 12);
+
+    // Resolve timestamps + labels in parallel
+    const resolved = await Promise.all(latest.map(async item => {
+      const ts = await _tickerBlockTime(item.blockNumber);
+      const when = _tickerRelTime(ts);
+
+      if (item.type === 'sale') {
+        const price = parseFloat(ethers.formatEther(item.ev.args.price)).toFixed(3);
+        let label = price + ' zkLTC';
+        try {
+          const listing = await storeReadContract.getListing(item.ev.args.listingId);
+          const relic = await storeResolveRelic(listing.nftContract, listing.tokenId);
+          if (relic && relic.name) label = relic.name;
+        } catch (e) {}
+        return { icon: 'ti-flame', color: '#e24b4a', accent: '#00e5cc',
+          html: `<span style="font-family:'Cinzel',serif;color:#fff;">${label}</span>`
+              + ` <span style="color:rgba(255,255,255,0.35);">sold for</span>`
+              + ` <span style="font-family:'Cinzel',serif;color:#00e5cc;">${price} zkLTC</span>`,
+          when, blockNumber: item.blockNumber };
+      }
+
+      if (item.type === 'duel') {
+        try {
+          const d = await duelReadContract.getDuel(item.ev.args.duelId);
+          const stake = parseFloat(ethers.formatEther(d.stake)).toFixed(3);
+          const winner = item.ev.args.winner;
+          const loser = winner.toLowerCase() === d.playerA.toLowerCase() ? d.playerB : d.playerA;
+          return { icon: 'ti-sword', color: '#9d7fee',
+            html: `<span style="font-family:'Cinzel',serif;color:#fff;">${_tickerShortAddr(winner)}</span>`
+                + ` <span style="color:rgba(255,255,255,0.35);">defeated</span>`
+                + ` <span style="font-family:'Cinzel',serif;color:#fff;">${_tickerShortAddr(loser)}</span>`
+                + ` <span style="color:rgba(255,255,255,0.35);">for</span>`
+                + ` <span style="font-family:'Cinzel',serif;color:#e24b4a;">${stake} zkLTC</span>`,
+            when, blockNumber: item.blockNumber };
+        } catch (e) { return null; }
+      }
+
+      if (item.type === 'tie') {
+        try {
+          const d = await duelReadContract.getDuel(item.ev.args.duelId);
+          return { icon: 'ti-flag', color: 'rgba(255,255,255,0.3)',
+            html: `<span style="font-family:'Cinzel',serif;color:#fff;">${_tickerShortAddr(d.playerA)}</span>`
+                + ` <span style="color:rgba(255,255,255,0.35);">tied with</span>`
+                + ` <span style="font-family:'Cinzel',serif;color:#fff;">${_tickerShortAddr(d.playerB)}</span>`,
+            when, blockNumber: item.blockNumber };
+        } catch (e) { return null; }
+      }
+      return null;
+    }));
+
+    const clean = resolved.filter(Boolean);
+    if (clean.length === 0) { bar.style.display = 'none'; return; }
+
+    const entryHtml = clean.map(r => `
+      <span style="display:inline-flex;align-items:center;gap:8px;">
+        <i class="ti ${r.icon}" aria-hidden="true" style="font-size:14px;color:${r.color};"></i>
+        ${r.html}
+        <span style="font-size:0.68rem;color:rgba(255,255,255,0.25);">${r.when}</span>
+      </span>`).join('');
+
+    // Duplicate once for a seamless CSS loop (translateX(-50%))
+    track.innerHTML = entryHtml + entryHtml;
+    track.classList.toggle('scrolling', clean.length > 2);
+    bar.style.display = 'block';
+  } catch (e) {
+    console.warn('loadActivityTicker error:', e.message);
+  }
+}
+
+(function initActivityTicker() {
+  // storeResolveRelic (used to label sales) is declared further down this
+  // document; defer the very first call to the next tick so the whole
+  // script has finished executing before we touch it.
+  setTimeout(loadActivityTicker, 0);
+  setInterval(loadActivityTicker, 30000);
+})();
+
 // Restore duel state after wallet reconnect
 async function duelRestoreState() {
   await initDuelContract();
@@ -6165,6 +6330,27 @@ async function sagaMint(sagaId) {
       <div style="font-family:'Cinzel',serif;font-size:1.6rem;letter-spacing:0.08em;color:#fff;text-transform:uppercase;">The Void Store</div>
       <div style="font-size:0.78rem;color:rgba(255,255,255,0.4);font-style:italic;margin-top:0.2rem;">Every sale feeds the void. 80% to the seller, 17% burned forever, 3% to the order.</div>
     </div>
+
+    <!-- STORE STATS BANNER -->
+    <div id="store-stats-banner" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0.7rem;margin-bottom:1.4rem;">
+      <div style="background:linear-gradient(135deg,rgba(0,229,204,0.07),rgba(0,229,204,0.02));border:1px solid rgba(0,229,204,0.18);border-radius:5px;padding:0.8rem 1rem;text-align:center;">
+        <div id="store-stat-sales" style="font-family:'Cinzel',serif;font-size:1.3rem;color:var(--teal);">—</div>
+        <div style="font-size:0.55rem;letter-spacing:0.12em;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-top:0.15rem;">Relics Sold</div>
+      </div>
+      <div style="background:linear-gradient(135deg,rgba(0,229,204,0.07),rgba(0,229,204,0.02));border:1px solid rgba(0,229,204,0.18);border-radius:5px;padding:0.8rem 1rem;text-align:center;">
+        <div id="store-stat-volume" style="font-family:'Cinzel',serif;font-size:1.3rem;color:var(--teal);">—</div>
+        <div style="font-size:0.55rem;letter-spacing:0.12em;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-top:0.15rem;">zkLTC Volume</div>
+      </div>
+      <div style="background:linear-gradient(135deg,rgba(255,102,85,0.07),rgba(255,102,85,0.02));border:1px solid rgba(255,102,85,0.18);border-radius:5px;padding:0.8rem 1rem;text-align:center;">
+        <div id="store-stat-burned" style="font-family:'Cinzel',serif;font-size:1.3rem;color:#ff6655;">—</div>
+        <div style="font-size:0.55rem;letter-spacing:0.12em;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-top:0.15rem;">zkLTC Burned</div>
+      </div>
+      <div style="background:linear-gradient(135deg,rgba(0,229,204,0.07),rgba(0,229,204,0.02));border:1px solid rgba(0,229,204,0.18);border-radius:5px;padding:0.8rem 1rem;text-align:center;">
+        <div id="store-stat-lastsale" style="font-family:'Cinzel',serif;font-size:0.85rem;color:var(--teal);line-height:1.3;">—</div>
+        <div style="font-size:0.55rem;letter-spacing:0.12em;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-top:0.15rem;">Last Sale</div>
+      </div>
+    </div>
+
     <div style="display:flex;justify-content:center;margin-bottom:1.6rem;">
       <button onclick="storeClose()" style="background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.1em;padding:0.5rem 1rem;border-radius:3px;cursor:pointer;text-transform:uppercase;flex-shrink:0;">← Back to the Void</button>
     </div>
@@ -6236,6 +6422,7 @@ function storeOpen(prefillContract, prefillTokenId) {
   });
   document.getElementById('store-page').style.display = 'block';
   window.scrollTo({ top: 0, behavior: 'instant' });
+  storeLoadStats();
 
   if (prefillContract) {
     storeSwitchTab('sell');
@@ -6257,6 +6444,89 @@ function storeClose() {
     const el = document.getElementById(id);
     if (el) el.style.display = '';
   });
+}
+
+// Pulls every past Sold(listingId, buyer, seller, price) event straight from
+// the contract logs (no indexer/subgraph on this testnet, so this is the
+// only source of truth for "what has actually sold"). storeRefreshListings()
+// only ever looks at *active* listings, so this is the one place that
+// surfaces historical sales.
+let _storeStatsLoaded = false;
+async function storeLoadStats() {
+  const elSales = document.getElementById('store-stat-sales');
+  const elVolume = document.getElementById('store-stat-volume');
+  const elLast = document.getElementById('store-stat-lastsale');
+  const elBurned = document.getElementById('store-stat-burned');
+  if (!elSales) return;
+
+  try {
+    if (!storeReadContract) await initStoreContract();
+    if (!storeReadContract) return;
+
+    // Sold events give us sale count + volume. Listed events (all of them,
+    // including later-cancelled ones — the listing fee is paid upfront and
+    // isn't refunded on cancel) give us the listing-fee burn contribution.
+    const [soldEvents, listedEvents] = await Promise.all([
+      storeReadContract.queryFilter('Sold', 0, 'latest'),
+      storeReadContract.queryFilter('Listed', 0, 'latest')
+    ]);
+
+    if (soldEvents.length === 0) {
+      elSales.textContent = '0';
+      elVolume.textContent = '0';
+      elLast.textContent = 'No sales yet';
+    } else {
+      let totalVolume = 0n;
+      for (const ev of soldEvents) totalVolume += ev.args.price;
+
+      elSales.textContent = soldEvents.length.toString();
+      elVolume.textContent = parseFloat(ethers.formatEther(totalVolume)).toFixed(3);
+
+      // Most recent sale — sort by block number (fall back to array order if
+      // the RPC ever returns them unordered).
+      const last = soldEvents.slice().sort((a, b) => a.blockNumber - b.blockNumber).pop();
+      const lastPrice = parseFloat(ethers.formatEther(last.args.price)).toFixed(3);
+
+      // Try to resolve a friendly relic name for the ticker; fall back to the
+      // raw price if the listing's tokenId/contract can't be resolved (e.g.
+      // it was for an NFT contract storeResolveRelic doesn't know about).
+      let label = lastPrice + ' zkLTC';
+      try {
+        const listing = await storeReadContract.getListing(last.args.listingId);
+        const relic = await storeResolveRelic(listing.nftContract, listing.tokenId);
+        if (relic && relic.name) label = relic.name + ' — ' + lastPrice + ' zkLTC';
+      } catch (e) { /* keep the price-only fallback */ }
+
+      elLast.textContent = label;
+    }
+
+    // Burned zkLTC — 17% of every sale price (per the documented 80/17/3
+    // split) plus the burn portion of every listing fee. LISTING_COST is
+    // read live from the contract rather than hardcoded; per the "0.005
+    // burned + 0.0025 to the order" text, 2/3 of it is burned.
+    if (elBurned) {
+      try {
+        const listingCost = await storeReadContract.LISTING_COST();
+        const burnFromSales = soldEvents.reduce((acc, ev) => acc + (ev.args.price * 17n) / 100n, 0n);
+        const burnFromListings = (listingCost * 2n) / 3n * BigInt(listedEvents.length);
+        const totalBurned = burnFromSales + burnFromListings;
+        elBurned.textContent = parseFloat(ethers.formatEther(totalBurned)).toFixed(3);
+      } catch (be) {
+        console.warn('storeLoadStats burn calc error:', be.message);
+        elBurned.textContent = '—';
+      }
+    }
+
+    _storeStatsLoaded = true;
+  } catch (e) {
+    console.error('storeLoadStats error:', e);
+    if (!_storeStatsLoaded) {
+      elSales.textContent = '—';
+      elVolume.textContent = '—';
+      elLast.textContent = 'Unavailable';
+      if (elBurned) elBurned.textContent = '—';
+    }
+  }
 }
 
 function storeSwitchTab(tab) {
@@ -6657,6 +6927,7 @@ async function storeBuy(listingId) {
     await tx.wait();
     showToast('✦ Purchase complete!');
     storeRefreshListings();
+    storeLoadStats();
   } catch (e) {
     console.error('storeBuy error:', e);
     showToast(typeof duelFriendlyError === 'function' ? duelFriendlyError(e) : '✖ Purchase failed', true);
