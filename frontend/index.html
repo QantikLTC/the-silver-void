@@ -7396,6 +7396,7 @@ async function avatarSelect(id) {
         <div style="font-size:0.55rem;color:rgba(255,255,255,0.35);letter-spacing:0.05em;margin-top:0.1rem;">LOSSES</div>
       </div>
     </div>
+    <div id="stats-arena-source" style="font-size:0.58rem;color:rgba(255,255,255,0.25);font-style:italic;text-align:center;margin:-0.3rem 0 0.7rem;min-height:1em;"></div>
 
     <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(119,85,204,0.08);border:1px solid rgba(119,85,204,0.25);border-radius:3px;padding:0.6rem 0.8rem;">
       <div>
@@ -7453,20 +7454,48 @@ function profileStatsRender() {
     featsEl.textContent = unlocked + ' / ' + total;
   }
 
-  // Arena record from local duel history (instant — no chain scan needed for "my own" stats)
-  const history = typeof duelHistoryLoad === 'function' ? duelHistoryLoad() : [];
-  let wins = 0, ties = 0, losses = 0;
-  history.forEach(h => {
-    if (h.isTie) ties++;
-    else if (h.isWin) wins++;
-    else losses++;
-  });
+  // Arena record — prefer the exact on-chain numbers already computed by
+  // the Duelist board scan (accurate: every duel, every device) when a
+  // fresh-enough cache exists for this wallet. Local duel history is only
+  // a fallback for when no scan has run yet in this session (it only
+  // reflects duels observed live in *this* browser, capped at 50 — it can
+  // drift from the real on-chain record, which is why we don't trust it
+  // as the primary source anymore).
+  let wins = 0, ties = 0, losses = 0, source = 'local';
+  const cacheRow = (typeof _duelistLBCache !== 'undefined' && _duelistLBCache && connectedAddress)
+    ? _duelistLBCache.rows.find(r => r.wallet === connectedAddress.toLowerCase())
+    : null;
+
+  if (cacheRow) {
+    wins = cacheRow.wins; ties = cacheRow.ties; losses = cacheRow.losses;
+    source = 'chain';
+  } else {
+    const history = typeof duelHistoryLoad === 'function' ? duelHistoryLoad() : [];
+    history.forEach(h => {
+      if (h.isTie) ties++;
+      else if (h.isWin) wins++;
+      else losses++;
+    });
+    // Kick off a background scan so the next time this tab opens (or the
+    // Duelist board is visited) we have the real numbers cached. Fire and
+    // forget — this tab must stay instant, so we don't await it.
+    if (connectedAddress && typeof duelistLeaderboardRefresh === 'function') {
+      duelistLeaderboardRefresh(false).then(() => {
+        if (document.getElementById('profile-panel')?.style.display === 'block') profileStatsRender();
+      }).catch(() => {});
+    }
+  }
   const score = wins * 2 + ties * 1;
 
   const winsEl = document.getElementById('stats-wins'); if (winsEl) winsEl.textContent = wins;
   const tiesEl = document.getElementById('stats-ties'); if (tiesEl) tiesEl.textContent = ties;
   const lossesEl = document.getElementById('stats-losses'); if (lossesEl) lossesEl.textContent = losses;
   const scoreEl = document.getElementById('stats-score'); if (scoreEl) scoreEl.textContent = score;
+
+  const sourceEl = document.getElementById('stats-arena-source');
+  if (sourceEl) {
+    sourceEl.textContent = source === 'chain' ? '' : '(from this device only — visiting the Duelist board gives the exact count)';
+  }
 
   // Position in the global duelist leaderboard, if it's already been computed.
   // We don't trigger a fresh scan here (that's a 5-min-cached, heavier operation) —
