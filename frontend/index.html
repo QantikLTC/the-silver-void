@@ -5538,8 +5538,18 @@ async function duelClaimTimeout() {
 
 // REVEAL
 async function duelReveal() {
-  let _restoredSecret = duelMySecret || localStorage.getItem(_duelKey('secret'));
-  // Local secret missing (new device, cleared cache) — try the encrypted server backup.
+  // The local secret/choice/duelId keys are scoped per WALLET, not per duel
+  // (see _duelKey). If this wallet creates a second duel before revealing
+  // the first one, the newer secret silently overwrites the older one in
+  // localStorage. Trusting whatever's stored without checking it actually
+  // belongs to duelMyId caused "commit mismatch" reverts — worse, it also
+  // skipped the (correct) server-side recovery below, since that only ran
+  // when the local value was completely *absent*, not when it was present
+  // but stale. So: verify the stored duelId matches before trusting it.
+  const storedDuelId = localStorage.getItem(_duelKey('duelId'));
+  const localSecretIsForThisDuel = duelMyId && storedDuelId === duelMyId.toString();
+  let _restoredSecret = localSecretIsForThisDuel ? (duelMySecret || localStorage.getItem(_duelKey('secret'))) : null;
+  // Local secret missing OR stale for a different duel — try the encrypted server backup.
   if (!_restoredSecret && duelMyId && connectedAddress) {
     showToast('Recovering secret — sign to verify...');
     const recovered = await recoverSecretFromServer(duelMyId);
