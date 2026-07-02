@@ -2112,6 +2112,21 @@ function svIntroParticles() {
 </nav>
 
 <!-- ═══════════════ GLOBAL ACTIVITY TICKER (Store + Duels) ═══════════════ -->
+<!-- PERSONAL "REVEAL NEEDED" ALERT — only shown to the wallet that owns the
+     duel awaiting reveal. Independent of the public ticker below so it can
+     show even when there's no public sale/duel activity to display. -->
+<div id="reveal-alert-banner" style="display:none;background:rgba(226,75,74,0.08);border-bottom:1px solid rgba(226,75,74,0.3);position:relative;z-index:6;">
+  <div style="max-width:1100px;margin:0 auto;padding:0.6rem 1.2rem;display:flex;align-items:center;gap:10px;">
+    <i class="ti ti-alert-triangle" aria-hidden="true" style="font-size:16px;color:#e24b4a;flex-shrink:0;"></i>
+    <span style="font-size:0.8rem;color:#fff;flex:1;">
+      <span style="font-family:'Cinzel',serif;color:#e24b4a;">Your opponent has played.</span>
+      Reveal now to avoid losing the pot by timeout.
+    </span>
+    <span id="reveal-alert-countdown" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.06em;color:rgba(255,255,255,0.4);white-space:nowrap;">—</span>
+    <button onclick="document.getElementById('duel').scrollIntoView({behavior:'smooth'});" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.08em;color:#0a0620;background:#e24b4a;border:none;border-radius:4px;padding:0.4rem 0.7rem;text-transform:uppercase;white-space:nowrap;cursor:pointer;flex-shrink:0;">Reveal</button>
+  </div>
+</div>
+
 <!-- Lives outside the section-toggle system (STORE_MAIN_SECTIONS) so it
      stays visible whether the visitor is browsing the main site or the
      Store page — it's the one place a sale should always be advertised. -->
@@ -2131,7 +2146,7 @@ function svIntroParticles() {
   <div class="menu-brand">The <em>Si<span class="ltc-letter">Ł</span>ver</em> Void</div>
   <a class="menu-item" href="#ritual" onclick="closeMenu();if(typeof storeClose==='function')storeClose();"><span class="mi-icon">⬡</span>The Ritual</a>
   <a class="menu-item" href="#ranks" onclick="closeMenu();if(typeof storeClose==='function')storeClose();"><span class="mi-icon">◆</span>The Order</a>
-  <a class="menu-item" href="#duel" onclick="closeMenu();if(typeof storeClose==='function')storeClose();" style="position:relative;"><span class="mi-icon">⚔</span>Duels<span id="nav-duels-badge-mobile" style="display:none;position:absolute;top:2px;left:18px;width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px rgba(0,229,204,0.8);animation:svPulseDot 1.6s ease-in-out infinite;"></span></a>
+  <a class="menu-item" href="#duel" onclick="closeMenu();if(typeof storeClose==='function')storeClose();" style="position:relative;"><span class="mi-icon">⚔</span>Duels<span id="nav-duels-badge-mobile" style="display:none;position:absolute;top:2px;left:18px;width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px rgba(0,229,204,0.8);animation:svPulseDot 1.6s ease-in-out infinite;"></span><span id="nav-reveal-badge-mobile" style="display:none;position:absolute;top:2px;left:29px;width:7px;height:7px;border-radius:50%;background:#e24b4a;box-shadow:0 0 6px rgba(226,75,74,0.8);animation:svPulseDot 1.2s ease-in-out infinite;"></span></a>
   <a class="menu-item" href="#" onclick="closeMenu();storeOpen();return false;" style="color:var(--teal);"><span class="mi-icon">🏪</span>The Void Store</a>
   <a class="menu-item" href="#leaderboard" onclick="closeMenu();if(typeof storeClose==='function')storeClose();"><span class="mi-icon">✦</span>Sacrifiants</a>
   <a class="menu-item" href="https://liteforge.explorer.caldera.xyz/address/0x0AD3f776C45FF457d2d8e211A3174A4Db201b656" target="_blank" onclick="closeMenu()"><span class="mi-icon">⛓</span>Contract</a>
@@ -4135,7 +4150,7 @@ if(window.ethereum){
   if(nl) {
     nl.innerHTML = [['#ritual','The Ritual'],['#ranks','The Order'],['#leaderboard','Sacrifiants']]
       .map(([h,t]) => `<li><a href="${h}" onclick="if(typeof storeClose==='function')storeClose();" style="color:var(--silver-dim);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--silver)'" onmouseout="this.style.color='var(--silver-dim)'">${t}</a></li>`).join('')
-      + `<li><a href="#duel" id="nav-duels-link" onclick="if(typeof storeClose==='function')storeClose();" style="position:relative;color:var(--silver-dim);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--silver)'" onmouseout="this.style.color='var(--silver-dim)'">⚔ Duels<span id="nav-duels-badge" style="display:none;position:absolute;top:-4px;right:-10px;width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px rgba(0,229,204,0.8);"></span></a></li>`
+      + `<li><a href="#duel" id="nav-duels-link" onclick="if(typeof storeClose==='function')storeClose();" style="position:relative;color:var(--silver-dim);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--silver)'" onmouseout="this.style.color='var(--silver-dim)'">⚔ Duels<span id="nav-duels-badge" style="display:none;position:absolute;top:-4px;right:-10px;width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px rgba(0,229,204,0.8);"></span><span id="nav-reveal-badge" style="display:none;position:absolute;top:-4px;right:-22px;width:8px;height:8px;border-radius:50%;background:#e24b4a;box-shadow:0 0 6px rgba(226,75,74,0.8);animation:svPulseDot 1.2s ease-in-out infinite;"></span></a></li>`
       + `<li><a href="#" onclick="storeOpen();return false;" style="color:var(--teal);text-decoration:none;transition:all 0.3s;text-shadow:0 0 8px rgba(0,229,204,0.3);" onmouseover="this.style.textShadow='0 0 14px rgba(0,229,204,0.6)'" onmouseout="this.style.textShadow='0 0 8px rgba(0,229,204,0.3)'">🏪 Store</a></li>`;
     nl.style.display = 'flex';
   }
@@ -4913,10 +4928,12 @@ const duelHistory    = [];
     }
     // History shown only after wallet connects — not on page load
 
+    updateRevealAlert(); // initial call — don't wait for the first 15s poll tick
     setInterval(async () => {
       await duelLoadStats();
       await duelLoadOpen();
       await duelCheckMyStatus();
+      await updateRevealAlert();
     }, 15000);
   } catch(e) {}
 })();
@@ -5658,6 +5675,56 @@ async function duelCheckMyStatus() {
       showToast('⚡ Opponent joined! Reveal your choice now!');
     }
   } catch {}
+}
+
+// ═══ "REVEAL NEEDED" NOTIFICATION — nav badge + personal ticker banner ═══
+// Piggybacks on state duelCheckMyStatus() already maintains (duelMyId /
+// duelMyStatus) rather than doing its own chain scan. duelMyStatus becomes
+// 'joined' the moment the opponent has played and this wallet (the duel's
+// creator) needs to reveal — that's exactly the state we want to surface.
+const REVEAL_WINDOW_SECONDS = 21600; // 6 hours — matches contract REVEAL_DELAY
+function _revealAlertHide() {
+  const banner = document.getElementById('reveal-alert-banner');
+  if (banner) banner.style.display = 'none';
+  const b1 = document.getElementById('nav-reveal-badge'); if (b1) b1.style.display = 'none';
+  const b2 = document.getElementById('nav-reveal-badge-mobile'); if (b2) b2.style.display = 'none';
+}
+
+async function updateRevealAlert() {
+  if (!connectedAddress || !duelMyId || duelMyStatus !== 'joined' || !duelReadContract) {
+    _revealAlertHide();
+    return;
+  }
+  try {
+    const d = await duelReadContract.getDuel(duelMyId);
+    const st = Number(d.status);
+    if (st === 2 || st === 4) {
+      // Already resolved (revealed or tied) — nothing left to alert about
+      _revealAlertHide();
+      return;
+    }
+    const joinedAt = Number(d.joinedAt);
+    const remaining = REVEAL_WINDOW_SECONDS - (Math.floor(Date.now() / 1000) - joinedAt);
+    if (remaining <= 0) {
+      // Window's up — opponent can claim the pot; nudging to "reveal" is moot now
+      _revealAlertHide();
+      return;
+    }
+
+    const b1 = document.getElementById('nav-reveal-badge'); if (b1) b1.style.display = 'block';
+    const b2 = document.getElementById('nav-reveal-badge-mobile'); if (b2) b2.style.display = 'block';
+
+    const banner = document.getElementById('reveal-alert-banner');
+    if (banner) banner.style.display = 'block';
+    const cdEl = document.getElementById('reveal-alert-countdown');
+    if (cdEl) {
+      const h = Math.floor(remaining / 3600);
+      const m = Math.floor((remaining % 3600) / 60);
+      cdEl.textContent = (h > 0 ? h + 'h ' : '') + m + 'm left';
+    }
+  } catch (e) {
+    console.warn('updateRevealAlert error:', e.message);
+  }
 }
 
 // LOAD OPEN DUELS
