@@ -33,6 +33,10 @@
   let active = 0;
   const queue = [];
 
+  // Exposed globally so a small on-page widget (added right below) can show
+  // live traffic instead of relying on the browser console every time.
+  window.__rpcStats = { active: 0, queued: 0, total: 0, retries: 0, throttled429: 0 };
+
   function isRetryable(err) {
     const msg = String((err && err.message) || err || '');
     const info = String((err && err.info && JSON.stringify(err.info)) || '');
@@ -48,13 +52,21 @@
   function runNext() {
     if (active >= MAX_CONCURRENT || queue.length === 0) return;
     active++;
+    window.__rpcStats.active = active;
+    window.__rpcStats.queued = queue.length;
     const { fn, resolve, reject } = queue.shift();
-    fn().then(resolve, reject).finally(() => { active--; runNext(); });
+    fn().then(resolve, reject).finally(() => {
+      active--;
+      window.__rpcStats.active = active;
+      window.__rpcStats.queued = queue.length;
+      runNext();
+    });
   }
 
   function enqueue(fn) {
     return new Promise((resolve, reject) => {
       queue.push({ fn, resolve, reject });
+      window.__rpcStats.queued = queue.length;
       runNext();
     });
   }
@@ -65,9 +77,12 @@
       const self = this;
       async function attempt(retriesLeft, delay) {
         try {
+          window.__rpcStats.total++;
           return await enqueue(() => originalSend.call(self, method, params));
         } catch (e) {
           if (retriesLeft > 0 && isRetryable(e)) {
+            window.__rpcStats.retries++;
+            window.__rpcStats.throttled429++;
             await new Promise(r => setTimeout(r, delay));
             return attempt(retriesLeft - 1, delay * 2);
           }
@@ -78,6 +93,37 @@
     };
   }
 })();
+
+// NOTE: the on-page RPC monitor widget was removed before going live, but
+// window.__rpcStats (kept above) still tracks traffic — type __rpcStats in
+// the browser console anytime to check activity without any visible UI.
+
+// ═══ VISIBILITY-AWARE TIMERS ═══
+// Background pollers (duels, chain data, leaderboards...) used to keep
+// firing even when the tab was hidden — a player leaving the site open in
+// a background tab for hours kept hammering the shared RPC the whole time
+// for data nobody was looking at. svInterval() registers a pausable
+// interval: all of them stop the moment the tab is hidden, and on return
+// each callback fires once immediately (so the data is fresh the instant
+// the user looks) before resuming its normal schedule.
+const _svIntervals = [];
+function svInterval(fn, ms) {
+  const entry = { fn, ms, id: setInterval(fn, ms) };
+  _svIntervals.push(entry);
+  return entry.id;
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    _svIntervals.forEach(e => { if (e.id) { clearInterval(e.id); e.id = null; } });
+  } else {
+    _svIntervals.forEach(e => {
+      if (!e.id) {
+        try { e.fn(); } catch (err) {}
+        e.id = setInterval(e.fn, e.ms);
+      }
+    });
+  }
+});
 </script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -4028,37 +4074,60 @@ async function duelistLeaderboardScan() {
     scores[w].score = scores[w].wins * 2 + scores[w].ties * 1;
   }
 
-  let id = 1;
-  let misses = 0;
-  const MAX_PROBE = 2000;   // safety cap — generous for current and near-future duel volume
-  const MISS_LIMIT = 3;
-
-  while (id <= MAX_PROBE && misses < MISS_LIMIT) {
-    let d;
-    try { d = await duelReadContract.getDuel(id); }
-    catch { misses++; id++; continue; }
-
-    if (!d || d.playerA === ZERO) { misses++; id++; continue; }
-    misses = 0;
-
-    const st = Number(d.status);
-    if (st === 2) {
-      // Finished — either a normal win or a timeout claim. d.winner tells us who.
-      const winner = d.winner;
-      const loser = winner.toLowerCase() === d.playerA.toLowerCase() ? d.playerB : d.playerA;
-      if (winner !== ZERO) {
-        bump(winner, 'wins');
-        if (loser && loser !== ZERO) bump(loser, 'losses');
-      }
-    } else if (st === 4) {
-      // Tied — both players get +1
-      bump(d.playerA, 'ties');
-      if (d.playerB && d.playerB !== ZERO) bump(d.playerB, 'ties');
-    }
-    // Open (0), Joined (1), Cancelled (3) are not counted.
-
-    id++;
+  // Previously probed duel IDs 1..2000 ONE AT A TIME (a sequential await
+  // loop) — up to 2000 individual RPC round-trips per scan, run at page
+  // load and again every 5 minutes automatically. That was easily the
+  // single biggest source of RPC traffic on the whole site. Now: find the
+  // true highest duel ID via exponential + binary search (~30 calls, no
+  // matter how many duels exist — and no longer silently capped at 2000
+  // either), then check every ID in parallel batches instead of one by one.
+  async function duelExists(id) {
+    try {
+      const d = await duelReadContract.getDuel(id);
+      return !!d && d.playerA !== ZERO;
+    } catch { return false; }
   }
+  async function findMaxProbedDuelId() {
+    if (!(await duelExists(1))) return 0;
+    let lo = 1, hi = 1;
+    const HARD_CAP = 10_000_000;
+    while (hi < HARD_CAP && await duelExists(hi * 2)) hi *= 2;
+    hi = Math.min(hi * 2, HARD_CAP);
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (await duelExists(mid)) lo = mid; else hi = mid - 1;
+    }
+    return lo;
+  }
+
+  const maxId = await findMaxProbedDuelId();
+  const CONCURRENCY = 6;
+  let cursor = 1;
+  async function worker() {
+    while (cursor <= maxId) {
+      const id = cursor++;
+      let d;
+      try { d = await duelReadContract.getDuel(id); } catch { continue; }
+      if (!d || d.playerA === ZERO) continue;
+
+      const st = Number(d.status);
+      if (st === 2) {
+        // Finished — either a normal win or a timeout claim. d.winner tells us who.
+        const winner = d.winner;
+        const loser = winner.toLowerCase() === d.playerA.toLowerCase() ? d.playerB : d.playerA;
+        if (winner !== ZERO) {
+          bump(winner, 'wins');
+          if (loser && loser !== ZERO) bump(loser, 'losses');
+        }
+      } else if (st === 4) {
+        // Tied — both players get +1
+        bump(d.playerA, 'ties');
+        if (d.playerB && d.playerB !== ZERO) bump(d.playerB, 'ties');
+      }
+      // Open (0), Joined (1), Cancelled (3) are not counted.
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, Math.max(maxId, 1)) }, worker));
 
   // Build sorted rows with display names
   const wallets = Object.keys(scores);
@@ -4177,13 +4246,13 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
 
 // Background refresh every 5 minutes, regardless of which tab is open,
 // so the data is ready the moment the player switches to it.
-setInterval(() => duelistLeaderboardRefresh(false), DUELIST_LB_REFRESH_MS);
+svInterval(() => duelistLeaderboardRefresh(false), DUELIST_LB_REFRESH_MS);
 
 // ═══ INIT ═══
 setTimeout(function(){ updateVortex(0.5); }, 100);
 loadChainData();
 loadLeaderboard();
-setInterval(()=>{loadChainData();loadLeaderboard();},60000);
+svInterval(()=>{loadChainData();loadLeaderboard();},60000);
 
 if(window.ethereum){
   window.ethereum.on('accountsChanged',async(accounts)=>{
@@ -5027,7 +5096,7 @@ const duelHistory    = [];
     // History shown only after wallet connects — not on page load
 
     updateRevealAlert(); // initial call — don't wait for the first 15s poll tick
-    setInterval(async () => {
+    svInterval(async () => {
       await duelLoadStats();
       await duelLoadOpen();
       await duelCheckMyStatus();
@@ -5503,7 +5572,7 @@ function duelStartJoinedCountdown(duelId) {
     } catch(e) {}
   }
   tick();
-  _duelCountdownTimer = setInterval(tick, 8000); // poll every 8s
+  _duelCountdownTimer = setInterval(() => { if (!document.hidden) tick(); }, 8000); // poll every 8s, skipped while tab is hidden
 }
 
 // Joiner claims the pot after opponent timeout
@@ -7579,6 +7648,7 @@ let _myDuelsLastHTML = '';      // cache to avoid re-rendering identical content
 function myDuelsStartAuto() {
   if (_myDuelsAutoTimer) clearInterval(_myDuelsAutoTimer);
   _myDuelsAutoTimer = setInterval(() => {
+    if (document.hidden) return; // tab not visible — skip this tick, no wasted RPC
     if (connectedAddress && document.getElementById('myduels-inline-list')) {
       myDuelsScan();
     } else {
