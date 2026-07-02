@@ -5361,6 +5361,7 @@ async function duelCreate() {
     localStorage.setItem(_duelKey('secret'), duelMySecret);
     localStorage.setItem(_duelKey('choice'), duelChoice.toString());
     localStorage.setItem(_duelKey('status'), 'open');
+    if (typeof myDuelsRemember === 'function') myDuelsRemember(duelId);
 
     // Silent server-side encrypted backup — safety net if this device's
     // localStorage is later lost (cache cleared, different browser/device).
@@ -5426,6 +5427,7 @@ async function duelJoin(duelId, choiceNum) {
     localStorage.setItem(_duelKey('joined_id'), duelId.toString());
     localStorage.setItem(_duelKey('joined_choice'), choiceNum.toString());
     localStorage.setItem(_duelKey('joined_stake'), ethers.formatEther(_duelInfo.stake));
+    if (typeof myDuelsRemember === 'function') myDuelsRemember(duelId);
 
     // Show "joined — waiting for reveal" panel
     duelShowJoinedPanel(duelId, choiceNum);
@@ -7607,17 +7609,54 @@ function _sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 // subsequent refresh only queries blocks *since* that point — typically a
 // handful of new blocks, i.e. one cheap getLogs call instead of scanning
 // the whole chain over and over.
+// Blocks mint at ~0.4s on this chain, so scanning from block 0 on a wallet's
+// very first visit could mean millions of blocks — several minutes, even
+// chunked and parallelized. A duel left dangling for weeks is no longer
+// practically actionable anyway (well past the 6h reveal window either
+// way), so the first-ever scan only looks back this far. Every scan after
+// that is incremental (just new blocks since last time — fast), via the
+// cached "last scanned block" below.
+const MYDUELS_INITIAL_LOOKBACK_BLOCKS = 500000; // ≈ 2.3 days at ~0.4s/block
+
 function _myDuelsScanCacheKey(suffix) { return _duelKey('myduels_' + suffix); }
+
+// Permanently remembers a duel ID this wallet created or joined, in THIS
+// browser — independent of the block-scan lookback window above. That
+// window only covers ~2.3 days of history, which is fine for catching
+// duels found "after the fact", but a player who joins as opponent (B)
+// has no urgency to check back quickly (unlike the creator, who gets the
+// reveal-needed alert) — they might legitimately come back weeks later to
+// claim a timed-out pot. Recording the ID the moment the action happens
+// means it's never lost to a scan window, no matter how late they return.
+function myDuelsRemember(duelId) {
+  try {
+    const key = _myDuelsScanCacheKey('permanent');
+    const list = JSON.parse(localStorage.getItem(key) || '[]');
+    const idStr = duelId.toString();
+    if (!list.includes(idStr)) {
+      list.push(idStr);
+      localStorage.setItem(key, JSON.stringify(list));
+    }
+  } catch (e) {}
+}
 
 async function findMyDuelIds() {
   const latestBlock = await readProvider.getBlockNumber();
   let known = [];
-  let fromBlock = 0;
+  let fromBlock = Math.max(0, latestBlock - MYDUELS_INITIAL_LOOKBACK_BLOCKS);
   try {
     known = JSON.parse(localStorage.getItem(_myDuelsScanCacheKey('ids')) || '[]');
     const savedBlock = parseInt(localStorage.getItem(_myDuelsScanCacheKey('block')) || '0', 10);
-    if (savedBlock > 0) fromBlock = savedBlock + 1;
-  } catch (e) { known = []; fromBlock = 0; }
+    if (savedBlock > 0) fromBlock = savedBlock + 1; // incremental — only blocks since last scan
+  } catch (e) { known = []; }
+
+  // Merge in the permanently-remembered list — this is what guarantees a
+  // duel this wallet created/joined is never lost, even if it falls
+  // outside the lookback window or the incremental cache got cleared.
+  try {
+    const permanent = JSON.parse(localStorage.getItem(_myDuelsScanCacheKey('permanent')) || '[]');
+    known = [...new Set([...known, ...permanent])];
+  } catch (e) {}
 
   if (fromBlock <= latestBlock) {
     const [createdByMe, joinedByMe] = await Promise.all([
