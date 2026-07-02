@@ -2498,7 +2498,7 @@ function svIntroParticles() {
         <div class="rcc-label">Your Current Rank</div>
         <div class="rcc-badge-box">
           <div class="rcc-icon-container">
-            <div id="rcc-lor-icon" style="width:100%;aspect-ratio:3/4;overflow:hidden;border-radius:4px;background:rgba(6,4,28,0.6);display:flex;align-items:center;justify-content:center;margin-bottom:0.6rem;opacity:0.25;"><img src="https://gateway.pinata.cloud/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" /></div>
+            <div id="rcc-lor-icon" style="width:100%;aspect-ratio:3/4;overflow:hidden;border-radius:4px;background:rgba(6,4,28,0.6);display:flex;align-items:center;justify-content:center;margin-bottom:0.6rem;opacity:0.25;"><img src="https://ipfs.io/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy" onerror="ipfsFallback(this)" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;" /></div>
           </div>
           <div class="rcc-info">
             <div id="rcc-rank-name" style="color:rgba(255,255,255,0.25);font-weight:bold;font-family:'Cinzel',serif;">— Not connected —</div>
@@ -2563,7 +2563,7 @@ function svIntroParticles() {
       <!-- RANK 0 -->
       <div class="lor-rcard lor-c0" onclick="toggleNFTPool(event,0,'#8ab0c8')" style="cursor:pointer;">
         <div class="lor-card-art" style="position:relative;overflow:hidden;">
-          <div class="lor-card-art-img"><img src="https://gateway.pinata.cloud/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy" alt="Rank 0"></div>
+          <div class="lor-card-art-img"><img src="https://ipfs.io/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy" onerror="ipfsFallback(this)" alt="Rank 0"></div>
           <div class="lor-art-glow" style="position:absolute;inset:0;z-index:1;background:linear-gradient(to bottom,transparent 40%,rgba(4,2,26,0.85) 100%);"></div>
         </div>
         <div class="lor-card-body">
@@ -2582,7 +2582,7 @@ function svIntroParticles() {
       <div class="lor-rcard lor-c1" onclick="toggleNFTPool(event,1,'#00e5cc')" style="cursor:pointer;">
         <div class="lor-card-art" style="position:relative;overflow:hidden;">
           <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,30,28,0.15) 0%,rgba(0,20,20,0.55) 100%);z-index:1;"></div>
-          <div class="lor-card-art-img"><img src="https://gateway.pinata.cloud/ipfs/bafybeib2a5dsgetiq55b7pxvmkddbscran2phkl3fjetqpdl5bpjl6cp5a" alt="Rank I"></div>
+          <div class="lor-card-art-img"><img src="https://ipfs.io/ipfs/bafybeib2a5dsgetiq55b7pxvmkddbscran2phkl3fjetqpdl5bpjl6cp5a" onerror="ipfsFallback(this)" alt="Rank I"></div>
         </div>
         <div class="lor-card-body">
           <div class="lor-rank-label">Rank 2 &middot; Novice</div>
@@ -2599,7 +2599,7 @@ function svIntroParticles() {
       <!-- RANK II -->
       <div class="lor-rcard lor-c2" onclick="toggleNFTPool(event,2,'#5a9fff')" style="cursor:pointer;">
         <div class="lor-card-art-img">
-          <img src="https://gateway.pinata.cloud/ipfs/bafybeiex5rrboz6yhh2efgjkwlcjwgfc2mdqvvsgawfvagzwf7lqjalkbe" alt="Rank II">
+          <img src="https://ipfs.io/ipfs/bafybeiex5rrboz6yhh2efgjkwlcjwgfc2mdqvvsgawfvagzwf7lqjalkbe" onerror="ipfsFallback(this)" alt="Rank II">
         </div>
         <div class="lor-card-body">
           <div class="lor-rank-label">Rank 3 &middot; Adept</div>
@@ -2616,7 +2616,7 @@ function svIntroParticles() {
       <!-- RANK III -->
       <div class="lor-rcard lor-c3" onclick="toggleNFTPool(event,3,'#7755cc')" style="cursor:pointer;">
         <div class="lor-card-art-img">
-          <img src="https://gateway.pinata.cloud/ipfs/bafybeih7a7esome33rby4spi3d4xgdiiqeqqmy5zkmfqggiml4eah4ebty" alt="Rank III">
+          <img src="https://ipfs.io/ipfs/bafybeih7a7esome33rby4spi3d4xgdiiqeqqmy5zkmfqggiml4eah4ebty" onerror="ipfsFallback(this)" alt="Rank III">
         </div>
         <div class="lor-card-body">
           <div class="lor-rank-label">Rank 4 &middot; Elite</div>
@@ -3017,6 +3017,37 @@ function svIntroParticles() {
 // ═══ CONTRACT CONFIG ═══
 const CONTRACT_ADDRESS = '0x0AD3f776C45FF457d2d8e211A3174A4Db201b656';
 const LITEFORGE_CHAIN_ID = 4441;
+// ═══ IPFS MULTI-GATEWAY FALLBACK ═══
+// No single public IPFS gateway is reliable on its own — Pinata's free tier
+// has a hard bandwidth/request quota, cloudflare-ipfs.com no longer even
+// resolves, and ipfs.io (the default everyone uses) is frequently
+// overloaded/slow enough to time out. Rather than pick one and hope, every
+// IPFS <img> on this site calls ipfsFallback(this) on error, which walks
+// through this list in order until one actually serves the image.
+const IPFS_GATEWAYS = [
+  'https://ipfs.io/ipfs/',
+  'https://dweb.link/ipfs/',
+  'https://w3s.link/ipfs/',
+  'https://nftstorage.link/ipfs/',
+  'https://gateway.pinata.cloud/ipfs/'
+];
+function ipfsFallback(img) {
+  const match = img.src.match(/\/ipfs\/([^/?#]+)/);
+  if (!match) { img.onerror = null; return; }
+  const cid = match[1];
+  const nextIdx = parseInt(img.dataset.ipfsGwIdx || '0', 10) + 1;
+  if (nextIdx >= IPFS_GATEWAYS.length) {
+    // Exhausted every gateway — stop retrying and apply whatever
+    // final fallback behavior this particular <img> asked for.
+    img.onerror = null;
+    if (img.dataset.ipfsFinalHide === '1') img.style.display = 'none';
+    else if (img.dataset.ipfsFinalEmoji) img.outerHTML = img.dataset.ipfsFinalEmoji;
+    return;
+  }
+  img.dataset.ipfsGwIdx = String(nextIdx);
+  img.src = IPFS_GATEWAYS[nextIdx] + cid;
+}
+
 const RPC = 'https://liteforge.rpc.caldera.xyz/http';
 
 // Standalone "Add Network" button handler — same params used inside
@@ -3068,28 +3099,28 @@ const RANKS_DATA = [
     tag:'RANK 1 · INITIATE', name:'Simple Holder', req:'Requires 0 zkLTC',
     lore:"You hold Litecoin. The original silver to Bitcoin's gold. Your journey into the Void begins here.",
     color:'#8ab0c8', icon:'○', stars:1, xpMax:'1,000', xpPct:0,
-    artUrl:'https://gateway.pinata.cloud/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy',
+    artUrl:'https://ipfs.io/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy',
     nftName:'The Cryptographic Key', nftIcon:'🔑', nftDesc:'The first key to the Silver Void.'
   },
   {
     tag:'RANK 2 · NOVICE', name:'Apprentice Litecoiner', req:'Requires ≥ 5 zkLTC burned',
     lore:'Litecoin has survived every bear market, every obituary. You burn to prove your conviction runs deeper than price.',
     color:'#00e5cc', icon:'⚡', stars:2, xpMax:'5,000', xpPct:25,
-    artUrl:'https://gateway.pinata.cloud/ipfs/bafybeib2a5dsgetiq55b7pxvmkddbscran2phkl3fjetqpdl5bpjl6cp5a',
+    artUrl:'https://ipfs.io/ipfs/bafybeib2a5dsgetiq55b7pxvmkddbscran2phkl3fjetqpdl5bpjl6cp5a',
     nftName:'The Alchemical Crucible', nftIcon:'⚗', nftDesc:'The crucible of transmutation.'
   },
   {
     tag:'RANK 3 · ADEPT', name:'Devoted Litecoiner', req:'Requires ≥ 20 zkLTC burned',
     lore:'MimbleWimble. Lightning Network. Decades of relentless development. You are the infrastructure behind the revolution.',
     color:'#5a9fff', icon:'◈', stars:3, xpMax:'20,000', xpPct:55,
-    artUrl:'https://gateway.pinata.cloud/ipfs/bafybeiex5rrboz6yhh2efgjkwlcjwgfc2mdqvvsgawfvagzwf7lqjalkbe',
+    artUrl:'https://ipfs.io/ipfs/bafybeiex5rrboz6yhh2efgjkwlcjwgfc2mdqvvsgawfvagzwf7lqjalkbe',
     nftName:'The Node Shield', nftIcon:'🛡', nftDesc:'An impenetrable fortress of the chain.'
   },
   {
     tag:'RANK 4 · ELITE', name:'Silver Maximalist', req:'Requires ≥ 100 zkLTC burned',
     lore:'84 million coins. The fastest settlement layer. The most battle-tested chain after Bitcoin. You are its eternal guardian.',
     color:'#7755cc', icon:'◆', stars:4, xpMax:'∞', xpPct:100,
-    artUrl:'https://gateway.pinata.cloud/ipfs/bafybeih7a7esome33rby4spi3d4xgdiiqeqqmy5zkmfqggiml4eah4ebty',
+    artUrl:'https://ipfs.io/ipfs/bafybeih7a7esome33rby4spi3d4xgdiiqeqqmy5zkmfqggiml4eah4ebty',
     nftName:'The Eternal Catalyst', nftIcon:'💎', nftDesc:'The legendary silver weapon of the Void.'
   },
 ];
@@ -3254,7 +3285,7 @@ function disconnectWallet(){
   const _xrl=document.getElementById('xp-rank-label'); if(_xrl) _xrl.textContent='Connect wallet to check rank';
   const _xpl=document.getElementById('xp-prog-label'); if(_xpl) _xpl.textContent='—';
   // Reset right column to disconnected state
-  const iconEl=document.getElementById('rcc-lor-icon'); if(iconEl){iconEl.innerHTML='<img src="https://gateway.pinata.cloud/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;opacity:0.4;" />';}
+  const iconEl=document.getElementById('rcc-lor-icon'); if(iconEl){iconEl.innerHTML='<img src="https://ipfs.io/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy" onerror="ipfsFallback(this)" style="width:100%;height:100%;object-fit:cover;object-position:center 15%;display:block;opacity:0.4;" />';}
   const nmEl=document.getElementById('rcc-rank-name'); if(nmEl){nmEl.textContent='— Not connected —';nmEl.style.color='rgba(255,255,255,0.25)';}
   const reqEl=document.getElementById('rcc-rank-req'); if(reqEl){reqEl.textContent='Connect wallet';reqEl.style.color='rgba(255,255,255,0.45)';}
   const loreEl=document.getElementById('rcc-lore'); if(loreEl) loreEl.textContent='Connect wallet to reveal your rank in the Order.';
@@ -4183,7 +4214,7 @@ setInterval(() => duelistLeaderboardRefresh(false), DUELIST_LB_REFRESH_MS);
 setTimeout(function(){ updateVortex(0.5); }, 100);
 loadChainData();
 loadLeaderboard();
-setInterval(()=>{loadChainData();loadLeaderboard();},30000);
+setInterval(()=>{loadChainData();loadLeaderboard();},60000);
 
 if(window.ethereum){
   window.ethereum.on('accountsChanged',async(accounts)=>{
@@ -4467,21 +4498,21 @@ function triggerRankUp(n) {
 // ══ NFT POOL DATA ══
 const POOL_DATA = [
   [ // Rank 0 — Simple Holder
-    { rarity:'common', name:'The Litecoin Revelation', icon:'○', odds:'70%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy' },
-    { rarity:'rare',   name:'My First Coin',           icon:'◇', odds:'25%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeihqpwfgljm5lnq2ztag43bqobbcehsbqiszajg7lwi3fjmcbhvrvu' },
-    { rarity:'epic',   name:'The Voyage Begins',       icon:'◉', odds:'5%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeialzivo7vvpuwtar5a3ywjto2bnj4avic4vmrys4hrygyahpdsrnm' },
+    { rarity:'common', name:'The Litecoin Revelation', icon:'○', odds:'70%', artUrl:'https://ipfs.io/ipfs/bafybeigawfx6p33p25pclgzjrpazm6a35hkbd2v2jbjotxyxa7awsrmofy' },
+    { rarity:'rare',   name:'My First Coin',           icon:'◇', odds:'25%', artUrl:'https://ipfs.io/ipfs/bafybeihqpwfgljm5lnq2ztag43bqobbcehsbqiszajg7lwi3fjmcbhvrvu' },
+    { rarity:'epic',   name:'The Voyage Begins',       icon:'◉', odds:'5%', artUrl:'https://ipfs.io/ipfs/bafybeialzivo7vvpuwtar5a3ywjto2bnj4avic4vmrys4hrygyahpdsrnm' },
   ],
   [ // Rank I — Apprentice
-    { rarity:'common', name:'Spreading the Word',          icon:'◌', odds:'70%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeicpwxcjnwk3sfjrfcb6mv67q5sbp7eckslrvxmpbt2ejrgy3rgm2i' },
-    { rarity:'rare',   name:"Don't be afraid of FUD",      icon:'◎', odds:'25%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeiguzgo6mgabgejzwovmhrh42qmelht57ij6u75gcqipybhtvquyru' },
-    { rarity:'epic',   name:'Strengthening the Chain',     icon:'Ł', odds:'5%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeib2a5dsgetiq55b7pxvmkddbscran2phkl3fjetqpdl5bpjl6cp5a' },
+    { rarity:'common', name:'Spreading the Word',          icon:'◌', odds:'70%', artUrl:'https://ipfs.io/ipfs/bafybeicpwxcjnwk3sfjrfcb6mv67q5sbp7eckslrvxmpbt2ejrgy3rgm2i' },
+    { rarity:'rare',   name:"Don't be afraid of FUD",      icon:'◎', odds:'25%', artUrl:'https://ipfs.io/ipfs/bafybeiguzgo6mgabgejzwovmhrh42qmelht57ij6u75gcqipybhtvquyru' },
+    { rarity:'epic',   name:'Strengthening the Chain',     icon:'Ł', odds:'5%', artUrl:'https://ipfs.io/ipfs/bafybeib2a5dsgetiq55b7pxvmkddbscran2phkl3fjetqpdl5bpjl6cp5a' },
   ],
   [ // Rank II — Devoted
-    { rarity:'rare',  name:'Kill the FUD!',      icon:'⊕', odds:'90%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeihx6rva74ucbfp4oz2pzo2jt5bzhovvphdxjxhixk6enmepu424tm' },
-    { rarity:'epic',  name:'MimbleWimble user',  icon:'◈', odds:'10%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeiex5rrboz6yhh2efgjkwlcjwgfc2mdqvvsgawfvagzwf7lqjalkbe' },
+    { rarity:'rare',  name:'Kill the FUD!',      icon:'⊕', odds:'90%', artUrl:'https://ipfs.io/ipfs/bafybeihx6rva74ucbfp4oz2pzo2jt5bzhovvphdxjxhixk6enmepu424tm' },
+    { rarity:'epic',  name:'MimbleWimble user',  icon:'◈', odds:'10%', artUrl:'https://ipfs.io/ipfs/bafybeiex5rrboz6yhh2efgjkwlcjwgfc2mdqvvsgawfvagzwf7lqjalkbe' },
   ],
   [ // Rank III — Silver Maximalist
-    { rarity:'epic', name:'The silver throne', icon:'◆', odds:'100%', artUrl:'https://gateway.pinata.cloud/ipfs/bafybeih7a7esome33rby4spi3d4xgdiiqeqqmy5zkmfqggiml4eah4ebty' },
+    { rarity:'epic', name:'The silver throne', icon:'◆', odds:'100%', artUrl:'https://ipfs.io/ipfs/bafybeih7a7esome33rby4spi3d4xgdiiqeqqmy5zkmfqggiml4eah4ebty' },
   ],
 ];
 
@@ -4566,7 +4597,7 @@ function showNFTResult(nft, color, rankIdx) {
         ✦ NFT Obtained
       </div>
       ${nft.artUrl
-        ? `<img src="${nft.artUrl}" style="width:100%;max-width:220px;border-radius:4px;margin-bottom:1.2rem;border:1px solid ${rc}33;" />`
+        ? `<img src="${nft.artUrl}" onerror="ipfsFallback(this)" style="width:100%;max-width:220px;border-radius:4px;margin-bottom:1.2rem;border:1px solid ${rc}33;" />`
         : `<div style="font-size:3rem;margin-bottom:1rem;">${nft.icon}</div>`
       }
       <div style="font-family:'Cinzel',serif;font-size:1rem;font-weight:700;color:${rc};margin-bottom:0.4rem;">${nft.name}</div>
@@ -4630,7 +4661,7 @@ function toggleNFTPool(e, rankIdx, color) {
     const div = document.createElement('div');
     div.className = `pool-item pi-${nft.rarity}`;
     const iconHTML = nft.artUrl
-      ? `<div class="pi-art"><img src="${nft.artUrl}" alt="${nft.name}"></div>`
+      ? `<div class="pi-art"><img src="${nft.artUrl}" alt="${nft.name}" onerror="ipfsFallback(this)"></div>`
       : `<div class="pi-icon">${nft.icon}</div>`;
     const btnId = `nft-claim-btn-${rankIdx}-${nftId}`;
     let claimBtnHTML;
@@ -4959,7 +4990,7 @@ const DUEL_ABI = [
   'function totalBurned() external view returns (uint256)',
   'function totalDuels() external view returns (uint256)',
   'function totalTies() external view returns (uint256)',
-  'event DuelCreated(uint256 indexed duelId, address indexed playerA)',
+  'event DuelCreated(uint256 indexed duelId, address indexed playerA, uint256 stake)',
   'event DuelJoined(uint256 indexed duelId, address indexed playerB, uint8 choiceB)',
   'event DuelRevealed(uint256 indexed duelId, uint8 choiceA, uint8 choiceB, address winner)',
   'event DuelTied(uint256 indexed duelId, uint8 choice)',
@@ -5032,7 +5063,7 @@ const duelHistory    = [];
       await duelLoadOpen();
       await duelCheckMyStatus();
       await updateRevealAlert();
-    }, 15000);
+    }, 25000);
   } catch(e) {}
 })();
 
@@ -5040,6 +5071,42 @@ const duelHistory    = [];
 async function initDuelContract() {
   if (!signer) return;
   duelContract = new ethers.Contract(DUEL_CONTRACT, DUEL_ABI, signer);
+}
+
+// ═══ Chunked event scanning ═══
+// This RPC times out on unbounded eth_getLogs (fromBlock:0 → latest) once
+// the chain has accumulated enough blocks. Splitting into small ranges and
+// running several in parallel avoids the timeout.
+const CHUNK_SCAN_SIZE = 20000;
+const CHUNK_SCAN_CONCURRENCY = 6;
+const CHUNK_SCAN_RETRIES = 2;
+
+async function fetchLogsChunked(contract, filterOrEventName, fromBlock, toBlock) {
+  const events = [];
+  const ranges = [];
+  for (let from = fromBlock; from <= toBlock; from += CHUNK_SCAN_SIZE) {
+    ranges.push([from, Math.min(from + CHUNK_SCAN_SIZE - 1, toBlock)]);
+  }
+  let cursor = 0;
+  async function worker() {
+    while (cursor < ranges.length) {
+      const [from, to] = ranges[cursor++];
+      let attempt = 0;
+      while (attempt < CHUNK_SCAN_RETRIES) {
+        try {
+          const chunk = await contract.queryFilter(filterOrEventName, from, to);
+          events.push(...chunk);
+          break;
+        } catch (e) {
+          attempt++;
+          if (attempt >= CHUNK_SCAN_RETRIES) console.warn(`fetchLogsChunked ${from}-${to} failed:`, e.message);
+          else await new Promise(r => setTimeout(r, 400));
+        }
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CHUNK_SCAN_CONCURRENCY, ranges.length || 1) }, worker));
+  return events;
 }
 
 // Restore duel state after wallet reconnect
@@ -5465,7 +5532,7 @@ function duelStartJoinedCountdown(duelId) {
     } catch(e) {}
   }
   tick();
-  _duelCountdownTimer = setInterval(tick, 4000); // poll every 4s
+  _duelCountdownTimer = setInterval(tick, 8000); // poll every 8s
 }
 
 // Joiner claims the pot after opponent timeout
@@ -6149,13 +6216,13 @@ const FEATS = [
   { id:'nft_mint',     icon:'🖼️', name:'Eternal Silver',     desc:'Mint your first rank NFT.', cat:'Burn' },
   // ── DUELIST SAGA — narrative arc, art-based, NFT-mintable ──
   { id:'saga_1', icon:'🪄', name:'The Awakening', desc:'Play your first duel.', cat:'Saga',
-    artUrl:'https://gateway.pinata.cloud/ipfs/bafybeic7e5s67cvg3z4csavcta5ab6rhvuwexe6w6bsr4smzaizkjajiua' },
+    artUrl:'https://ipfs.io/ipfs/bafybeic7e5s67cvg3z4csavcta5ab6rhvuwexe6w6bsr4smzaizkjajiua' },
   { id:'saga_2', icon:'⚡', name:'Lightning Adept', desc:'Win 15 duels.', cat:'Saga',
-    artUrl:'https://gateway.pinata.cloud/ipfs/bafybeididnko67dimxkndj72t6l2lroj6hhmh3p7snic46krx3y6hbalkq' },
+    artUrl:'https://ipfs.io/ipfs/bafybeididnko67dimxkndj72t6l2lroj6hhmh3p7snic46krx3y6hbalkq' },
   { id:'saga_3', icon:'🏰', name:'Sanctuary Glimpse', desc:'Play 40 duels.', cat:'Saga',
-    artUrl:'https://gateway.pinata.cloud/ipfs/bafybeih56b32p7aeemmqy3nsfqrvsxqdz36himrcrombgkvnpw5dbkybc4' },
+    artUrl:'https://ipfs.io/ipfs/bafybeih56b32p7aeemmqy3nsfqrvsxqdz36himrcrombgkvnpw5dbkybc4' },
   { id:'saga_4', icon:'🛡️', name:'Guardian Ascended', desc:'Play 84 duels.', cat:'Saga',
-    artUrl:'https://gateway.pinata.cloud/ipfs/bafybeiba53ur7xcck2kjjproh4z4tpgrom5n7ywchckzzrnmpvzkarjcle' },
+    artUrl:'https://ipfs.io/ipfs/bafybeiba53ur7xcck2kjjproh4z4tpgrom5n7ywchckzzrnmpvzkarjcle' },
 ];
 
 function featsKey() {
@@ -6279,7 +6346,7 @@ async function featsOpen() {
     const date = isUnlocked ? new Date(unlocked[f.id]).toLocaleDateString() : '';
     const iconBlock = f.artUrl
       ? `<div style="width:48px;height:48px;min-width:48px;border-radius:4px;overflow:hidden;position:relative;">
-           <img src="${f.artUrl}" style="width:100%;height:100%;object-fit:cover;filter:${isUnlocked?'none':'grayscale(1) brightness(0.4) saturate(0.6)'};" onerror="this.style.display='none';" />
+           <img src="${f.artUrl}" style="width:100%;height:100%;object-fit:cover;filter:${isUnlocked?'none':'grayscale(1) brightness(0.4) saturate(0.6)'};" data-ipfs-final-hide="1" onerror="ipfsFallback(this)" />
            ${!isUnlocked ? `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(4,2,26,0.45);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(0,229,204,0.75)" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>` : ''}
          </div>`
       : `<div style="font-size:1.6rem;min-width:40px;text-align:center;filter:${isUnlocked?'none':'grayscale(1)'};">${isUnlocked?f.icon:'🔒'}</div>`;
@@ -6386,7 +6453,7 @@ async function sagaMint(sagaId) {
 
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;">
         <span style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:rgba(255,255,255,0.4);text-transform:uppercase;">All Relics — by rarity</span>
-        <button onclick="storeRefreshListings()" style="background:transparent;border:1px solid rgba(0,229,204,0.3);color:rgba(0,229,204,0.7);font-size:0.6rem;padding:0.35rem 0.6rem;border-radius:3px;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:0.05em;">↻ Refresh</button>
+        <button id="store-refresh-btn" onclick="storeRefreshListings()" style="background:transparent;border:1px solid rgba(0,229,204,0.3);color:rgba(0,229,204,0.7);font-size:0.6rem;padding:0.35rem 0.6rem;border-radius:3px;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:0.05em;">↻ Refresh</button>
       </div>
       <div id="store-listings-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.9rem;">
         <div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;grid-column:1/-1;">Scanning the store...</div>
@@ -6569,7 +6636,7 @@ function storeRelicCard(l, relic) {
   const isMine = connectedAddress && l.seller.toLowerCase() === connectedAddress.toLowerCase();
   const color = STORE_RARITY_COLOR[relic.rarity] || STORE_RARITY_COLOR.common;
   const img = relic.artUrl
-    ? `<img src="${relic.artUrl}" onclick="event.stopPropagation();storeZoomImage('${relic.artUrl}')" style="position:absolute;width:100%;height:100%;object-fit:cover;cursor:zoom-in;" onerror="this.style.display='none';" title="Click to view full image" />`
+    ? `<img src="${relic.artUrl}" onclick="event.stopPropagation();storeZoomImage('${relic.artUrl}')" style="position:absolute;width:100%;height:100%;object-fit:cover;cursor:zoom-in;" data-ipfs-final-hide="1" onerror="ipfsFallback(this)" title="Click to view full image" />`
     : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.6rem;background:linear-gradient(135deg,rgba(0,229,204,0.1),rgba(119,85,204,0.06));">🖼</div>`;
   return `
   <div style="position:relative;border-radius:4px;overflow:hidden;aspect-ratio:1;box-shadow:0 0 0 1.5px ${color}66;">
@@ -6606,34 +6673,47 @@ function storeZoomImage(url) {
 // no indexer/subgraph available on this testnet).
 async function storeRefreshListings() {
   const grid = document.getElementById('store-listings-grid');
+  const btn = document.getElementById('store-refresh-btn');
+  const btnOriginalText = btn ? btn.innerHTML : null;
+  if (btn) { btn.innerHTML = '⟳ Refreshing...'; btn.style.opacity = '0.5'; btn.disabled = true; }
   if (!storeReadContract) await initStoreContract();
   if (!storeReadContract) {
     grid.innerHTML = '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);grid-column:1/-1;">Store contract not ready.</div>';
+    if (btn) { btn.innerHTML = btnOriginalText; btn.style.opacity = ''; btn.disabled = false; }
     return;
   }
 
   try {
     const total = await storeReadContract.nextListingId();
     const active = [];
-    for (let id = 1; id < Number(total); id++) {
-      try {
-        const l = await storeReadContract.getListing(id);
-        if (l.active) {
-          active.push({
-            id,
-            seller: l.seller,
-            nftContract: l.nftContract,
-            tokenId: l.tokenId,
-            price: l.price,
-            active: l.active
-          });
-        }
-      } catch (e) {}
+    // Previously a sequential loop (one getListing() call at a time, await
+    // in series) — under any RPC pressure, individual calls would silently
+    // fail one by one (each wrapped in its own empty catch), so the grid
+    // could end up looking "stuck" or empty with no visible error. Now
+    // runs in parallel batches, same pattern as the other scans on this
+    // site, plus an actual error surfaced to the user if the whole thing
+    // fails outright.
+    const CONCURRENCY = 6;
+    let cursor = 1;
+    let anyFailure = false;
+    async function worker() {
+      while (cursor < Number(total)) {
+        const id = cursor++;
+        try {
+          const l = await storeReadContract.getListing(id);
+          if (l.active) {
+            active.push({ id, seller: l.seller, nftContract: l.nftContract, tokenId: l.tokenId, price: l.price, active: l.active });
+          }
+        } catch (e) { anyFailure = true; }
+      }
     }
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, Math.max(Number(total) - 1, 1)) }, worker));
     _storeListingsCache = active;
 
     if (active.length === 0) {
-      grid.innerHTML = '<div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;grid-column:1/-1;">No relics for sale yet. Be the first to list one.</div>';
+      grid.innerHTML = anyFailure
+        ? '<div style="text-align:center;padding:2.5rem 0;color:#ff8899;grid-column:1/-1;">Some listings could not be read — try refresh again.</div>'
+        : '<div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;grid-column:1/-1;">No relics for sale yet. Be the first to list one.</div>';
       return;
     }
 
@@ -6651,6 +6731,9 @@ async function storeRefreshListings() {
   } catch (e) {
     console.error('storeRefreshListings error:', e);
     grid.innerHTML = '<div style="text-align:center;padding:2rem 0;color:#ff8899;grid-column:1/-1;">Could not load listings — try refresh.</div>';
+    if (typeof showToast === 'function') showToast('✖ Could not refresh the Store', true);
+  } finally {
+    if (btn) { btn.innerHTML = btnOriginalText; btn.style.opacity = ''; btn.disabled = false; }
   }
 }
 
@@ -6753,7 +6836,7 @@ async function storeScanMyNFTs() {
 
   gallery.innerHTML = owned.map((nft, i) => {
     const img = nft.artUrl
-      ? `<img src="${nft.artUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='🖼';" />`
+      ? `<img src="${nft.artUrl}" style="width:100%;height:100%;object-fit:cover;" data-ipfs-final-emoji="🖼" onerror="ipfsFallback(this)" />`
       : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;">🖼</div>`;
     return `
     <div onclick="storeSelectMyNFT(${i})" title="${nft.name}" style="aspect-ratio:1;border-radius:4px;overflow:hidden;cursor:pointer;border:2px solid rgba(0,229,204,0.2);transition:border-color 0.15s;" onmouseover="this.style.borderColor='rgba(0,229,204,0.6)'" onmouseout="this.style.borderColor='rgba(0,229,204,0.2)'">
@@ -6771,7 +6854,7 @@ function storeSelectMyNFT(idx) {
   const selectedBox = document.getElementById('store-sell-selected');
   const thumb = document.getElementById('store-sell-selected-thumb');
   const nameEl = document.getElementById('store-sell-selected-name');
-  thumb.innerHTML = nft.artUrl ? `<img src="${nft.artUrl}" style="width:100%;height:100%;object-fit:cover;" />` : '🖼';
+  thumb.innerHTML = nft.artUrl ? `<img src="${nft.artUrl}" style="width:100%;height:100%;object-fit:cover;" data-ipfs-final-emoji="🖼" onerror="ipfsFallback(this)" />` : '🖼';
   nameEl.textContent = nft.name;
   selectedBox.style.display = 'flex';
 
@@ -7531,7 +7614,7 @@ function myDuelsStartAuto() {
       clearInterval(_myDuelsAutoTimer);
       _myDuelsAutoTimer = null;
     }
-  }, 20000); // every 20s
+  }, 45000); // every 45s — cheap now that it only checks this wallet's own duels, not the whole chain
 }
 function myDuelsStopAuto() {
   if (_myDuelsAutoTimer) { clearInterval(_myDuelsAutoTimer); _myDuelsAutoTimer = null; }
@@ -7542,30 +7625,44 @@ function myDuelsStopAuto() {
 // Small helper: pause between RPC calls so we don't trip rate limits
 function _sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
-// Finds the highest existing duel ID via exponential search + binary search,
-// rather than trusting totalDuels() — that counter only tracks *resolved*
-// duels ("Duels Played" stat), so it silently excludes anything still Open
-// or Joined, which is exactly what "My Duels" needs to find. This runs in
-// O(log n) calls regardless of how many duels exist.
-async function findMaxDuelId() {
-  const ZERO = '0x0000000000000000000000000000000000000000';
-  async function exists(id) {
+// Finds this wallet's own duel IDs via indexed DuelCreated/DuelJoined event
+// filters, instead of the previous approach (scanning EVERY duel ID that
+// exists on the whole chain — first via totalDuels(), then via an
+// exponential/binary-searched full range). That old approach ran on every
+// auto-refresh (every 20s, forever, for every connected player) and only
+// got more expensive as the testnet accumulated more duels — a major
+// contributor to RPC rate-limiting.
+//
+// This does the expensive full-history scan ONCE per wallet (cached in
+// localStorage: known duel IDs + the last block scanned), then every
+// subsequent refresh only queries blocks *since* that point — typically a
+// handful of new blocks, i.e. one cheap getLogs call instead of scanning
+// the whole chain over and over.
+function _myDuelsScanCacheKey(suffix) { return _duelKey('myduels_' + suffix); }
+
+async function findMyDuelIds() {
+  const latestBlock = await readProvider.getBlockNumber();
+  let known = [];
+  let fromBlock = 0;
+  try {
+    known = JSON.parse(localStorage.getItem(_myDuelsScanCacheKey('ids')) || '[]');
+    const savedBlock = parseInt(localStorage.getItem(_myDuelsScanCacheKey('block')) || '0', 10);
+    if (savedBlock > 0) fromBlock = savedBlock + 1;
+  } catch (e) { known = []; fromBlock = 0; }
+
+  if (fromBlock <= latestBlock) {
+    const [createdByMe, joinedByMe] = await Promise.all([
+      fetchLogsChunked(duelReadContract, duelReadContract.filters.DuelCreated(null, connectedAddress), fromBlock, latestBlock),
+      fetchLogsChunked(duelReadContract, duelReadContract.filters.DuelJoined(null, connectedAddress), fromBlock, latestBlock)
+    ]);
+    const newIds = [...createdByMe.map(ev => ev.args.duelId.toString()), ...joinedByMe.map(ev => ev.args.duelId.toString())];
+    known = [...new Set([...known, ...newIds])];
     try {
-      const d = await duelReadContract.getDuel(id);
-      return !!d && d.playerA !== ZERO;
-    } catch { return false; }
+      localStorage.setItem(_myDuelsScanCacheKey('ids'), JSON.stringify(known));
+      localStorage.setItem(_myDuelsScanCacheKey('block'), String(latestBlock));
+    } catch (e) {}
   }
-  if (!(await exists(1))) return 0; // no duels at all yet
-  let lo = 1, hi = 1;
-  const HARD_CAP = 10_000_000; // sanity ceiling, should never realistically be hit
-  while (hi < HARD_CAP && await exists(hi * 2)) hi *= 2;
-  hi = Math.min(hi * 2, HARD_CAP);
-  // Binary search for the last id that still exists, between lo (known valid) and hi (known invalid or cap)
-  while (lo < hi) {
-    const mid = Math.ceil((lo + hi) / 2);
-    if (await exists(mid)) lo = mid; else hi = mid - 1;
-  }
-  return lo;
+  return known;
 }
 
 async function myDuelsScan() {
@@ -7592,31 +7689,24 @@ async function myDuelsScan() {
 
   try {
     const me = connectedAddress.toLowerCase();
+    const myIds = await findMyDuelIds();
 
-    // totalDuels() only counts *resolved* duels ("Duels Played" stat) — it
-    // silently excludes anything still Open or Joined, which is exactly
-    // what this scan needs to find. findMaxDuelId() finds the true highest
-    // ID via a handful of calls (O(log n)) regardless of how many duels
-    // exist, then we scan 1..max in parallel batches.
-    const total = await findMaxDuelId();
     const active = [];
-    const CONCURRENCY = 10;
-    let cursor = 1;
+    const CONCURRENCY = 6;
+    let cursor = 0;
     async function worker() {
-      while (cursor <= total) {
-        const id = cursor++;
+      while (cursor < myIds.length) {
+        const id = myIds[cursor++];
         let d;
         try { d = await duelReadContract.getDuel(id); } catch { continue; }
         if (!d) continue;
         const st = Number(d.status);
-        const iAmA = d.playerA.toLowerCase() === me;
-        const iAmB = d.playerB && d.playerB.toLowerCase() === me;
-        if ((iAmA || iAmB) && (st === 0 || st === 1)) {
-          active.push({ id: id.toString(), d });
+        if (st === 0 || st === 1) {
+          active.push({ id, d });
         }
       }
     }
-    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, Math.max(total,1)) }, worker));
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, Math.max(myIds.length, 1)) }, worker));
 
     _myDuelsLoadedOnce = true;
 
