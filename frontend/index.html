@@ -1435,6 +1435,10 @@ body::after {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 #activity-ticker-track.scrolling { animation: svTickerScroll 32s linear infinite; }
 #activity-ticker-track:hover.scrolling { animation-play-state: paused; }
 #nav-duels-badge { animation:svPulseDot 1.6s ease-in-out infinite; }
@@ -1984,10 +1988,53 @@ body::after {
 @keyframes svFadeOut { to { opacity:0; } }
 </style>
 
+<!-- DUEL SYSTEM NOTICE — dismissible, shown once per browser -->
+<div id="sv-duel-notice" style="display:none;position:fixed;inset:0;z-index:99500;background:rgba(4,2,26,0.75);align-items:center;justify-content:center;padding:1.5rem;">
+  <div style="max-width:440px;background:linear-gradient(135deg,rgba(8,4,40,0.98),rgba(4,2,26,0.99));border:1px solid rgba(255,187,0,0.3);border-radius:6px;padding:1.8rem;text-align:center;">
+    <div style="font-size:1.6rem;margin-bottom:0.6rem;">⚠</div>
+    <div style="font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:0.1em;color:#ffbb00;text-transform:uppercase;margin-bottom:0.9rem;">Duel System Notice</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:1rem;color:rgba(255,255,255,0.75);line-height:1.5;margin-bottom:1.4rem;">
+      The duel system is undergoing minor changes as we prepare for mainnet. You may run into occasional issues — thank you for your understanding.
+    </div>
+    <button onclick="svDismissDuelNotice()" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;background:transparent;border:1px solid rgba(255,187,0,0.4);color:#ffbb00;padding:0.6rem 1.4rem;border-radius:3px;cursor:pointer;">Got it</button>
+  </div>
+</div>
+
+<script>
+function svDismissDuelNotice() {
+  try { localStorage.setItem('sv_duel_notice_seen', '1'); } catch {}
+  const el = document.getElementById('sv-duel-notice');
+  if (el) el.style.display = 'none';
+}
+function svShowDuelNoticeIfNeeded() {
+  let seen = false;
+  try { seen = localStorage.getItem('sv_duel_notice_seen') === '1'; } catch {}
+  if (seen) return;
+  const el = document.getElementById('sv-duel-notice');
+  if (el) el.style.display = 'flex';
+}
+</script>
+
 <script>
 (function(){
-  // Intro plays on every visit
-  window.addEventListener('DOMContentLoaded', svIntroPlay);
+  // Previously this called svIntroPlay() unconditionally on every visit —
+  // sv_intro_seen was being set on completion but never checked. Now: play
+  // the full animated intro only on a visitor's first visit; on repeat
+  // visits, just hide the (otherwise full-screen, display:flex by default)
+  // #sv-intro overlay immediately so it doesn't block the page.
+  window.addEventListener('DOMContentLoaded', function() {
+    let seen = false;
+    try { seen = localStorage.getItem('sv_intro_seen') === '1'; } catch {}
+    if (seen) {
+      const el = document.getElementById('sv-intro');
+      if (el) el.style.display = 'none';
+      svShowDuelNoticeIfNeeded();
+    } else {
+      svIntroPlay();
+      // First-time visitor: wait until the intro overlay actually closes
+      // (svIntroEnd) before showing the notice, so they don't overlap.
+    }
+  });
 })();
 
 let _svIntroTimers = [];
@@ -2031,8 +2078,8 @@ function svIntroEnd(cb) {
   const el = document.getElementById('sv-intro');
   if (el) {
     el.style.opacity = '0';
-    setTimeout(() => { el.style.display = 'none'; if (cb) cb(); }, 800);
-  } else if (cb) cb();
+    setTimeout(() => { el.style.display = 'none'; if (cb) cb(); svShowDuelNoticeIfNeeded(); }, 800);
+  } else { if (cb) cb(); svShowDuelNoticeIfNeeded(); }
 }
 
 // Replay function (called from a button in nav/footer)
@@ -2808,7 +2855,7 @@ function svIntroParticles() {
       <div style="background:linear-gradient(135deg,rgba(8,4,40,0.9),rgba(4,2,26,0.95));border:1px solid rgba(119,85,204,0.3);border-radius:4px;padding:1.5rem;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;">
           <div style="font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:0.25em;color:#9d7fee;text-transform:uppercase;">⚔ My Duels</div>
-          <button onclick="myDuelsScan()" title="Refresh" style="background:transparent;border:1px solid rgba(119,85,204,0.3);color:rgba(157,127,238,0.7);font-size:0.7rem;padding:0.3rem 0.5rem;border-radius:3px;cursor:pointer;">↻</button>
+          <button id="myduels-refresh-btn" onclick="myDuelsScan()" title="Refresh" style="background:transparent;border:1px solid rgba(119,85,204,0.3);color:rgba(157,127,238,0.7);font-size:0.7rem;padding:0.3rem 0.5rem;border-radius:3px;cursor:pointer;">↻</button>
         </div>
         <div id="myduels-inline-list" style="min-height:120px;">
           <div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.5rem 0;">Connect your wallet to see your duels.</div>
@@ -2867,7 +2914,7 @@ function svIntroParticles() {
       <div id="duel-list" style="display:flex;flex-direction:column;gap:0.8rem;">
         <div style="color:rgba(255,255,255,0.2);font-style:italic;font-size:0.85rem;text-align:center;padding:1.2rem 0;">No open challenges. Be the first!</div>
       </div>
-      <button data-duel-action="loadopen" style="width:100%;padding:0.65rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.2em;cursor:pointer;background:transparent;color:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.12);border-radius:2px;margin-top:1rem;">↻ &nbsp; Refresh</button>
+      <button id="duel-open-refresh-btn" data-duel-action="loadopen" style="width:100%;padding:0.65rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.2em;cursor:pointer;background:transparent;color:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.12);border-radius:2px;margin-top:1rem;">↻ &nbsp; Refresh</button>
     </div>
 
     <!-- HISTORY -->
@@ -5744,6 +5791,9 @@ let _duelOpenPage = 0;
 const _duelOpenPerPage = 10;
 
 async function duelLoadOpen() {
+  const btn = document.getElementById('duel-open-refresh-btn');
+  const btnOriginalText = btn ? btn.innerHTML : null;
+  if (btn) { btn.innerHTML = '⟳ &nbsp; Refreshing...'; btn.style.opacity = '0.5'; btn.disabled = true; }
   try {
     const ids = await duelReadContract.getOpenDuels();
     const list = document.getElementById('duel-list');
@@ -5759,7 +5809,12 @@ async function duelLoadOpen() {
     const duels = await Promise.all(ids.map(id => duelReadContract.getDuel(id)));
     _duelOpenCache = duels;
     duelRenderOpen();
-  } catch(e) { console.error('duelLoadOpen:', e); }
+  } catch(e) {
+    console.error('duelLoadOpen:', e);
+    if (typeof showToast === 'function') showToast('✖ Could not refresh open challenges', true);
+  } finally {
+    if (btn) { btn.innerHTML = btnOriginalText; btn.style.opacity = ''; btn.disabled = false; }
+  }
 }
 
 function duelSetFilter(f, btn) {
@@ -7682,6 +7737,7 @@ function _sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
 async function myDuelsScan() {
   const list = document.getElementById('myduels-inline-list');
+  const btn = document.getElementById('myduels-refresh-btn');
   if (!list) return;
   if (!connectedAddress || !duelReadContract) {
     list.innerHTML = '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);">Connect your wallet first.</div>';
@@ -7692,6 +7748,10 @@ async function myDuelsScan() {
   if (_myDuelsScanning) return;
   _myDuelsScanning = true;
 
+  // Visible feedback on every manual click (not just first load) — a silent
+  // no-op-looking refresh was the main reason this button seemed broken.
+  if (btn) { btn.textContent = '⟳'; btn.style.opacity = '0.5'; btn.disabled = true; btn.style.animation = 'spin 0.8s linear infinite'; }
+
   // Only show the placeholder on the very first load — never on auto-refresh (no flicker)
   if (!_myDuelsLoadedOnce) {
     list.innerHTML = '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);font-style:italic;">Scanning the Void...</div>';
@@ -7699,34 +7759,33 @@ async function myDuelsScan() {
 
   try {
     const me = connectedAddress.toLowerCase();
-    const ZERO = '0x0000000000000000000000000000000000000000';
 
-    // Probe duels by ID until we hit a non-existent one (playerA == zero address).
-    // Calls are sequential with a tiny pause to avoid RPC rate limits.
+    // Previously this probed IDs 1..500 sequentially and stopped after 3
+    // consecutive misses — a hardcoded cap that silently missed any duel
+    // numbered above 500 once the chain had enough activity, with zero
+    // indication anything was wrong. totalDuels() gives the real upper
+    // bound, and scanning runs in parallel batches instead of one call
+    // at a time with a manual sleep, so it stays fast even as that count
+    // grows.
+    const total = Number(await duelReadContract.totalDuels());
     const active = [];
-    let id = 1;
-    let misses = 0;
-    const MAX_PROBE = 500;     // safety cap
-    const MISS_LIMIT = 3;      // stop after 3 consecutive non-existent ids
-
-    while (id <= MAX_PROBE && misses < MISS_LIMIT) {
-      let d;
-      try { d = await duelReadContract.getDuel(id); }
-      catch { misses++; id++; await _sleep(60); continue; }
-
-      if (!d || d.playerA === ZERO) { misses++; id++; await _sleep(60); continue; }
-      misses = 0; // reset on a real duel
-
-      const st = Number(d.status);
-      const iAmA = d.playerA.toLowerCase() === me;
-      const iAmB = d.playerB && d.playerB.toLowerCase() === me;
-      // Keep only my duels that are still active (Open or Joined)
-      if ((iAmA || iAmB) && (st === 0 || st === 1)) {
-        active.push({ id: id.toString(), d });
+    const CONCURRENCY = 10;
+    let cursor = 1;
+    async function worker() {
+      while (cursor <= total) {
+        const id = cursor++;
+        let d;
+        try { d = await duelReadContract.getDuel(id); } catch { continue; }
+        if (!d) continue;
+        const st = Number(d.status);
+        const iAmA = d.playerA.toLowerCase() === me;
+        const iAmB = d.playerB && d.playerB.toLowerCase() === me;
+        if ((iAmA || iAmB) && (st === 0 || st === 1)) {
+          active.push({ id: id.toString(), d });
+        }
       }
-      id++;
-      await _sleep(60); // gentle pacing between RPC calls
     }
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, Math.max(total,1)) }, worker));
 
     _myDuelsLoadedOnce = true;
 
@@ -7806,8 +7865,10 @@ async function myDuelsScan() {
     if (!_myDuelsLoadedOnce) {
       list.innerHTML = '<div style="text-align:center;padding:2rem 0;color:#ff8899;">Scan failed. Try refresh.</div>';
     }
+    if (typeof showToast === 'function') showToast('✖ Refresh failed — try again', true);
   } finally {
     _myDuelsScanning = false;
+    if (btn) { btn.textContent = '↻'; btn.style.opacity = ''; btn.disabled = false; btn.style.animation = ''; }
   }
 }
 
