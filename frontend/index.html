@@ -4222,7 +4222,15 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
       <div class="lb-stat-col" style="color:#9d7fee;">Score</div>
     </div>`;
 
-  const tableRows = rows.slice(0, 50).map((r, i) => {
+  // Paginated: 15 rows per page (26+ players made one long list unwieldy).
+  const PER_PAGE = 15;
+  const totalPages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
+  const page = Math.min(Math.max(window._duelistLBPage || 0, 0), totalPages - 1);
+  window._duelistLBPage = page;
+  const start = page * PER_PAGE;
+
+  const tableRows = rows.slice(start, start + PER_PAGE).map((r, idx) => {
+    const i = start + idx; // global rank index, so medals stay on the true top 3
     const numClass = i===0?'gold':i===1?'silver-r':i===2?'bronze':'';
     const numSymbol = i===0?'⬡':i===1?'◆':i===2?'◈':(i+1);
     const avatarBlock = r.avatar
@@ -4241,7 +4249,25 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
     </div>`;
   }).join('');
 
-  container.innerHTML = headerRow + tableRows;
+  const pagerHTML = totalPages > 1 ? `
+    <div style="display:flex;justify-content:center;align-items:center;gap:1rem;margin-top:1rem;">
+      <button onclick="duelistLBSetPage(${page - 1})" ${page === 0 ? 'disabled style="opacity:0.25;cursor:default;"' : 'style="cursor:pointer;"'}
+        class="lb-pager-btn" style="background:transparent;border:1px solid rgba(157,127,238,0.3);color:#9d7fee;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.1em;padding:0.4rem 0.8rem;border-radius:3px;${page === 0 ? 'opacity:0.25;cursor:default;' : 'cursor:pointer;'}">‹ Prev</button>
+      <span style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.1em;color:rgba(255,255,255,0.4);">Page ${page + 1} / ${totalPages}</span>
+      <button onclick="duelistLBSetPage(${page + 1})" ${page >= totalPages - 1 ? 'disabled' : ''}
+        style="background:transparent;border:1px solid rgba(157,127,238,0.3);color:#9d7fee;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.1em;padding:0.4rem 0.8rem;border-radius:3px;${page >= totalPages - 1 ? 'opacity:0.25;cursor:default;' : 'cursor:pointer;'}">Next ›</button>
+    </div>` : '';
+
+  container.innerHTML = headerRow + tableRows + pagerHTML;
+}
+
+// Re-renders the duelist board on another page, straight from the cache —
+// no rescan, zero RPC cost per page flip.
+function duelistLBSetPage(p) {
+  window._duelistLBPage = p;
+  if (typeof _duelistLBCache !== 'undefined' && _duelistLBCache) {
+    duelistLeaderboardRender(_duelistLBCache.rows, _duelistLBCache.updatedAt, _duelistLBCache);
+  }
 }
 
 // Background refresh every 5 minutes, regardless of which tab is open,
