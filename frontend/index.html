@@ -1552,6 +1552,12 @@ body::after {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+/* Duel section main grid — the inline 1fr 1fr had no mobile rule at all,
+   squeezing "Challenge Someone" and "My Duels" side-by-side into ~180px
+   each on phones. "My Duels" (the right column, i.e. the panel that shows
+   "waiting for reveal") was the one getting crushed/overlooked — likely
+   why mobile players never realized they had a pending reveal. */
+@media(max-width:768px){ .duel-main-grid { grid-template-columns:1fr !important; } }
 #nav-duels-badge { animation:svPulseDot 1.6s ease-in-out infinite; }
 .duel-card-live { animation:svPulseCard 2.6s ease-in-out infinite; border-color:rgba(0,229,204,0.35) !important; }
 
@@ -2895,7 +2901,7 @@ function svIntroParticles() {
     </div>
 
     <!-- MAIN GRID -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem;">
+    <div class="duel-main-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem;">
 
       <!-- CREATE DUEL -->
       <div style="background:linear-gradient(135deg,rgba(8,4,40,0.9),rgba(4,2,26,0.95));border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1.5rem;">
