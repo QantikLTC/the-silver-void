@@ -2105,27 +2105,38 @@ body::after {
 @keyframes svFadeOut { to { opacity:0; } }
 </style>
 
-<!-- DUEL SYSTEM NOTICE — dismissible, shown once per browser -->
-<div id="sv-duel-notice" style="display:none;position:fixed;inset:0;z-index:99500;background:rgba(4,2,26,0.75);align-items:center;justify-content:center;padding:1.5rem;">
-  <div style="max-width:440px;background:linear-gradient(135deg,rgba(8,4,40,0.98),rgba(4,2,26,0.99));border:1px solid rgba(255,187,0,0.3);border-radius:6px;padding:1.8rem;text-align:center;">
-    <div style="font-size:1.6rem;margin-bottom:0.6rem;">⚠</div>
-    <div style="font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:0.1em;color:#ffbb00;text-transform:uppercase;margin-bottom:0.9rem;">Duel System Notice</div>
-    <div style="font-family:'Cormorant Garamond',serif;font-size:1rem;color:rgba(255,255,255,0.75);line-height:1.5;margin-bottom:1.4rem;">
-      The duel system is undergoing minor changes as we prepare for mainnet. You may run into occasional issues — thank you for your understanding.
+<!-- MAINNET MIGRATION NOTICE — shown on every visit until dismissed -->
+<div id="sv-duel-notice" style="display:none;position:fixed;inset:0;z-index:99500;background:rgba(4,2,26,0.8);align-items:center;justify-content:center;padding:1.5rem;">
+  <div style="max-width:480px;background:linear-gradient(135deg,rgba(8,4,40,0.98),rgba(4,2,26,0.99));border:1px solid rgba(0,229,204,0.35);border-radius:6px;padding:1.8rem;text-align:center;">
+    <div style="font-size:1.6rem;margin-bottom:0.6rem;">⬡</div>
+    <div style="font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:0.1em;color:var(--teal);text-transform:uppercase;margin-bottom:0.9rem;">The Void Has Evolved</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:1rem;color:rgba(255,255,255,0.78);line-height:1.55;margin-bottom:1rem;text-align:left;">
+      In preparation for <strong style="color:var(--teal);">mainnet</strong>, the duel arena, the NFT collections and the Void Store have been rebuilt on fresh contracts — faster, safer, and with permanent artwork storage.
     </div>
-    <button onclick="svDismissDuelNotice()" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;background:transparent;border:1px solid rgba(255,187,0,0.4);color:#ffbb00;padding:0.6rem 1.4rem;border-radius:3px;cursor:pointer;">Got it</button>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:0.95rem;color:rgba(255,255,255,0.6);line-height:1.55;margin-bottom:1.2rem;text-align:left;">
+      What this means for you:<br>
+      • <strong style="color:rgba(255,255,255,0.8);">Duel records &amp; leaderboard</strong> have been reset — everyone starts fresh.<br>
+      • <strong style="color:rgba(255,255,255,0.8);">Rank &amp; Saga NFTs</strong> restart on new collections — if you earned them before, you can mint them again.<br>
+      • <strong style="color:rgba(255,255,255,0.8);">Your burns and Order rank are untouched</strong> — the ritual remembers everything.
+    </div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:0.85rem;font-style:italic;color:rgba(255,255,255,0.4);margin-bottom:1.4rem;">
+      Thank you for testing with us. Every duel you fight sharpens the Void for mainnet.
+    </div>
+    <button onclick="svDismissDuelNotice()" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;background:transparent;border:1px solid rgba(0,229,204,0.45);color:var(--teal);padding:0.6rem 1.4rem;border-radius:3px;cursor:pointer;">Understood</button>
   </div>
 </div>
 
 <script>
 function svDismissDuelNotice() {
-  try { localStorage.setItem('sv_duel_notice_seen', '1'); } catch {}
+  // v2 flag — everyone sees the migration notice at least once, including
+  // players who had dismissed the earlier "minor changes" notice.
+  try { localStorage.setItem('sv_migration_notice_seen', '1'); } catch {}
   const el = document.getElementById('sv-duel-notice');
   if (el) el.style.display = 'none';
 }
 function svShowDuelNoticeIfNeeded() {
   let seen = false;
-  try { seen = localStorage.getItem('sv_duel_notice_seen') === '1'; } catch {}
+  try { seen = localStorage.getItem('sv_migration_notice_seen') === '1'; } catch {}
   if (seen) return;
   const el = document.getElementById('sv-duel-notice');
   if (el) el.style.display = 'flex';
