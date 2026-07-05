@@ -5353,14 +5353,25 @@ function duelCreateConfirm() {
 const SECRET_BACKUP_API = '/api/secret';
 const SECRET_SIGN_MESSAGE = 'Silver Void — Secret Backup Key v1';
 let _secretCryptoKey = null; // cached AES-GCM CryptoKey for this session
+let _secretCryptoKeyPromise = null; // in-flight derivation — caching the PROMISE (not just
+                                    // the result) prevents two near-simultaneous callers from
+                                    // each triggering their own MetaMask signature prompt
 
 async function getSecretCryptoKey() {
   if (_secretCryptoKey) return _secretCryptoKey;
+  if (_secretCryptoKeyPromise) return _secretCryptoKeyPromise; // derivation already in flight — reuse it, don't prompt again
   if (!signer) throw new Error('Wallet not connected');
-  const signature = await signer.signMessage(SECRET_SIGN_MESSAGE);
-  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(signature));
-  _secretCryptoKey = await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
-  return _secretCryptoKey;
+  _secretCryptoKeyPromise = (async () => {
+    try {
+      const signature = await signer.signMessage(SECRET_SIGN_MESSAGE);
+      const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(signature));
+      _secretCryptoKey = await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+      return _secretCryptoKey;
+    } finally {
+      _secretCryptoKeyPromise = null; // allow retry if the user rejected the signature
+    }
+  })();
+  return _secretCryptoKeyPromise;
 }
 
 function bufToB64(buf) {
@@ -5388,6 +5399,28 @@ async function decryptSecret(packed) {
 }
 
 // Fire-and-forget backup — never blocks or breaks the duel flow on failure
+// ═══ Per-duel secret storage ═══
+// The original design kept ONE shared localStorage slot (secret/choice/
+// duelId) per wallet. Every duel creation overwrote it, every recovery
+// re-wrote it, and reveals in any order kept producing new corruption
+// combinations ("Wrong secret" / commit mismatch) no matter how many
+// guards we stacked around the slot. Each duel now stores its own entry,
+// keyed by contract + duelId — cross-overwrites are structurally
+// impossible. The legacy shared slot is still read as a last-resort
+// fallback for duels created before this change.
+function _duelSecretKey(duelId) {
+  return _duelKey('secret_' + DUEL_CONTRACT.toLowerCase() + '_' + duelId.toString());
+}
+function duelSecretStore(duelId, secret, choiceNum) {
+  try { localStorage.setItem(_duelSecretKey(duelId), JSON.stringify({ secret, choice: choiceNum })); } catch (e) {}
+}
+function duelSecretGet(duelId) {
+  try {
+    const raw = localStorage.getItem(_duelSecretKey(duelId));
+    return raw ? JSON.parse(raw) : null; // { secret, choice } | null
+  } catch (e) { return null; }
+}
+
 // Server-side backups are keyed by (wallet, duelId) — but duel IDs restart
 // at 1 on every contract redeployment, so "duel 13" on the new contract
 // collided with the old contract's "duel 13" backup for the same wallet.
@@ -5478,6 +5511,7 @@ async function duelCreate() {
     localStorage.setItem(_duelKey('secret'), duelMySecret);
     localStorage.setItem(_duelKey('choice'), duelChoice.toString());
     localStorage.setItem(_duelKey('status'), 'open');
+    duelSecretStore(duelId, duelMySecret, duelChoice); // per-duel entry — the authoritative local copy
 
     // Silent server-side encrypted backup — safety net if this device's
     // localStorage is later lost (cache cleared, different browser/device).
@@ -5645,28 +5679,36 @@ async function duelClaimTimeout() {
 
 // REVEAL
 async function duelReveal() {
-  // The local secret/choice/duelId keys are scoped per WALLET, not per duel
-  // (see _duelKey). If this wallet creates a second duel before revealing
-  // the first one, the newer secret silently overwrites the older one in
-  // localStorage. Trusting whatever's stored without checking it actually
-  // belongs to duelMyId caused "commit mismatch" reverts — worse, it also
-  // skipped the (correct) server-side recovery below, since that only ran
-  // when the local value was completely *absent*, not when it was present
-  // but stale. So: verify the stored duelId matches before trusting it.
-  const storedDuelId = localStorage.getItem(_duelKey('duelId'));
-  const localSecretIsForThisDuel = duelMyId && storedDuelId === duelMyId.toString();
-  let _restoredSecret = localSecretIsForThisDuel ? (duelMySecret || localStorage.getItem(_duelKey('secret'))) : null;
-  // Local secret missing OR stale for a different duel — try the encrypted server backup.
+  // Secret resolution order:
+  //  1. Per-duel entry (secret_<contract>_<id>) — authoritative, cannot be
+  //     overwritten by other duels.
+  //  2. Legacy shared slot — only if its stored duelId matches (duels
+  //     created before per-duel storage existed).
+  //  3. Encrypted server backup (namespaced per contract).
+  let _restoredSecret = null;
+  const perDuel = duelMyId ? duelSecretGet(duelMyId) : null;
+  if (perDuel && perDuel.secret) {
+    _restoredSecret = perDuel.secret;
+    duelMyChoiceNum = perDuel.choice;
+  } else {
+    const storedDuelId = localStorage.getItem(_duelKey('duelId'));
+    const localSecretIsForThisDuel = duelMyId && storedDuelId === duelMyId.toString();
+    if (localSecretIsForThisDuel) {
+      _restoredSecret = localStorage.getItem(_duelKey('secret'));
+      duelMyChoiceNum = parseInt(localStorage.getItem(_duelKey('choice')) || '0');
+    }
+  }
+  // Nothing usable locally — try the encrypted server backup.
   if (!_restoredSecret && duelMyId && connectedAddress) {
     showToast('Recovering secret — sign to verify...');
     const recovered = await recoverSecretFromServer(duelMyId);
     if (recovered && recovered.secret) {
       _restoredSecret = recovered.secret;
       duelMyChoiceNum = recovered.choice;
-      // Re-save locally so we don't need to hit the server again this session
-      localStorage.setItem(_duelKey('secret'), _restoredSecret);
-      localStorage.setItem(_duelKey('choice'), String(recovered.choice));
-      localStorage.setItem(_duelKey('duelId'), duelMyId.toString());
+      // Cache under the per-duel key (NOT the shared slot — re-writing the
+      // shared slot after recoveries is exactly what kept corrupting
+      // other duels' reveals).
+      duelSecretStore(duelMyId, recovered.secret, recovered.choice);
     }
   }
   if (!duelContract || !duelMyId || !_restoredSecret) { showToast('No active duel'); return; }
@@ -7876,9 +7918,11 @@ async function myDuelsScan() {
         role = 'Created';
         statusLabel = '🔴 Your turn — Reveal!';
         statusColor = '#ff4466';
-        const sec = localStorage.getItem(_duelKey('secret'));
-        const myDuelStored = localStorage.getItem(_duelKey('duelId'));
-        if (sec && myDuelStored === id) {
+        // Per-duel secret entry (authoritative), with the legacy shared
+        // slot as fallback for duels created before per-duel storage.
+        const hasLocalSecret = !!duelSecretGet(id)
+          || (localStorage.getItem(_duelKey('secret')) && localStorage.getItem(_duelKey('duelId')) === id);
+        if (hasLocalSecret) {
           action = `<button onclick="myDuelsReveal('${id}')" style="width:100%;margin-top:0.6rem;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;cursor:pointer;background:linear-gradient(135deg,#ff4466,#ff7799);color:#fff;border:none;border-radius:3px;text-transform:uppercase;">⚡ Reveal Now</button>`;
         } else {
           // Secret not found locally — try the encrypted server backup (requires a wallet signature to decrypt).
@@ -7935,8 +7979,8 @@ async function myDuelsScan() {
 
 async function myDuelsReveal(id) {
   duelMyId = BigInt(id);
-  duelMySecret = localStorage.getItem(_duelKey('secret'));
-  duelMyChoiceNum = parseInt(localStorage.getItem(_duelKey('choice'))||'0');
+  // No longer pre-loads duelMySecret from the legacy shared slot here —
+  // duelReveal() now resolves the right secret itself (per-duel key first).
   if (typeof duelReveal === 'function') await duelReveal();
   myDuelsScan();
 }
