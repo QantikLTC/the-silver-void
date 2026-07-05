@@ -5388,6 +5388,18 @@ async function decryptSecret(packed) {
 }
 
 // Fire-and-forget backup — never blocks or breaks the duel flow on failure
+// Server-side backups are keyed by (wallet, duelId) — but duel IDs restart
+// at 1 on every contract redeployment, so "duel 13" on the new contract
+// collided with the old contract's "duel 13" backup for the same wallet.
+// The recovered old-era secret decrypted fine (same wallet signature key)
+// but obviously mismatched the new duel's commit → "commit mismatch" on
+// reveal. Prefixing the id with the duel-contract address isolates each
+// deployment's backups without any server-side change (the API treats
+// duelId as an opaque string).
+function _secretBackupKeyId(duelId) {
+  return DUEL_CONTRACT.toLowerCase() + ':' + duelId.toString();
+}
+
 async function backupSecretToServer(duelId, plainSecret, choiceNum) {
   try {
     const payload = JSON.stringify({ secret: plainSecret, choice: choiceNum });
@@ -5395,7 +5407,7 @@ async function backupSecretToServer(duelId, plainSecret, choiceNum) {
     await fetch(SECRET_BACKUP_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet: connectedAddress, duelId: duelId.toString(), ciphertext })
+      body: JSON.stringify({ wallet: connectedAddress, duelId: _secretBackupKeyId(duelId), ciphertext })
     });
   } catch (e) {
     console.warn('Secret backup failed (non-blocking):', e);
@@ -5405,7 +5417,7 @@ async function backupSecretToServer(duelId, plainSecret, choiceNum) {
 // Try to recover {secret, choice} from the server backup. Returns null if unavailable.
 async function recoverSecretFromServer(duelId) {
   try {
-    const res = await fetch(`${SECRET_BACKUP_API}?wallet=${encodeURIComponent(connectedAddress)}&duelId=${encodeURIComponent(duelId.toString())}`);
+    const res = await fetch(`${SECRET_BACKUP_API}?wallet=${encodeURIComponent(connectedAddress)}&duelId=${encodeURIComponent(_secretBackupKeyId(duelId))}`);
     if (!res.ok) return null;
     const data = await res.json();
     if (!data.ciphertext) return null;
