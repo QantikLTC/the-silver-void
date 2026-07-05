@@ -5147,12 +5147,12 @@ const duelHistory    = [];
     const savedChoice = parseInt(localStorage.getItem(_duelKey('choice'))||'0');
     const savedStatus = localStorage.getItem(_duelKey('status'));
 
-        // Restore joined state (player B)
-    const savedJoinedId = localStorage.getItem(_duelKey('joined_id'));
-    const savedJoinedChoice = parseInt(localStorage.getItem(_duelKey('joined_choice'))||'0');
-    if (savedJoinedId && savedJoinedChoice) {
-      duelJoinedId = BigInt(savedJoinedId);
-      duelJoinedChoice = savedJoinedChoice;
+        // Restore joined state (player B) — newest pending duel from the list
+    const _savedJoined = duelJoinedLoad();
+    if (_savedJoined.length) {
+      const _lastJ = _savedJoined[_savedJoined.length - 1];
+      duelJoinedId = BigInt(_lastJ.id);
+      duelJoinedChoice = _lastJ.choice;
     }
 
     if (savedId && savedSecret && savedChoice) {
@@ -5241,18 +5241,25 @@ async function duelRestoreState() {
     }
   } catch(e) { console.error('duelRestoreState:', e); }
 
-  // Also restore player B "joined" state if present
+  // Also restore player B "joined" state if present — walk the WHOLE list so
+  // every duel resolved while we were away gets its result + history entry
   try {
-    const jId = localStorage.getItem(_duelKey('joined_id'));
-    const jChoice = parseInt(localStorage.getItem(_duelKey('joined_choice'))||'0');
-    if (jId && jChoice) {
-      duelJoinedId = BigInt(jId);
-      duelJoinedChoice = jChoice;
-      const d = await duelReadContract.getDuel(duelJoinedId);
+    const _joined = duelJoinedLoad();
+    let _panelShown = false;
+    for (let i = _joined.length - 1; i >= 0; i--) { // newest first
+      const jId = _joined[i].id;
+      const jChoice = _joined[i].choice;
+      if (!jId || !jChoice) { duelJoinedRemove(jId); continue; }
+      const d = await duelReadContract.getDuel(jId);
       const st = Number(d.status);
       if (st === 1) {
-        // Still waiting for creator to reveal — show joined panel
-        duelShowJoinedPanel(jId, jChoice);
+        // Still waiting for creator to reveal — show panel for the newest one
+        if (!_panelShown) {
+          _panelShown = true;
+          duelJoinedId = BigInt(jId);
+          duelJoinedChoice = jChoice;
+          duelShowJoinedPanel(jId, jChoice);
+        }
       } else if (st === 2 || st === 4) {
         // Already resolved while we were away — show result + save history
         const isTie = st === 4;
@@ -5262,19 +5269,18 @@ async function duelRestoreState() {
         if (!_duelResultShown.has(String(jId))) {
           _duelResultShown.add(String(jId));
           duelShowResult(isWin, isTie, choiceB, choiceA);
+          showToast((isTie ? '🤝 Tie' : isWin ? '🏆 Victory' : '💀 Defeat') + ' — Duel #' + jId + ' resolved');
         }
         const _h = duelHistoryLoad();
-        if (!_h.some(x => x.duelId === jId)) {
-          _h.unshift({ duelId: jId, isWin, isTie, myChoice: choiceB, oppChoice: choiceA, stake: ethers.formatEther(d.stake), ts: Date.now(), role: 'joiner' });
+        if (!_h.some(x => String(x.duelId) === String(jId))) {
+          _h.unshift({ duelId: String(jId), isWin, isTie, myChoice: choiceB, oppChoice: choiceA, stake: ethers.formatEther(d.stake), ts: Date.now(), role: 'joiner' });
           duelHistorySave(_h);
           duelRenderHistory();
         }
-        duelJoinedId = null; duelJoinedChoice = 0;
-        localStorage.removeItem(_duelKey('joined_id'));
-        localStorage.removeItem(_duelKey('joined_choice'));
-        localStorage.removeItem(_duelKey('joined_stake'));
+        duelJoinedRemove(jId);
       }
     }
+    if (!_panelShown) { duelJoinedId = null; duelJoinedChoice = 0; }
   } catch(e) { console.error('duelRestoreState joined:', e); }
 }
 
@@ -5571,12 +5577,11 @@ async function duelJoin(duelId, choiceNum) {
     const tx = await duelContract.joinDuel(duelId, choiceNum, { value: _duelInfo.stake });
     await tx.wait();
 
-    // Save joined state for this wallet (player B)
+    // Save joined state for this wallet (player B) — appended to the
+    // multi-duel list so previously-joined duels keep being watched too
     duelJoinedId = BigInt(duelId.toString());
     duelJoinedChoice = choiceNum;
-    localStorage.setItem(_duelKey('joined_id'), duelId.toString());
-    localStorage.setItem(_duelKey('joined_choice'), choiceNum.toString());
-    localStorage.setItem(_duelKey('joined_stake'), ethers.formatEther(_duelInfo.stake));
+    duelJoinedAdd(duelId.toString(), choiceNum, ethers.formatEther(_duelInfo.stake));
 
     // Show "joined — waiting for reveal" panel
     duelShowJoinedPanel(duelId, choiceNum);
@@ -5657,7 +5662,11 @@ function duelStartJoinedCountdown(duelId) {
 
 // Joiner claims the pot after opponent timeout
 async function duelClaimTimeout() {
-  const jId = duelJoinedId || (localStorage.getItem(_duelKey('joined_id')) ? BigInt(localStorage.getItem(_duelKey('joined_id'))) : null);
+  let jId = duelJoinedId;
+  if (!jId) {
+    const _jl = duelJoinedLoad();
+    if (_jl.length) jId = BigInt(_jl[_jl.length - 1].id);
+  }
   if (!jId) { showToast('No duel to claim'); return; }
   if (!duelContract) await initDuelContract();
   const btn = document.getElementById('duel-claim-btn');
@@ -5785,10 +5794,15 @@ async function duelCancel() {
 
 // CHECK MY STATUS
 async function duelCheckMyStatus() {
-  // Poll for B's result
-  const jId = duelJoinedId || (localStorage.getItem(_duelKey('joined_id')) ? BigInt(localStorage.getItem(_duelKey('joined_id'))) : null);
-  const jChoice = duelJoinedChoice || parseInt(localStorage.getItem(_duelKey('joined_choice'))||'0');
-  if (jId && jChoice) {
+  // Poll for B's results — iterate over ALL pending joined duels, not just
+  // the most recent one. Each resolved duel gets its own notification and
+  // history entry, then leaves the watch list.
+  let _resolvedDisplayed = false; // did the duel shown in the panel resolve?
+  const _joinedList = duelJoinedLoad();
+  for (const _entry of _joinedList) {
+    const jId = _entry.id;
+    const jChoice = _entry.choice;
+    if (!jId || !jChoice) { duelJoinedRemove(jId); continue; }
     try {
       const d = await duelReadContract.getDuel(jId);
       const st = Number(d.status);
@@ -5799,33 +5813,46 @@ async function duelCheckMyStatus() {
         const choiceB = Number(d.choiceB);
         const stakeStr = ethers.formatEther(d.stake);
         // For wallet B: myChoice=choiceB, oppChoice=choiceA
-        if (!_duelResultShown.has(jId.toString())) {
-          _duelResultShown.add(jId.toString());
+        if (!_duelResultShown.has(String(jId))) {
+          _duelResultShown.add(String(jId));
           duelShowResult(isWin, isTie, choiceB, choiceA);
+          showToast((isTie ? '🤝 Tie' : isWin ? '🏆 Victory' : '💀 Defeat') + ' — Duel #' + jId + ' resolved');
         }
         // Save to history (deduped — the restore path may already have saved it)
         const _hist2 = duelHistoryLoad();
-        if (!_hist2.some(x => String(x.duelId) === jId.toString())) {
-          _hist2.unshift({ duelId: jId.toString(), isWin, isTie, myChoice: choiceB, oppChoice: choiceA, stake: stakeStr, ts: Date.now(), role: 'joiner' });
+        if (!_hist2.some(x => String(x.duelId) === String(jId))) {
+          _hist2.unshift({ duelId: String(jId), isWin, isTie, myChoice: choiceB, oppChoice: choiceA, stake: stakeStr, ts: Date.now(), role: 'joiner' });
           duelHistorySave(_hist2);
           duelRenderHistory();
         }
         if (typeof featsCheck === 'function') featsCheck();
-        duelJoinedId = null; duelJoinedChoice = 0;
-        localStorage.removeItem(_duelKey('joined_id'));
-        localStorage.removeItem(_duelKey('joined_choice'));
-        localStorage.removeItem(_duelKey('joined_stake'));
-        // Reset the "My Active Duel" panel back to none
-        const none = document.getElementById('duel-my-none');
-        const open = document.getElementById('duel-my-open');
-        const reveal = document.getElementById('duel-my-reveal');
-        if (none) none.style.display = 'block';
-        if (open) open.style.display = 'none';
-        if (reveal) reveal.style.display = 'none';
-        const _ji2 = document.getElementById('duel-joined-info'); if(_ji2) _ji2.style.display = 'none';
-        if (typeof _duelCountdownTimer !== 'undefined' && _duelCountdownTimer) clearInterval(_duelCountdownTimer);
+        duelJoinedRemove(jId);
+        if (duelJoinedId !== null && String(duelJoinedId) === String(jId)) {
+          duelJoinedId = null; duelJoinedChoice = 0;
+          _resolvedDisplayed = true;
+        }
       }
     } catch(e) {}
+  }
+  if (_resolvedDisplayed) {
+    if (typeof _duelCountdownTimer !== 'undefined' && _duelCountdownTimer) clearInterval(_duelCountdownTimer);
+    const _remaining = duelJoinedLoad();
+    if (_remaining.length) {
+      // Other joined duels still pending — surface the newest one in the panel
+      const _nxt = _remaining[_remaining.length - 1];
+      duelJoinedId = BigInt(_nxt.id);
+      duelJoinedChoice = _nxt.choice;
+      duelShowJoinedPanel(_nxt.id, _nxt.choice);
+    } else {
+      // Nothing left to watch — reset the "My Active Duel" panel back to none
+      const none = document.getElementById('duel-my-none');
+      const open = document.getElementById('duel-my-open');
+      const reveal = document.getElementById('duel-my-reveal');
+      if (none) none.style.display = 'block';
+      if (open) open.style.display = 'none';
+      if (reveal) reveal.style.display = 'none';
+      const _ji2 = document.getElementById('duel-joined-info'); if(_ji2) _ji2.style.display = 'none';
+    }
   }
   if (!duelMyId || duelMyStatus !== 'open') return;
   try {
@@ -6140,6 +6167,49 @@ function duelHistoryLoad() {
 }
 function duelHistorySave(arr) {
   try { localStorage.setItem(_duelKey('duel_history'), JSON.stringify(arr.slice(0,50))); } catch {}
+}
+
+// ═══ MULTI-DUEL JOINED STATE (player B) ═══
+// A wallet can join SEVERAL duels before any of them resolves. The old code
+// kept a single joined_id slot — each new join overwrote the previous one,
+// so only the LAST duel ever got a notification / history entry. We now keep
+// an array of {id, choice, stake} under joined_list and the poller watches
+// ALL of them. Legacy single-slot keys are migrated on first read.
+function duelJoinedLoad() {
+  let list = [];
+  try { list = JSON.parse(localStorage.getItem(_duelKey('joined_list'))||'[]'); } catch { list = []; }
+  if (!Array.isArray(list)) list = [];
+  // One-time migration of the legacy single-slot state into the list
+  try {
+    const legacyId = localStorage.getItem(_duelKey('joined_id'));
+    if (legacyId) {
+      const legacyChoice = parseInt(localStorage.getItem(_duelKey('joined_choice'))||'0');
+      const legacyStake  = localStorage.getItem(_duelKey('joined_stake')) || '0.1';
+      if (legacyChoice && !list.some(x => String(x.id) === String(legacyId))) {
+        list.push({ id: String(legacyId), choice: legacyChoice, stake: legacyStake });
+        try { localStorage.setItem(_duelKey('joined_list'), JSON.stringify(list)); } catch {}
+      }
+      localStorage.removeItem(_duelKey('joined_id'));
+      localStorage.removeItem(_duelKey('joined_choice'));
+      localStorage.removeItem(_duelKey('joined_stake'));
+    }
+  } catch {}
+  return list;
+}
+function duelJoinedSave(list) {
+  try { localStorage.setItem(_duelKey('joined_list'), JSON.stringify(list.slice(-20))); } catch {}
+}
+function duelJoinedAdd(id, choice, stake) {
+  const list = duelJoinedLoad();
+  if (!list.some(x => String(x.id) === String(id))) {
+    list.push({ id: String(id), choice: choice, stake: stake });
+    duelJoinedSave(list);
+  }
+}
+function duelJoinedRemove(id) {
+  const list = duelJoinedLoad().filter(x => String(x.id) !== String(id));
+  duelJoinedSave(list);
+  return list;
 }
 let _duelHistoryPage = 0;
 const _duelHistoryPerPage = 5;
