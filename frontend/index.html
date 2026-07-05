@@ -1577,6 +1577,14 @@ body::after {
   padding:0.85rem 1.5rem; border-bottom:1px solid rgba(255,255,255,0.03);
   align-items:center; transition:background 0.2s;
 }
+/* Mobile: the fixed 40+64×3+90px columns (plus 3rem padding) overflow a
+   ~380px phone screen and shove the Score column off-grid — same class of
+   bug as the duel-section 1fr 1fr grid. Tighter columns + padding fit. */
+@media(max-width:768px){
+  .lb-row-duel { grid-template-columns:24px 1fr 34px 34px 34px 56px; padding:0.7rem 0.6rem; }
+  .lb-row-duel .lb-avatar { width:26px; height:26px; font-size:0.55rem; }
+  .lb-row-duel .lb-addr { font-size:0.78rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+}
 .lb-row-duel:last-child { border-bottom:none; }
 .lb-row-duel:hover { background:rgba(0,229,204,0.02); }
 .lb-row-duel.gold { background:linear-gradient(to right,rgba(200,168,74,0.1),rgba(200,168,74,0.02)); border-left:2px solid #c8a84a; }
@@ -4153,7 +4161,14 @@ async function duelistLeaderboardScan() {
   // Sidebar stats — read straight from the contract for accuracy, falling
   // back to derived values from the scan if the contract calls fail.
   let totalPlayed = 0, totalBurnedZkltc = 0;
-  try { totalPlayed = Number(await duelReadContract.totalDuels()); } catch(e) {}
+  // Same convention as the Duels-section stats: "played" = decisive duels
+  // (totalDuels) + ties (totalTies) — the contract counts them separately,
+  // and the two panels showing different numbers for "duels played"
+  // confused testers.
+  try {
+    const [tdRaw, ttRaw] = await Promise.all([duelReadContract.totalDuels(), duelReadContract.totalTies()]);
+    totalPlayed = Number(tdRaw) + Number(ttRaw);
+  } catch(e) {}
   try { totalBurnedZkltc = parseFloat(ethers.formatEther(await duelReadContract.totalBurned())); } catch(e) {}
 
   return { rows, totalPlayed, totalBurnedZkltc, totalPlayers: wallets.length };
