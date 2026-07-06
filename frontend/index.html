@@ -1582,8 +1582,8 @@ body::after {
    bug as the duel-section 1fr 1fr grid. Tighter columns + padding fit. */
 @media(max-width:768px){
   .lb-row-duel { grid-template-columns:24px 1fr 34px 34px 34px 56px; padding:0.7rem 0.6rem; }
-  .lb-row-duel .lb-avatar { width:26px; height:26px; font-size:0.55rem; }
-  .lb-row-duel .lb-addr { font-size:0.78rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lb-row-duel .lb-avatar { width:38px; height:38px; font-size:0.65rem; }
+  .lb-row-duel .lb-addr { font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 }
 .lb-row-duel:last-child { border-bottom:none; }
 .lb-row-duel:hover { background:rgba(0,229,204,0.02); }
@@ -1620,11 +1620,12 @@ body::after {
 /* User cell */
 .lb-user { display:flex; align-items:center; gap:0.75rem; }
 .lb-avatar {
-  width:36px; height:36px; border-radius:50%; flex-shrink:0;
+  width:50px; height:50px; border-radius:50%; flex-shrink:0;
   display:flex; align-items:center; justify-content:center;
-  font-family:'Cinzel',serif; font-size:0.6rem; font-weight:700;
+  font-family:'Cinzel',serif; font-size:0.78rem; font-weight:700;
+  box-shadow:0 0 12px rgba(119,85,204,0.28), 0 0 2px rgba(255,255,255,0.15);
 }
-.lb-addr { font-size:0.78rem; color:#fff; margin-bottom:2px; }
+.lb-addr { font-family:'Cinzel',serif; font-size:0.95rem; letter-spacing:0.05em; color:#fff; margin-bottom:3px; }
 .lb-badge-chip {
   font-size:0.48rem; letter-spacing:0.12em; text-transform:uppercase;
   padding:1px 7px; display:inline-block;
@@ -2287,7 +2288,7 @@ function svIntroParticles() {
       <li><a href="#" onclick="svIntroReplay();return false;" style="color:rgba(255,255,255,0.45);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'" title="Replay intro">✶ Intro</a></li>
     </ul>
     <button class="nav-btn" id="wallet-btn">Connect Wallet</button>
-    <button id="profile-btn" onclick="profileToggle()" title="Your profile" style="display:none;position:relative;background:conic-gradient(rgba(0,229,204,0.55) 0 0%, rgba(255,255,255,0.08) 0 100%);border:none;width:42px;height:42px;border-radius:50%;cursor:pointer;margin-left:0.5rem;padding:0;vertical-align:middle;align-items:center;justify-content:center;transition:box-shadow 0.25s, transform 0.2s;overflow:visible;" onmouseover="this.style.boxShadow='0 0 14px '+(window._pbRingColor||'#00e5cc')+'66';this.style.transform='scale(1.05)'" onmouseout="this.style.boxShadow='none';this.style.transform='scale(1)'"><span id="pb-inner" style="position:relative;z-index:2;width:34px;height:34px;border-radius:50%;background:#0c0824;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none;font-size:0.95rem;">🌑</span><span id="pb-badge" style="position:absolute;z-index:5;bottom:-3px;right:-4px;min-width:17px;height:17px;padding:0 2px;border-radius:9px;background:#00e5cc;color:#04021a;font-size:0.56rem;font-weight:700;display:none;align-items:center;justify-content:center;border:2px solid #04021a;pointer-events:none;font-family:'Cinzel',serif;letter-spacing:0.02em;"></span></button>
+    <button id="profile-btn" onclick="profileToggle()" title="Your profile" style="display:none;position:relative;background:conic-gradient(rgba(0,229,204,0.55) 0 0%, rgba(255,255,255,0.08) 0 100%);border:none;width:52px;height:52px;border-radius:50%;cursor:pointer;margin-left:0.6rem;padding:0;vertical-align:middle;align-items:center;justify-content:center;transition:box-shadow 0.25s, transform 0.2s;overflow:visible;" onmouseover="this.style.boxShadow='0 0 14px '+(window._pbRingColor||'#00e5cc')+'66';this.style.transform='scale(1.05)'" onmouseout="this.style.boxShadow='none';this.style.transform='scale(1)'"><span id="pb-inner" style="position:relative;z-index:2;width:42px;height:42px;border-radius:50%;background:#0c0824;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none;font-size:0.95rem;">🌑</span><span id="pb-badge" style="position:absolute;z-index:5;bottom:-3px;right:-4px;min-width:20px;height:20px;padding:0 2px;border-radius:10px;background:#00e5cc;color:#04021a;font-size:0.66rem;font-weight:700;display:none;align-items:center;justify-content:center;border:2px solid #04021a;pointer-events:none;font-family:'Cinzel',serif;letter-spacing:0.02em;"></span></button>
     <div class="hamburger" id="hamburger" onclick="toggleMenu()">
       <span></span><span></span><span></span>
     </div>
@@ -3762,7 +3763,7 @@ async function loadLeaderboard(){
       } catch(e) {}
       try {
         const avId = typeof avatarFetch === 'function' ? await avatarFetch(addr) : null;
-        if (avId) avatarHTML = typeof avatarHTMLFor === 'function' ? avatarHTMLFor(avId, 32) : null;
+        if (avId) avatarHTML = typeof avatarHTMLFor === 'function' ? avatarHTMLFor(avId, 46) : null;
       } catch(e) {}
       return{
         rank:i+1,
@@ -4188,7 +4189,7 @@ async function duelistLeaderboardScan() {
     } catch(e) {}
     try {
       const avId = typeof avatarFetch === 'function' ? await avatarFetch(w) : null;
-      if (avId) avatarHTML = typeof avatarHTMLFor === 'function' ? avatarHTMLFor(avId, 32) : avatarHTML;
+      if (avId) avatarHTML = typeof avatarHTMLFor === 'function' ? avatarHTMLFor(avId, 46) : avatarHTML;
     } catch(e) {}
     let skinId = null;
     try { skinId = typeof skinFetchCached === 'function' ? await skinFetchCached(w) : null; } catch(e) {}
@@ -4300,7 +4301,7 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
     // Equipped Forge skin: wrap the avatar in a lite version of the ring
     // (no blur/particles — 15 animated rings per page must stay cheap)
     const avatarCell = (r.skin && r.skin !== 'ring_default' && typeof SKIN_FX === 'function')
-      ? `<div style="position:relative;flex-shrink:0;padding:3px;border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${SKIN_FX(r.skin, 38, true)}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
+      ? `<div style="position:relative;flex-shrink:0;padding:3px;border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${SKIN_FX(r.skin, 52, true)}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
       : avatarBlock;
     return `<div class="lb-row-duel ${numClass}">
       <div class="lb-rank-num ${numClass}">${numSymbol}</div>
@@ -6871,9 +6872,14 @@ async function sagaMint(sagaId) {
 
     <!-- TABS -->
     <div style="display:flex;gap:0.5rem;margin-bottom:1.6rem;">
-      <button id="store-tab-browse" onclick="storeSwitchTab('browse')" style="flex:1;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:rgba(0,229,204,0.1);border:1px solid rgba(0,229,204,0.35);color:var(--teal);border-radius:3px;">Browse</button>
+      <button id="store-tab-acquire" onclick="storeSwitchTab('acquire')" style="flex:1;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:rgba(0,229,204,0.1);border:1px solid rgba(0,229,204,0.35);color:var(--teal);border-radius:3px;">🛒 Acquire</button>
       <button id="store-tab-sell" onclick="storeSwitchTab('sell')" style="flex:1;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);border-radius:3px;">Sell</button>
-      <button id="store-tab-forge" onclick="storeSwitchTab('forge')" style="flex:1;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);border-radius:3px;">⚒ The Forge</button>
+    </div>
+
+    <!-- ACQUIRE FILTER — switch between NFT relics and Forge skins -->
+    <div id="store-acquire-filter" style="display:flex;justify-content:center;gap:0.5rem;margin-bottom:1.4rem;">
+      <button id="store-filter-relics" onclick="storeAcquireFilter('relics')" style="padding:0.45rem 1.3rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;background:rgba(119,85,204,0.14);border:1px solid rgba(119,85,204,0.5);color:#b9a3f5;border-radius:999px;transition:all 0.2s;">🏺 Relics (NFT)</button>
+      <button id="store-filter-skins" onclick="storeAcquireFilter('skins')" style="padding:0.45rem 1.3rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);border-radius:999px;transition:all 0.2s;">⚒ Ring Skins</button>
     </div>
 
     <!-- FORGE TAB — cosmetic ring skins showcase -->
@@ -6976,26 +6982,55 @@ function storeClose() {
 // only source of truth for "what has actually sold"). storeRefreshListings()
 // only ever looks at *active* listings.
 
+let _storeAcquireFilter = 'relics';
 function storeSwitchTab(tab) {
-  const tabs = {
-    browse: { btn:'store-tab-browse', content:'store-tab-content-browse', color:'var(--teal)',  bg:'rgba(0,229,204,0.1)',  border:'rgba(0,229,204,0.35)',  onOpen: () => storeRefreshListings() },
-    sell:   { btn:'store-tab-sell',   content:'store-tab-content-sell',   color:'var(--teal)',  bg:'rgba(0,229,204,0.1)',  border:'rgba(0,229,204,0.35)',  onOpen: () => storeScanMyNFTs() },
-    forge:  { btn:'store-tab-forge',  content:'store-tab-content-forge',  color:'#ffd27a',      bg:'rgba(255,210,122,0.1)', border:'rgba(255,210,122,0.4)', onOpen: () => { if (typeof mySkinLoad === 'function') mySkinLoad().then(() => forgeStoreRender()); forgeStoreRender(); } },
+  // Back-compat: old callers still say 'browse' / 'forge' — both live under
+  // the Acquire tab now, they just pick the matching filter.
+  if (tab === 'browse') { tab = 'acquire'; _storeAcquireFilter = 'relics'; }
+  if (tab === 'forge')  { tab = 'acquire'; _storeAcquireFilter = 'skins'; }
+  const acquireBtn = document.getElementById('store-tab-acquire');
+  const sellBtn = document.getElementById('store-tab-sell');
+  const filterBar = document.getElementById('store-acquire-filter');
+  const sellContent = document.getElementById('store-tab-content-sell');
+  const on = (btn, active, color, bg, border) => {
+    if (!btn) return;
+    btn.style.background = active ? bg : 'transparent';
+    btn.style.borderColor = active ? border : 'rgba(255,255,255,0.12)';
+    btn.style.color = active ? color : 'rgba(255,255,255,0.4)';
   };
-  for (const key of Object.keys(tabs)) {
-    const t = tabs[key];
-    const btn = document.getElementById(t.btn);
-    const content = document.getElementById(t.content);
-    const on = key === tab;
-    if (content) content.style.display = on ? 'block' : 'none';
-    if (btn) {
-      btn.style.background = on ? t.bg : 'transparent';
-      btn.style.borderColor = on ? t.border : 'rgba(255,255,255,0.12)';
-      btn.style.color = on ? t.color : 'rgba(255,255,255,0.4)';
-    }
+  const acquire = tab === 'acquire';
+  on(acquireBtn, acquire, 'var(--teal)', 'rgba(0,229,204,0.1)', 'rgba(0,229,204,0.35)');
+  on(sellBtn, !acquire, 'var(--teal)', 'rgba(0,229,204,0.1)', 'rgba(0,229,204,0.35)');
+  if (filterBar) filterBar.style.display = acquire ? 'flex' : 'none';
+  if (sellContent) sellContent.style.display = acquire ? 'none' : 'block';
+  if (acquire) {
+    storeAcquireFilter(_storeAcquireFilter);
+  } else {
+    const b = document.getElementById('store-tab-content-browse');
+    const f = document.getElementById('store-tab-content-forge');
+    if (b) b.style.display = 'none';
+    if (f) f.style.display = 'none';
+    storeScanMyNFTs();
   }
-  const t = tabs[tab];
-  if (t && t.onOpen) t.onOpen();
+}
+function storeAcquireFilter(filter) {
+  _storeAcquireFilter = filter;
+  const relics = filter === 'relics';
+  const browseContent = document.getElementById('store-tab-content-browse');
+  const forgeContent = document.getElementById('store-tab-content-forge');
+  if (browseContent) browseContent.style.display = relics ? 'block' : 'none';
+  if (forgeContent) forgeContent.style.display = relics ? 'none' : 'block';
+  const chip = (id, active, color, bg, border) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.background = active ? bg : 'transparent';
+    el.style.borderColor = active ? border : 'rgba(255,255,255,0.12)';
+    el.style.color = active ? color : 'rgba(255,255,255,0.4)';
+  };
+  chip('store-filter-relics', relics, '#b9a3f5', 'rgba(119,85,204,0.14)', 'rgba(119,85,204,0.5)');
+  chip('store-filter-skins', !relics, '#ffd27a', 'rgba(255,210,122,0.12)', 'rgba(255,210,122,0.5)');
+  if (relics) storeRefreshListings();
+  else { if (typeof mySkinLoad === 'function' && connectedAddress) mySkinLoad().then(() => forgeStoreRender()); forgeStoreRender(); }
 }
 
 // Maps a known NFT (by contract + saga feat id / rank) to its rarity tier,
@@ -7741,7 +7776,7 @@ function avatarHTMLFor(id, size) {
 function avatarUpdateButtonIcon() {
   // Avatar now lives in the inner circle of the rank-ring button
   const inner = document.getElementById('pb-inner');
-  if (inner) inner.innerHTML = avatarHTMLFor(_myAvatarId, 30);
+  if (inner) inner.innerHTML = avatarHTMLFor(_myAvatarId, 38);
 }
 
 // ═══ RANK RING (nav profile button + panel header) ═══
@@ -8244,7 +8279,7 @@ async function skinGrantRelics() {
 // ── Apply my equipped skin to the nav button + panel header ring ──
 function skinApplyMine() {
   const ringCSS = 'conic-gradient(' + (window._pbRingColor||'rgba(0,229,204,0.55)') + ' 0 ' + (window._pbRingPct||0) + '%, rgba(255,255,255,0.08) ' + (window._pbRingPct||0) + '% 100%)';
-  const spots = [ ['profile-btn','pb-skin',42], ['profile-panel-ring','pp-skin',56] ];
+  const spots = [ ['profile-btn','pb-skin',52], ['profile-panel-ring','pp-skin',56] ];
   for (const [hostId, layerId, size] of spots) {
     const host = document.getElementById(hostId);
     if (!host) continue;
@@ -8341,6 +8376,9 @@ async function forgeStoreRender() {
       + '<div style="font-size:0.55rem;letter-spacing:0.18em;color:' + col + ';font-family:\'Cinzel\',serif;text-transform:uppercase;margin:0.25rem 0 0.4rem;">' + s.rarity + '</div>'
       + '<div style="font-size:0.62rem;color:rgba(255,255,255,0.4);line-height:1.45;min-height:2.4em;margin-bottom:0.8rem;">' + s.desc + '</div>'
       + action
+      + (s.rarity !== 'relic' && !owned && !equipped
+          ? '<div style="font-size:0.56rem;color:#ff9a4d;letter-spacing:0.06em;margin-top:0.5rem;">🔥 50% burned in your name → counts toward your rank</div>'
+          : '')
       + '</div>';
   }).join('');
 }
