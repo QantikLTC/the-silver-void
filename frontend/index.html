@@ -2287,7 +2287,7 @@ function svIntroParticles() {
       <li><a href="#" onclick="svIntroReplay();return false;" style="color:rgba(255,255,255,0.45);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'" title="Replay intro">✶ Intro</a></li>
     </ul>
     <button class="nav-btn" id="wallet-btn">Connect Wallet</button>
-    <button id="profile-btn" onclick="profileToggle()" style="display:none;background:transparent;border:1px solid rgba(0,229,204,0.45);color:var(--teal);width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:1rem;margin-left:0.5rem;transition:all 0.2s;vertical-align:middle;padding:0;overflow:hidden;align-items:center;justify-content:center;" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='rgba(0,229,204,0.45)'" title="Your profile">🌑</button>
+    <button id="profile-btn" onclick="profileToggle()" title="Your profile" style="display:none;position:relative;background:conic-gradient(rgba(0,229,204,0.55) 0 0%, rgba(255,255,255,0.08) 0 100%);border:none;width:42px;height:42px;border-radius:50%;cursor:pointer;margin-left:0.5rem;padding:0;vertical-align:middle;align-items:center;justify-content:center;transition:box-shadow 0.25s, transform 0.2s;overflow:visible;" onmouseover="this.style.boxShadow='0 0 14px '+(window._pbRingColor||'#00e5cc')+'66';this.style.transform='scale(1.05)'" onmouseout="this.style.boxShadow='none';this.style.transform='scale(1)'"><span id="pb-inner" style="position:relative;z-index:2;width:34px;height:34px;border-radius:50%;background:#0c0824;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none;font-size:0.95rem;">🌑</span><span id="pb-badge" style="position:absolute;z-index:5;bottom:-3px;right:-4px;min-width:17px;height:17px;padding:0 2px;border-radius:9px;background:#00e5cc;color:#04021a;font-size:0.56rem;font-weight:700;display:none;align-items:center;justify-content:center;border:2px solid #04021a;pointer-events:none;font-family:'Cinzel',serif;letter-spacing:0.02em;"></span></button>
     <div class="hamburger" id="hamburger" onclick="toggleMenu()">
       <span></span><span></span><span></span>
     </div>
@@ -2454,6 +2454,7 @@ function svIntroParticles() {
     </div>
     <div class="hero-ctas">
       <button class="cta-main" onclick="document.getElementById('ritual').scrollIntoView({behavior:'smooth'})">⬡ &thinsp; Enter the Void</button>
+      <button class="cta-main" onclick="document.getElementById('duel').scrollIntoView({behavior:'smooth'})" style="border-color:rgba(119,85,204,0.55);color:#b9a3f5;background:linear-gradient(135deg,rgba(119,85,204,0.14),rgba(119,85,204,0.03));" onmouseover="this.style.background='linear-gradient(135deg,rgba(119,85,204,0.28),rgba(119,85,204,0.06))'" onmouseout="this.style.background='linear-gradient(135deg,rgba(119,85,204,0.14),rgba(119,85,204,0.03))'">⚔ &thinsp; Enter the Arena</button>
       <button class="cta-ghost" onclick="document.getElementById('leaderboard').scrollIntoView({behavior:'smooth'})">View Sacrifiants</button>
     </div>
 
@@ -3447,6 +3448,11 @@ async function loadUserData(){
     else { const range=nextT-currT; pct=range>0?Math.min(((burnedEth-currT)/range)*100,100):100; }
     document.getElementById('xpf-profile').style.width=Math.max(pct,rankIdx<0?0:1)+'%';
     const rankNum=rankIdx; window._currentRankIdx=rankIdx;
+    // Update the nav rank-ring: unranked wallets see a teal ring filling
+    // toward the first rank (0.5 zkLTC); ranked ones their rank color + XP
+    if (typeof profileBtnRingUpdate === 'function') {
+      profileBtnRingUpdate(rankIdx, rankIdx < 0 ? Math.min((burnedEth/0.5)*100, 100) : pct);
+    }
     // Capture burn data for Hall of Feats
     _burnTotal = burnedEth;
     _burnRank = rankIdx;
@@ -3480,6 +3486,11 @@ async function loadUserData(){
         && _featsBgScanWallet !== connectedAddress) {
       _featsBgScanWallet = connectedAddress;
       duelistLeaderboardRefresh(false).catch(() => {});
+    }
+    // Load the equipped Forge skin once per wallet so the nav ring shows it
+    if (typeof mySkinLoad === 'function' && _skinWalletLoaded !== connectedAddress) {
+      _skinWalletLoaded = connectedAddress;
+      mySkinLoad();
     }
     const customRankName = rankIdx>=0 ? ((typeof RANKS_DATA!=='undefined'&&RANKS_DATA[rankIdx])?RANKS_DATA[rankIdx].name:['Simple Holder','Apprentice Litecoiner','Devoted Litecoiner','Silver Maximalist'][rankIdx]) : '— No rank yet —';
     document.getElementById('xp-rank-label').textContent = rankIdx>=0 ? customRankName+' · Rank '+(rankIdx+1) : '— Burn ≥ 0.5 zkLTC —';
@@ -4179,7 +4190,9 @@ async function duelistLeaderboardScan() {
       const avId = typeof avatarFetch === 'function' ? await avatarFetch(w) : null;
       if (avId) avatarHTML = typeof avatarHTMLFor === 'function' ? avatarHTMLFor(avId, 32) : avatarHTML;
     } catch(e) {}
-    return { wallet: w, name: displayName, avatar: avatarHTML, ...scores[w] };
+    let skinId = null;
+    try { skinId = typeof skinFetchCached === 'function' ? await skinFetchCached(w) : null; } catch(e) {}
+    return { wallet: w, name: displayName, avatar: avatarHTML, skin: skinId, ...scores[w] };
   }));
 
   rows.sort((a, b) => b.score - a.score || (b.wins - a.wins));
@@ -4284,10 +4297,15 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
     const avatarBlock = r.avatar
       ? `<div class="lb-avatar" style="background:rgba(119,85,204,0.12);border:1px solid rgba(119,85,204,0.35);overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;">${r.avatar}</div>`
       : `<div class="lb-avatar" style="background:rgba(119,85,204,0.12);border:1px solid rgba(119,85,204,0.35);color:#9d7fee;">${(r.name||'??').slice(0,2).toUpperCase()}</div>`;
+    // Equipped Forge skin: wrap the avatar in a lite version of the ring
+    // (no blur/particles — 15 animated rings per page must stay cheap)
+    const avatarCell = (r.skin && r.skin !== 'ring_default' && typeof SKIN_FX === 'function')
+      ? `<div style="position:relative;flex-shrink:0;padding:3px;border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${SKIN_FX(r.skin, 38, true)}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
+      : avatarBlock;
     return `<div class="lb-row-duel ${numClass}">
       <div class="lb-rank-num ${numClass}">${numSymbol}</div>
       <div class="lb-user">
-        ${avatarBlock}
+        ${avatarCell}
         <div class="lb-addr">${r.name}</div>
       </div>
       <div class="lb-stat-col" style="color:rgba(157,200,127,0.9);">${r.wins}</div>
@@ -6635,6 +6653,7 @@ function featsCheck() {
   const newly = featsEvaluate();
   newly.forEach(f => featShowUnlock(f));
   featsUpdateBadge();
+  if (typeof skinGrantRelics === 'function') skinGrantRelics(); // relic skins ride on feats
 }
 
 // ═══ FEAT UNLOCK ANIMATION ═══
@@ -6854,6 +6873,18 @@ async function sagaMint(sagaId) {
     <div style="display:flex;gap:0.5rem;margin-bottom:1.6rem;">
       <button id="store-tab-browse" onclick="storeSwitchTab('browse')" style="flex:1;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:rgba(0,229,204,0.1);border:1px solid rgba(0,229,204,0.35);color:var(--teal);border-radius:3px;">Browse</button>
       <button id="store-tab-sell" onclick="storeSwitchTab('sell')" style="flex:1;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);border-radius:3px;">Sell</button>
+      <button id="store-tab-forge" onclick="storeSwitchTab('forge')" style="flex:1;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);border-radius:3px;">⚒ The Forge</button>
+    </div>
+
+    <!-- FORGE TAB — cosmetic ring skins showcase -->
+    <div id="store-tab-content-forge" style="display:none;">
+      <div style="text-align:center;margin-bottom:1.2rem;">
+        <div style="font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.2em;color:#ffd27a;text-transform:uppercase;">Ring Skins — worn in the Arena, seen by all</div>
+        <div style="font-size:0.68rem;color:rgba(255,255,255,0.35);font-style:italic;margin-top:0.25rem;">Half of every purchase is burned in your name and counts toward your rank 🔥</div>
+      </div>
+      <div id="forge-store-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.9rem;">
+        <div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;grid-column:1/-1;">Lighting the forge...</div>
+      </div>
     </div>
 
     <!-- BROWSE TAB -->
@@ -6946,24 +6977,25 @@ function storeClose() {
 // only ever looks at *active* listings.
 
 function storeSwitchTab(tab) {
-  const browseBtn = document.getElementById('store-tab-browse');
-  const sellBtn = document.getElementById('store-tab-sell');
-  const browseContent = document.getElementById('store-tab-content-browse');
-  const sellContent = document.getElementById('store-tab-content-sell');
-
-  if (tab === 'browse') {
-    browseContent.style.display = 'block';
-    sellContent.style.display = 'none';
-    browseBtn.style.background = 'rgba(0,229,204,0.1)'; browseBtn.style.borderColor = 'rgba(0,229,204,0.35)'; browseBtn.style.color = 'var(--teal)';
-    sellBtn.style.background = 'transparent'; sellBtn.style.borderColor = 'rgba(255,255,255,0.12)'; sellBtn.style.color = 'rgba(255,255,255,0.4)';
-    storeRefreshListings();
-  } else {
-    sellContent.style.display = 'block';
-    browseContent.style.display = 'none';
-    sellBtn.style.background = 'rgba(0,229,204,0.1)'; sellBtn.style.borderColor = 'rgba(0,229,204,0.35)'; sellBtn.style.color = 'var(--teal)';
-    browseBtn.style.background = 'transparent'; browseBtn.style.borderColor = 'rgba(255,255,255,0.12)'; browseBtn.style.color = 'rgba(255,255,255,0.4)';
-    storeScanMyNFTs();
+  const tabs = {
+    browse: { btn:'store-tab-browse', content:'store-tab-content-browse', color:'var(--teal)',  bg:'rgba(0,229,204,0.1)',  border:'rgba(0,229,204,0.35)',  onOpen: () => storeRefreshListings() },
+    sell:   { btn:'store-tab-sell',   content:'store-tab-content-sell',   color:'var(--teal)',  bg:'rgba(0,229,204,0.1)',  border:'rgba(0,229,204,0.35)',  onOpen: () => storeScanMyNFTs() },
+    forge:  { btn:'store-tab-forge',  content:'store-tab-content-forge',  color:'#ffd27a',      bg:'rgba(255,210,122,0.1)', border:'rgba(255,210,122,0.4)', onOpen: () => { if (typeof mySkinLoad === 'function') mySkinLoad().then(() => forgeStoreRender()); forgeStoreRender(); } },
+  };
+  for (const key of Object.keys(tabs)) {
+    const t = tabs[key];
+    const btn = document.getElementById(t.btn);
+    const content = document.getElementById(t.content);
+    const on = key === tab;
+    if (content) content.style.display = on ? 'block' : 'none';
+    if (btn) {
+      btn.style.background = on ? t.bg : 'transparent';
+      btn.style.borderColor = on ? t.border : 'rgba(255,255,255,0.12)';
+      btn.style.color = on ? t.color : 'rgba(255,255,255,0.4)';
+    }
   }
+  const t = tabs[tab];
+  if (t && t.onOpen) t.onOpen();
 }
 
 // Maps a known NFT (by contract + saga feat id / rank) to its rarity tier,
@@ -7707,8 +7739,38 @@ function avatarHTMLFor(id, size) {
 }
 
 function avatarUpdateButtonIcon() {
+  // Avatar now lives in the inner circle of the rank-ring button
+  const inner = document.getElementById('pb-inner');
+  if (inner) inner.innerHTML = avatarHTMLFor(_myAvatarId, 30);
+}
+
+// ═══ RANK RING (nav profile button + panel header) ═══
+// The ring is a conic-gradient that fills with burn progress toward the
+// next rank, in the current rank's color. Also feeds the panel header.
+window._pbRingColor = 'rgba(0,229,204,0.55)';
+window._pbRingPct = 0;
+function profileBtnRingUpdate(rankIdx, pct) {
+  const color = (rankIdx >= 0 && typeof RANKS_DATA !== 'undefined' && RANKS_DATA[Math.min(rankIdx,3)])
+    ? RANKS_DATA[Math.min(rankIdx,3)].color : 'rgba(0,229,204,0.55)';
+  const p = Math.max(0, Math.min(100, pct || 0));
+  window._pbRingColor = color;
+  window._pbRingPct = p;
+  const ringCSS = 'conic-gradient(' + color + ' 0 ' + p + '%, rgba(255,255,255,0.08) ' + p + '% 100%)';
   const btn = document.getElementById('profile-btn');
-  if (btn) btn.innerHTML = avatarHTMLFor(_myAvatarId, 36);
+  if (btn) btn.style.background = ringCSS;
+  const badge = document.getElementById('pb-badge');
+  if (badge) {
+    if (rankIdx >= 0) {
+      badge.style.display = 'flex';
+      badge.textContent = ['I','II','III','IV'][Math.min(rankIdx,3)];
+      badge.style.background = color;
+    } else badge.style.display = 'none';
+  }
+  // Keep the panel header ring in sync if it's currently visible
+  const panelRing = document.getElementById('profile-panel-ring');
+  if (panelRing) panelRing.style.background = ringCSS;
+  // An equipped Forge skin overrides the default progress ring
+  if (typeof skinApplyMine === 'function') skinApplyMine();
 }
 
 async function avatarOpen() {
@@ -7775,75 +7837,100 @@ async function avatarSelect(id) {
      quick summary (avatar + name) and routes to the existing, fully working
      modals (username, avatar gallery, feats) for the actual actions — this
      avoids duplicating their logic while still giving a single entry point. -->
-<div id="profile-panel" style="display:none;position:fixed;z-index:9997;top:70px;right:1.5rem;width:290px;background:linear-gradient(160deg,rgba(10,6,28,0.97),rgba(4,2,16,0.99));border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1.4rem;box-shadow:0 0 0 1px rgba(255,170,68,0.06),0 20px 60px rgba(0,0,0,0.7),0 0 40px rgba(0,229,204,0.05) inset;backdrop-filter:blur(20px);">
-  <div style="position:absolute;top:0;left:1rem;right:1rem;height:1px;background:linear-gradient(to right,transparent,rgba(0,229,204,0.4),transparent);"></div>
+<div id="profile-panel" style="display:none;position:fixed;z-index:9997;top:70px;right:1.5rem;width:min(375px, calc(100vw - 1.5rem));background:rgba(10,6,28,0.92);border:1px solid rgba(0,229,204,0.2);border-radius:12px;padding:1.2rem;box-shadow:0 24px 60px rgba(0,0,0,0.65),0 0 30px rgba(0,229,204,0.05);backdrop-filter:blur(18px);">
+  <div style="position:absolute;top:0;left:1.2rem;right:1.2rem;height:1px;background:linear-gradient(to right,transparent,rgba(0,229,204,0.4),transparent);"></div>
 
-  <div style="display:flex;align-items:center;gap:0.8rem;padding-bottom:1rem;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:0.9rem;">
-    <div id="profile-panel-avatar" style="width:46px;height:46px;border-radius:50%;background:radial-gradient(circle,rgba(0,229,204,0.12),rgba(0,229,204,0.02));border:1px solid rgba(0,229,204,0.45);box-shadow:0 0 12px rgba(0,229,204,0.18);display:flex;align-items:center;justify-content:center;font-size:1.3rem;overflow:hidden;flex-shrink:0;"></div>
-    <div style="flex:1;min-width:0;">
-      <div id="profile-panel-name" style="font-family:'Cinzel',serif;font-size:0.78rem;letter-spacing:0.08em;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;">—</div>
-      <div id="profile-panel-rank" style="font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;color:rgba(0,229,204,0.65);margin-top:0.25rem;text-transform:uppercase;">—</div>
+  <div style="display:flex;align-items:center;gap:0.7rem;margin-bottom:1rem;">
+    <div id="profile-panel-ring" style="width:56px;height:56px;border-radius:50%;background:conic-gradient(rgba(0,229,204,0.55) 0 0%, rgba(255,255,255,0.08) 0 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <div id="profile-panel-avatar" style="position:relative;z-index:2;width:47px;height:47px;border-radius:50%;background:#0c0824;display:flex;align-items:center;justify-content:center;font-size:1.43rem;overflow:hidden;"></div>
     </div>
-    <span onclick="document.getElementById('profile-panel').style.display='none';usernameOpen();" style="cursor:pointer;color:rgba(0,229,204,0.5);font-size:0.85rem;flex-shrink:0;transition:color 0.2s;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='rgba(0,229,204,0.5)'" title="Edit name">✏</span>
+    <div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:center;gap:0.4rem;">
+        <div id="profile-panel-name" style="font-family:'Cinzel',serif;font-size:1.01rem;letter-spacing:0.08em;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;">—</div>
+        <svg onclick="document.getElementById('profile-panel').style.display='none';usernameOpen();" title="Edit name" style="width:15px;height:15px;flex-shrink:0;cursor:pointer;opacity:0.45;transition:opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.45'" viewBox="0 0 24 24" fill="none" stroke="#00e5cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+      </div>
+      <div id="profile-panel-rank" style="font-family:'Cinzel',serif;font-size:0.78rem;letter-spacing:0.14em;color:rgba(0,229,204,0.65);margin-top:0.25rem;text-transform:uppercase;">—</div>
+    </div>
+    <svg onclick="profileCopyAddr()" title="Copy wallet address" style="width:18px;height:18px;flex-shrink:0;cursor:pointer;opacity:0.35;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='0.35'" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
   </div>
 
-  <div style="display:flex;gap:0.4rem;margin-bottom:1rem;">
-    <button id="profile-tab-main" onclick="profilePanelSwitchTab('main')" style="flex:1;padding:0.4rem;font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:rgba(0,229,204,0.1);border:1px solid rgba(0,229,204,0.35);color:var(--teal);border-radius:2px;">Profile</button>
-    <button id="profile-tab-stats" onclick="profilePanelSwitchTab('stats')" style="flex:1;padding:0.4rem;font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);border-radius:2px;">My Stats</button>
+  <div style="display:flex;border:1px solid rgba(255,255,255,0.09);border-radius:8px;overflow:hidden;margin-bottom:1rem;">
+    <button id="profile-tab-main" onclick="profilePanelSwitchTab('main')" style="flex:1;padding:0.62rem;font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;background:rgba(0,229,204,0.1);border:none;color:var(--teal);transition:all 0.2s;">Profile</button>
+    <button id="profile-tab-stats" onclick="profilePanelSwitchTab('stats')" style="flex:1;padding:0.62rem;font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;background:transparent;border:none;border-left:1px solid rgba(255,255,255,0.09);color:rgba(255,255,255,0.4);transition:all 0.2s;">Stats</button>
+    <button id="profile-tab-forge" onclick="profilePanelSwitchTab('forge')" style="flex:1;padding:0.62rem;font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;background:transparent;border:none;border-left:1px solid rgba(255,255,255,0.09);color:rgba(255,255,255,0.4);transition:all 0.2s;">Forge</button>
   </div>
+
+  <!-- FORGE TAB — cosmetic ring skins shop -->
+  <div id="profile-tab-content-forge" style="display:none;">
+    <div id="forge-price-note" style="font-size:0.73rem;color:rgba(255,255,255,0.3);text-align:center;margin-bottom:0.6rem;font-style:italic;">Half of every purchase is burned in your name 🔥</div>
+    <div id="forge-list" style="display:flex;flex-direction:column;gap:0.45rem;max-height:460px;overflow-y:auto;scrollbar-width:thin;"></div>
+  </div>
+  <style>
+  @keyframes fgspin{to{transform:rotate(360deg)}}
+  @keyframes fgspinr{to{transform:rotate(-360deg)}}
+  @keyframes fgflick{0%,100%{filter:brightness(1)}30%{filter:brightness(1.35)}50%{filter:brightness(0.9)}72%{filter:brightness(1.25)}}
+  @keyframes fgrise{0%{transform:translateY(0) scale(1);opacity:0}15%{opacity:0.9}100%{transform:translateY(-22px) scale(0.3);opacity:0}}
+  @keyframes fgfall{0%{transform:translateY(-20px) scale(0.4);opacity:0}20%{opacity:0.9}100%{transform:translateY(0) scale(1);opacity:0}}
+  @keyframes fgbreathe{0%,100%{box-shadow:0 0 6px rgba(120,60,220,0.25)}50%{box-shadow:0 0 16px rgba(120,60,220,0.6)}}
+  @keyframes fgglint{0%,88%,100%{opacity:0}92%{opacity:1}}
+  .fgl{position:absolute;inset:0;border-radius:50%;pointer-events:none}
+  .fgp{position:absolute;border-radius:50%;pointer-events:none;z-index:1}
+  .fgo{position:absolute;inset:0;pointer-events:none;z-index:4}
+  .fgo .fgg{position:absolute;top:-4px;left:50%;font-family:'Cinzel',serif;font-weight:600;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  </style>
 
   <!-- PROFILE TAB -->
   <div id="profile-tab-content-main">
     <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.7rem;">
       <span style="width:14px;height:1px;background:rgba(0,229,204,0.4);"></span>
-      <span style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.2em;color:rgba(0,229,204,0.55);text-transform:uppercase;">Quick Avatar</span>
+      <span style="font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.2em;color:rgba(0,229,204,0.55);text-transform:uppercase;">Quick Avatar</span>
     </div>
-    <div id="profile-panel-avatars" style="display:grid;grid-template-columns:repeat(6,1fr);gap:0.4rem;margin-bottom:1.1rem;"></div>
+    <div id="profile-panel-avatars" style="display:grid;grid-template-columns:repeat(6,1fr);gap:0.5rem;margin-bottom:1rem;"></div>
 
-    <button onclick="document.getElementById('profile-panel').style.display='none';avatarOpen();" style="width:100%;display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.8rem;background:transparent;border:1px solid rgba(0,229,204,0.22);border-radius:2px;color:rgba(0,229,204,0.85);font-size:0.62rem;letter-spacing:0.12em;cursor:pointer;margin-bottom:0.45rem;font-family:'Cinzel',serif;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(0,229,204,0.06)';this.style.borderColor='rgba(0,229,204,0.45)'" onmouseout="this.style.background='transparent';this.style.borderColor='rgba(0,229,204,0.22)'">🌑&nbsp;&nbsp;Full Avatar Gallery</button>
-    <button onclick="document.getElementById('profile-panel').style.display='none';featsOpen();" style="width:100%;display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.8rem;background:transparent;border:1px solid rgba(200,168,74,0.2);border-radius:2px;color:rgba(200,168,74,0.85);font-size:0.62rem;letter-spacing:0.12em;cursor:pointer;margin-bottom:0.45rem;font-family:'Cinzel',serif;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(200,168,74,0.06)';this.style.borderColor='rgba(200,168,74,0.4)'" onmouseout="this.style.background='transparent';this.style.borderColor='rgba(200,168,74,0.2)'">🏆&nbsp;&nbsp;Hall of Feats</button>
-    <button onclick="document.getElementById('profile-panel').style.display='none';if(typeof myDuelsScan==='function')myDuelsScan();document.getElementById('duel').scrollIntoView({behavior:'smooth'});" style="width:100%;display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0.8rem;background:transparent;border:1px solid rgba(119,85,204,0.25);border-radius:2px;color:#9d7fee;font-size:0.62rem;letter-spacing:0.12em;cursor:pointer;font-family:'Cinzel',serif;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(119,85,204,0.08)';this.style.borderColor='rgba(119,85,204,0.45)'" onmouseout="this.style.background='transparent';this.style.borderColor='rgba(119,85,204,0.25)'">⚔&nbsp;&nbsp;My Duels</button>
+    <div style="display:flex;gap:0.4rem;">
+      <button onclick="document.getElementById('profile-panel').style.display='none';featsOpen();" style="flex:1;padding:0.7rem 0.25rem;background:transparent;border:1px solid rgba(200,168,74,0.3);border-radius:8px;color:rgba(200,168,74,0.9);font-size:0.73rem;letter-spacing:0.12em;cursor:pointer;font-family:'Cinzel',serif;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(200,168,74,0.08)'" onmouseout="this.style.background='transparent'">🏆 Feats</button>
+      <button onclick="document.getElementById('profile-panel').style.display='none';if(typeof myDuelsScan==='function')myDuelsScan();document.getElementById('duel').scrollIntoView({behavior:'smooth'});" style="flex:1;padding:0.7rem 0.25rem;background:transparent;border:1px solid rgba(119,85,204,0.35);border-radius:8px;color:#9d7fee;font-size:0.73rem;letter-spacing:0.12em;cursor:pointer;font-family:'Cinzel',serif;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(119,85,204,0.1)'" onmouseout="this.style.background='transparent'">⚔ Duels</button>
+      <button onclick="document.getElementById('profile-panel').style.display='none';avatarOpen();" style="flex:1;padding:0.7rem 0.25rem;background:transparent;border:1px solid rgba(0,229,204,0.28);border-radius:8px;color:rgba(0,229,204,0.85);font-size:0.73rem;letter-spacing:0.12em;cursor:pointer;font-family:'Cinzel',serif;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(0,229,204,0.07)'" onmouseout="this.style.background='transparent'">🌑 Gallery</button>
+    </div>
   </div>
 
   <!-- STATS TAB -->
   <div id="profile-tab-content-stats" style="display:none;">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.7rem;">
-      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,170,68,0.15);border-radius:3px;padding:0.6rem 0.7rem;">
-        <div style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;color:rgba(255,170,68,0.5);text-transform:uppercase;">Burned</div>
-        <div id="stats-burned" style="font-family:'Cinzel',serif;font-size:0.95rem;color:#fff;margin-top:0.2rem;">—</div>
-      </div>
-      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(200,168,74,0.15);border-radius:3px;padding:0.6rem 0.7rem;">
-        <div style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;color:rgba(200,168,74,0.5);text-transform:uppercase;">Feats</div>
-        <div id="stats-feats" style="font-family:'Cinzel',serif;font-size:0.95rem;color:#fff;margin-top:0.2rem;">—</div>
-      </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:0.55rem 0.15rem;border-bottom:1px solid rgba(255,255,255,0.06);">
+      <span style="font-size:0.86rem;color:rgba(255,255,255,0.5);letter-spacing:0.05em;">Burned (ritual)</span>
+      <span id="stats-burned" style="font-family:'Cinzel',serif;font-size:1.01rem;color:#ff9a4d;">—</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:0.55rem 0.15rem;margin-bottom:0.9rem;">
+      <span style="font-size:0.86rem;color:rgba(255,255,255,0.5);letter-spacing:0.05em;">Hall of Feats</span>
+      <span id="stats-feats" style="font-family:'Cinzel',serif;font-size:1.01rem;color:#ffd27a;">—</span>
     </div>
 
-    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.6rem;margin-top:0.8rem;">
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.6rem;">
       <span style="width:14px;height:1px;background:rgba(119,85,204,0.4);"></span>
-      <span style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.2em;color:#9d7fee;text-transform:uppercase;">Arena record</span>
+      <span style="font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.2em;color:#9d7fee;text-transform:uppercase;">Arena record</span>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.4rem;margin-bottom:0.7rem;">
-      <div style="background:rgba(119,85,204,0.06);border:1px solid rgba(119,85,204,0.18);border-radius:3px;padding:0.5rem;text-align:center;">
-        <div style="font-family:'Cinzel',serif;font-size:0.9rem;color:#9d7fee;" id="stats-wins">—</div>
-        <div style="font-size:0.55rem;color:rgba(255,255,255,0.35);letter-spacing:0.05em;margin-top:0.1rem;">WINS</div>
+      <div style="background:rgba(119,85,204,0.06);border:1px solid rgba(119,85,204,0.18);border-radius:8px;padding:0.5rem;text-align:center;">
+        <div style="font-family:'Cinzel',serif;font-size:1.17rem;color:#9d7fee;" id="stats-wins">—</div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.35);letter-spacing:0.05em;margin-top:0.1rem;">WINS</div>
       </div>
-      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:3px;padding:0.5rem;text-align:center;">
-        <div style="font-family:'Cinzel',serif;font-size:0.9rem;color:rgba(255,255,255,0.6);" id="stats-ties">—</div>
-        <div style="font-size:0.55rem;color:rgba(255,255,255,0.35);letter-spacing:0.05em;margin-top:0.1rem;">TIES</div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem;text-align:center;">
+        <div style="font-family:'Cinzel',serif;font-size:1.17rem;color:rgba(255,255,255,0.6);" id="stats-ties">—</div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.35);letter-spacing:0.05em;margin-top:0.1rem;">TIES</div>
       </div>
-      <div style="background:rgba(255,68,102,0.05);border:1px solid rgba(255,68,102,0.15);border-radius:3px;padding:0.5rem;text-align:center;">
-        <div style="font-family:'Cinzel',serif;font-size:0.9rem;color:#ff8899;" id="stats-losses">—</div>
-        <div style="font-size:0.55rem;color:rgba(255,255,255,0.35);letter-spacing:0.05em;margin-top:0.1rem;">LOSSES</div>
+      <div style="background:rgba(255,68,102,0.05);border:1px solid rgba(255,68,102,0.15);border-radius:8px;padding:0.5rem;text-align:center;">
+        <div style="font-family:'Cinzel',serif;font-size:1.17rem;color:#ff8899;" id="stats-losses">—</div>
+        <div style="font-size:0.72rem;color:rgba(255,255,255,0.35);letter-spacing:0.05em;margin-top:0.1rem;">LOSSES</div>
       </div>
     </div>
-    <div id="stats-arena-source" style="font-size:0.58rem;color:rgba(255,255,255,0.25);font-style:italic;text-align:center;margin:-0.3rem 0 0.7rem;min-height:1em;"></div>
+    <div id="stats-arena-source" style="font-size:0.75rem;color:rgba(255,255,255,0.25);font-style:italic;text-align:center;margin:-0.3rem 0 0.7rem;min-height:1em;"></div>
 
-    <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(119,85,204,0.08);border:1px solid rgba(119,85,204,0.25);border-radius:3px;padding:0.6rem 0.8rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(119,85,204,0.08);border:1px solid rgba(119,85,204,0.25);border-radius:8px;padding:0.6rem 0.8rem;">
       <div>
-        <div style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.1em;color:rgba(157,127,238,0.6);text-transform:uppercase;">Duelist score</div>
-        <div id="stats-rank-position" style="font-size:0.62rem;color:rgba(255,255,255,0.4);margin-top:0.15rem;">—</div>
+        <div style="font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.1em;color:rgba(157,127,238,0.6);text-transform:uppercase;">Duelist score</div>
+        <div id="stats-rank-position" style="font-size:0.81rem;color:rgba(255,255,255,0.4);margin-top:0.15rem;">—</div>
       </div>
-      <div id="stats-score" style="font-family:'Cinzel',serif;font-size:1.3rem;color:#9d7fee;font-weight:600;">—</div>
+      <div id="stats-score" style="font-family:'Cinzel',serif;font-size:1.69rem;color:#9d7fee;font-weight:600;">—</div>
     </div>
   </div>
 </div>
@@ -7858,27 +7945,26 @@ async function profileToggle() {
     await avatarRefreshPoolCache();
     profilePanelRender();
     profileStatsRender(); // pre-compute so numbers are ready instantly if the user switches tabs
+    if (typeof mySkinLoad === 'function') mySkinLoad().then(() => forgeRender());
   }
 }
 
 function profilePanelSwitchTab(tab) {
-  const mainBtn = document.getElementById('profile-tab-main');
-  const statsBtn = document.getElementById('profile-tab-stats');
-  const mainContent = document.getElementById('profile-tab-content-main');
-  const statsContent = document.getElementById('profile-tab-content-stats');
-
-  if (tab === 'main') {
-    mainContent.style.display = 'block';
-    statsContent.style.display = 'none';
-    mainBtn.style.background = 'rgba(0,229,204,0.1)'; mainBtn.style.borderColor = 'rgba(0,229,204,0.35)'; mainBtn.style.color = 'var(--teal)';
-    statsBtn.style.background = 'transparent'; statsBtn.style.borderColor = 'rgba(255,255,255,0.12)'; statsBtn.style.color = 'rgba(255,255,255,0.4)';
-  } else {
-    mainContent.style.display = 'none';
-    statsContent.style.display = 'block';
-    statsBtn.style.background = 'rgba(119,85,204,0.12)'; statsBtn.style.borderColor = 'rgba(119,85,204,0.4)'; statsBtn.style.color = '#9d7fee';
-    mainBtn.style.background = 'transparent'; mainBtn.style.borderColor = 'rgba(255,255,255,0.12)'; mainBtn.style.color = 'rgba(255,255,255,0.4)';
-    profileStatsRender(); // refresh in case burn/feats data changed since panel opened
+  const tabs = {
+    main:  { btn:'profile-tab-main',  content:'profile-tab-content-main',  active:'rgba(0,229,204,0.1)',   color:'var(--teal)' },
+    stats: { btn:'profile-tab-stats', content:'profile-tab-content-stats', active:'rgba(119,85,204,0.12)', color:'#9d7fee' },
+    forge: { btn:'profile-tab-forge', content:'profile-tab-content-forge', active:'rgba(255,210,122,0.1)', color:'#ffd27a' },
+  };
+  for (const key of Object.keys(tabs)) {
+    const t = tabs[key];
+    const btn = document.getElementById(t.btn);
+    const content = document.getElementById(t.content);
+    const on = key === tab;
+    if (content) content.style.display = on ? 'block' : 'none';
+    if (btn) { btn.style.background = on ? t.active : 'transparent'; btn.style.color = on ? t.color : 'rgba(255,255,255,0.4)'; }
   }
+  if (tab === 'stats') profileStatsRender(); // refresh in case burn/feats data changed since panel opened
+  if (tab === 'forge') forgeRender();
 }
 
 // Fills the My Stats tab using data already in memory — no blockchain scan,
@@ -7975,10 +8061,311 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// ═══════════════ THE FORGE — cosmetic ring skins ═══════════════
+// Prices are thought in USD (industry-standard for cosmetics) and converted
+// to zkLTC at purchase time via CoinGecko — so a moving LTC price never
+// makes a skin unpayable. Half of every purchase goes through the ritual
+// burn contract IN THE BUYER'S NAME (it advances their rank), the other
+// half goes to the Forge treasury. Ownership + equipped skin live in
+// /api/skin (same Vercel/Upstash pattern as username & avatar), which is
+// what makes rings visible to everyone in the Duelist leaderboard.
+const SKIN_API = '/api/skin';
+// Wallet receiving the treasury half. Leave '' to burn 100% instead
+// (single tx) until the treasury address is decided.
+const FORGE_TREASURY = '';
+const SKIN_PRICE_USD = { rare: 1.5, epic: 3, legendary: 5 };
+// Safety clamps on the converted amount, whatever the price feed says:
+const SKIN_ZK_MIN = 0.001, SKIN_ZK_MAX = 0.5;
+const SKIN_RARITY_COLORS = { rare:'#00e5cc', epic:'#b075ff', legendary:'#ffd27a', relic:'#ff8899', default:'rgba(255,255,255,0.5)' };
+const SKINS = [
+  { id:'ring_default', name:'Rank Progress',      rarity:'default',   desc:'Your rank color, filling with burn XP.' },
+  { id:'ring_block',   name:'Confirmed Block',    rarity:'rare',      desc:'A bright block races along the chain.' },
+  { id:'ring_moon',    name:'Silver Moon',        rarity:'rare',      desc:'A lone Ł orbits your avatar, always upright.' },
+  { id:'ring_eclipse', name:'Blazing Eclipse',    rarity:'epic',      desc:'A black disc, a corona of fire behind.' },
+  { id:'ring_trinity', name:'Lunar Trinity',      rarity:'legendary', desc:'Gold, silver and steel Ł on three orbits.' },
+  { id:'ring_ember',   name:'Eternal Blaze',      rarity:'legendary', desc:'The ritual fire itself, sparks and all.' },
+  { id:'ring_shadow',  name:'Blaze of Shadows',   rarity:'legendary', desc:'The dark mirror — spectral violet flames.' },
+  { id:'ring_84m',     name:'84 Millions',        rarity:'legendary', desc:'The whole supply, engraved in gold ticks.' },
+  { id:'ring_devour',  name:'Devouring Shadow',   rarity:'relic',     featId:'duels_50', desc:'Sparks FALL into it. Earned, never sold — 50 duels fought.' },
+];
+
+// ── Effect generator: returns the animated layers for a skin ──
+// size = container px; lite = leaderboard mode (no blur, no particles —
+// 15+ animated rings with blur would hurt GPU; the full effect shows on
+// your own profile where it matters).
+function SKIN_FX(id, size, lite) {
+  const g = Math.round(size * 0.42); // orbiting glyph size
+  switch(id) {
+    case 'ring_ember': return ''
+      + '<span class="fgl" style="background:conic-gradient(from 200deg,#3a0d00,#a82800 20%,#ff6a00 42%,#ffc84d 50%,#ff6a00 58%,#a82800 80%,#3a0d00);animation:fgspin 7s linear infinite;'+(lite?'':'filter:blur(0.6px);')+'"></span>'
+      + (lite ? '' : '<span class="fgl" style="inset:-3px;background:conic-gradient(from 30deg,transparent,rgba(255,140,0,0.5) 45%,rgba(255,220,120,0.7) 50%,rgba(255,140,0,0.5) 55%,transparent);animation:fgspinr 3.2s linear infinite;filter:blur(2.5px);"></span>'
+      + '<span class="fgp" style="top:2px;left:26%;width:4px;height:4px;background:#ffb347;box-shadow:0 0 6px #ff8c00;animation:fgrise 1.6s ease-out infinite;"></span>'
+      + '<span class="fgp" style="top:4px;left:58%;width:3px;height:3px;background:#ffd27a;box-shadow:0 0 5px #ffb347;animation:fgrise 2.1s ease-out 0.5s infinite;"></span>'
+      + '<span class="fgp" style="top:0;left:44%;width:3px;height:3px;background:#ff8c5a;box-shadow:0 0 5px #ff6a00;animation:fgrise 1.9s ease-out 1s infinite;"></span>');
+    case 'ring_shadow': return ''
+      + '<span class="fgl" style="background:conic-gradient(from 200deg,#000,#1c0533 18%,#5a1fae 40%,#a86bff 50%,#5a1fae 60%,#1c0533 82%,#000);animation:fgspin 8s linear infinite;'+(lite?'':'filter:blur(0.6px);')+'"></span>'
+      + (lite ? '' : '<span class="fgl" style="inset:-3px;background:conic-gradient(from 40deg,transparent,rgba(90,31,174,0.55) 45%,rgba(190,140,255,0.6) 50%,rgba(90,31,174,0.55) 55%,transparent);animation:fgspinr 3.4s linear infinite;filter:blur(2.6px);"></span>'
+      + '<span class="fgp" style="top:2px;left:24%;width:4px;height:4px;background:#a86bff;box-shadow:0 0 6px #7a3bff;animation:fgrise 1.8s ease-out infinite;"></span>'
+      + '<span class="fgp" style="top:4px;left:60%;width:3px;height:3px;background:#c9a2ff;box-shadow:0 0 5px #a86bff;animation:fgrise 2.3s ease-out 0.6s infinite;"></span>');
+    case 'ring_eclipse': return ''
+      + (lite
+        ? '<span class="fgl" style="inset:-1px;background:conic-gradient(rgba(255,106,0,0.15),rgba(255,154,77,0.55),rgba(255,106,0,0.15));animation:fgspin 5s linear infinite;"></span>'
+        : '<span class="fgl" style="inset:-2px;background:conic-gradient(rgba(255,106,0,0.0),rgba(255,106,0,0.45) 30%,rgba(255,200,77,0.5) 50%,rgba(255,106,0,0.45) 70%,rgba(255,106,0,0.0));animation:fgspin 5s linear infinite;filter:blur(3.5px);"></span>')
+      + '<span class="fgl" style="background:#050212;border:1px solid rgba(255,140,60,0.25);"></span>';
+    case 'ring_84m': return ''
+      + '<span class="fgl" style="background:repeating-conic-gradient(#ffd27a 0 1.3deg, transparent 1.3deg 4.286deg);animation:fgspin 30s linear infinite;opacity:0.85;"></span>'
+      + (lite ? '' : '<span class="fgl" style="background:conic-gradient(transparent,rgba(255,255,255,0.85) 50%,transparent 60%);animation:fgspin 30s linear infinite, fgglint 6s ease-in-out infinite;filter:blur(1px);"></span>');
+    case 'ring_block': return ''
+      + '<span class="fgl" style="background:repeating-conic-gradient(rgba(0,229,204,0.28) 0 24deg, transparent 24deg 30deg);"></span>'
+      + '<span class="fgl" style="background:conic-gradient(transparent 0 330deg, #00e5cc 330deg 354deg, transparent 354deg);animation:fgspin 2.4s steps(12) infinite;'+(lite?'':'filter:drop-shadow(0 0 4px #00e5cc);')+'"></span>';
+    case 'ring_moon': return ''
+      + '<span class="fgl" style="background:conic-gradient(rgba(184,196,212,0.12),rgba(223,230,242,0.35),rgba(184,196,212,0.12));"></span>'
+      + '<span class="fgo" style="animation:fgspin 4s linear infinite;"><span class="fgg" style="animation:fgspinr 4s linear infinite;width:'+g+'px;height:'+g+'px;margin-left:-'+Math.round(g/2)+'px;font-size:'+g+'px;color:#eef2f9;text-shadow:0 0 8px rgba(223,230,242,1);">Ł</span></span>';
+    case 'ring_trinity': return ''
+      + '<span class="fgl" style="background:conic-gradient(rgba(255,210,122,0.1),rgba(255,210,122,0.28),rgba(255,210,122,0.1));"></span>'
+      + '<span class="fgo" style="animation:fgspin 5s linear infinite;"><span class="fgg" style="animation:fgspinr 5s linear infinite;width:'+g+'px;height:'+g+'px;margin-left:-'+Math.round(g/2)+'px;font-size:'+g+'px;color:#ffd27a;text-shadow:0 0 8px rgba(255,210,122,1);">Ł</span></span>'
+      + '<span class="fgo" style="animation:fgspinr 7.5s linear infinite;inset:3px;"><span class="fgg" style="animation:fgspin 7.5s linear infinite;width:'+Math.round(g*0.8)+'px;height:'+Math.round(g*0.8)+'px;margin-left:-'+Math.round(g*0.4)+'px;font-size:'+Math.round(g*0.8)+'px;color:#eef2f9;text-shadow:0 0 6px rgba(223,230,242,0.9);">Ł</span></span>'
+      + '<span class="fgo" style="animation:fgspin 10s linear infinite;inset:-3px;"><span class="fgg" style="animation:fgspinr 10s linear infinite;width:'+Math.round(g*0.6)+'px;height:'+Math.round(g*0.6)+'px;margin-left:-'+Math.round(g*0.3)+'px;font-size:'+Math.round(g*0.6)+'px;color:#9aa4b8;text-shadow:0 0 5px rgba(154,164,184,0.8);">Ł</span></span>';
+    case 'ring_devour': return ''
+      + '<span class="fgl" style="background:conic-gradient(#000,#12071f 30%,#000 50%,#0d0517 75%,#000);border:1px solid rgba(120,60,220,0.3);animation:fgspin 11s linear infinite'+(lite?'':', fgbreathe 3.2s ease-in-out infinite')+';"></span>'
+      + (lite ? '' : '<span class="fgl" style="inset:-2px;background:conic-gradient(transparent,rgba(60,20,110,0.5) 50%,transparent);animation:fgspinr 6s linear infinite;filter:blur(3px);"></span>'
+      + '<span class="fgp" style="top:0;left:30%;width:3px;height:3px;background:#c9a2ff;box-shadow:0 0 5px #a86bff;animation:fgfall 2.2s ease-in infinite;"></span>'
+      + '<span class="fgp" style="top:0;left:55%;width:3px;height:3px;background:#fff;box-shadow:0 0 4px #c9a2ff;animation:fgfall 1.7s ease-in 0.8s infinite;"></span>');
+    default: return '';
+  }
+}
+
+// ── Price oracle (level 1: frontend conversion, 5-min cache) ──
+let _ltcUsd = { v: null, ts: 0 };
+async function ltcUsdPrice() {
+  if (_ltcUsd.v && Date.now() - _ltcUsd.ts < 300000) return _ltcUsd.v;
+  try {
+    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=litecoin&vs_currencies=usd');
+    const j = await r.json();
+    const v = j && j.litecoin && j.litecoin.usd;
+    if (v > 0) { _ltcUsd = { v, ts: Date.now() }; return v; }
+  } catch(e) { console.warn('LTC price fetch failed:', e); }
+  return _ltcUsd.v || null; // stale cache beats nothing
+}
+function skinZkAmount(usd, ltcUsd) {
+  const raw = usd / ltcUsd;
+  return Math.min(SKIN_ZK_MAX, Math.max(SKIN_ZK_MIN, Math.round(raw * 10000) / 10000));
+}
+
+// ── State + API ──
+let _mySkin = 'ring_default', _myOwned = [], _skinWalletLoaded = null;
+const _skinCache = {}; // wallet -> {skin, ts} for leaderboard rendering
+async function skinFetchCached(wallet) {
+  const k = wallet.toLowerCase();
+  const c = _skinCache[k];
+  if (c && Date.now() - c.ts < 600000) return c.skin;
+  try {
+    const r = await fetch(SKIN_API + '?wallet=' + encodeURIComponent(k));
+    if (!r.ok) return null;
+    const d = await r.json();
+    _skinCache[k] = { skin: d.skin || null, ts: Date.now() };
+    return _skinCache[k].skin;
+  } catch(e) { return null; }
+}
+async function mySkinLoad() {
+  if (!connectedAddress) return;
+  try {
+    const r = await fetch(SKIN_API + '?wallet=' + encodeURIComponent(connectedAddress.toLowerCase()));
+    if (!r.ok) return;
+    const d = await r.json();
+    _mySkin = d.skin || 'ring_default';
+    _myOwned = Array.isArray(d.owned) ? d.owned : [];
+    skinApplyMine();
+    skinGrantRelics();
+  } catch(e) { console.warn('skin load failed:', e); }
+}
+async function skinEquip(id) {
+  if (!connectedAddress) return;
+  try {
+    const r = await fetch(SKIN_API, { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ wallet: connectedAddress.toLowerCase(), skin: id }) });
+    if (!r.ok) { const e = await r.json().catch(()=>({})); showToast(e.error || 'Equip failed', true); return; }
+    _mySkin = id;
+    _skinCache[connectedAddress.toLowerCase()] = { skin: id, ts: Date.now() };
+    skinApplyMine();
+    forgeRender();
+    showToast('✨ ' + (SKINS.find(s=>s.id===id)||{name:id}).name + ' equipped');
+  } catch(e) { showToast('Equip failed', true); }
+}
+async function skinBuy(id) {
+  const s = SKINS.find(x => x.id === id);
+  if (!s || s.rarity === 'relic' || s.rarity === 'default' || _myOwned.includes(id)) return;
+  if (!connectedAddress) { showToast('Connect your wallet first', true); await connectWallet(); if (!connectedAddress) return; }
+  const ltc = await ltcUsdPrice();
+  if (!ltc) { showToast('Price feed unavailable — try again in a minute', true); return; }
+  const amt = skinZkAmount(SKIN_PRICE_USD[s.rarity], ltc);
+  const splitTreasury = FORGE_TREASURY && FORGE_TREASURY.length === 42;
+  const burnPart = splitTreasury ? amt / 2 : amt;
+  let burned = false;
+  try {
+    showToast('🔥 Forging ' + s.name + ' — ' + amt + ' zkLTC (~$' + SKIN_PRICE_USD[s.rarity] + ')...');
+    // 1) The burn half goes through the ritual contract in YOUR name —
+    //    it counts toward your rank like any other offering.
+    const tx1 = await contract.burn({ value: ethers.parseEther(burnPart.toFixed(6)) });
+    await tx1.wait();
+    burned = true;
+    // 2) Treasury half (skipped while FORGE_TREASURY is unset = 100% burn)
+    if (splitTreasury) {
+      const tx2 = await contract.runner.sendTransaction({ to: FORGE_TREASURY, value: ethers.parseEther((amt - burnPart).toFixed(6)) });
+      await tx2.wait();
+    }
+    await fetch(SKIN_API, { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ wallet: connectedAddress.toLowerCase(), buy: id, tx: tx1.hash }) });
+    if (!_myOwned.includes(id)) _myOwned.push(id);
+    await skinEquip(id);
+    showToast('🔥 ' + s.name + ' forged! Your offering fed the Void.');
+    if (typeof loadUserData === 'function') loadUserData(); // burn credit may bump the rank
+  } catch(e) {
+    console.warn('skinBuy failed:', e);
+    if (burned) showToast('Purchase incomplete — but your burn was still credited to your rank.', true);
+    else showToast('Forge cancelled: ' + (e.shortMessage || 'transaction rejected'), true);
+  }
+  forgeRender();
+}
+// Relics are granted automatically when their feat unlocks — never sold.
+async function skinGrantRelics() {
+  if (!connectedAddress) return;
+  const unlocked = (typeof featsLoad === 'function') ? featsLoad() : {};
+  for (const s of SKINS) {
+    if (s.rarity !== 'relic' || !s.featId || !unlocked[s.featId] || _myOwned.includes(s.id)) continue;
+    try {
+      const r = await fetch(SKIN_API, { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ wallet: connectedAddress.toLowerCase(), buy: s.id, tx: 'feat' }) });
+      if (r.ok) { _myOwned.push(s.id); showToast('🏆 Relic unlocked: ' + s.name); forgeRender(); }
+    } catch(e) {}
+  }
+}
+
+// ── Apply my equipped skin to the nav button + panel header ring ──
+function skinApplyMine() {
+  const ringCSS = 'conic-gradient(' + (window._pbRingColor||'rgba(0,229,204,0.55)') + ' 0 ' + (window._pbRingPct||0) + '%, rgba(255,255,255,0.08) ' + (window._pbRingPct||0) + '% 100%)';
+  const spots = [ ['profile-btn','pb-skin',42], ['profile-panel-ring','pp-skin',56] ];
+  for (const [hostId, layerId, size] of spots) {
+    const host = document.getElementById(hostId);
+    if (!host) continue;
+    let layer = document.getElementById(layerId);
+    if (_mySkin === 'ring_default' || !_mySkin) {
+      if (layer) layer.remove();
+      host.style.background = ringCSS;
+    } else {
+      host.style.background = 'rgba(255,255,255,0.04)';
+      if (!layer) {
+        layer = document.createElement('span');
+        layer.id = layerId;
+        layer.style.cssText = 'position:absolute;inset:0;border-radius:50%;pointer-events:none;overflow:visible;';
+        if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+        host.insertBefore(layer, host.firstChild);
+      }
+      layer.innerHTML = SKIN_FX(_mySkin, size, false);
+    }
+  }
+}
+
+// ── Forge tab rendering ──
+async function forgeRender() {
+  const list = document.getElementById('forge-list');
+  if (!list) return;
+  const unlocked = (typeof featsLoad === 'function') ? featsLoad() : {};
+  const ltc = await ltcUsdPrice();
+  list.innerHTML = SKINS.map(s => {
+    const col = SKIN_RARITY_COLORS[s.rarity];
+    const owned = s.id === 'ring_default' || _myOwned.includes(s.id);
+    const equipped = _mySkin === s.id || (s.id === 'ring_default' && (!_mySkin || _mySkin === 'ring_default'));
+    let action;
+    if (equipped) {
+      action = '<span style="font-family:\'Cinzel\',serif;font-size:0.68rem;letter-spacing:0.1em;color:rgba(0,229,204,0.8);border:1px solid rgba(0,229,204,0.4);border-radius:6px;padding:0.4rem 0.6rem;">✓ ON</span>';
+    } else if (owned) {
+      action = '<button onclick="skinEquip(\'' + s.id + '\')" style="font-family:\'Cinzel\',serif;font-size:0.68rem;letter-spacing:0.1em;color:#fff;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:0.4rem 0.6rem;cursor:pointer;">EQUIP</button>';
+    } else if (s.rarity === 'relic') {
+      const done = !!unlocked[s.featId];
+      action = '<span style="font-size:0.64rem;color:' + (done?col:'rgba(255,255,255,0.3)') + ';letter-spacing:0.08em;font-family:\'Cinzel\',serif;text-align:right;">' + (done ? 'UNLOCKING…' : '🔒 50 DUELS') + '</span>';
+    } else {
+      const price = ltc ? skinZkAmount(SKIN_PRICE_USD[s.rarity], ltc) + '<br><span style="opacity:0.5;font-size:0.85em;">~$' + SKIN_PRICE_USD[s.rarity] + '</span>' : '—';
+      action = '<button onclick="skinBuy(\'' + s.id + '\')" style="font-family:\'Cinzel\',serif;font-size:0.68rem;letter-spacing:0.06em;line-height:1.3;color:' + col + ';background:transparent;border:1px solid ' + col + '55;border-radius:6px;padding:0.38rem 0.55rem;cursor:pointer;text-align:center;">' + price + '</button>';
+    }
+    return '<div style="display:flex;align-items:center;gap:0.7rem;border:1px solid ' + col + '33;border-radius:8px;padding:0.65rem;' + (equipped?'background:rgba(0,229,204,0.04);':'') + '">'
+      + '<div style="position:relative;width:46px;height:46px;flex-shrink:0;">'
+      +   (s.id==='ring_default'
+            ? '<span class="fgl" style="background:' + 'conic-gradient(' + (window._pbRingColor||'rgba(0,229,204,0.55)') + ' 0 ' + (window._pbRingPct||35) + '%, rgba(255,255,255,0.08) ' + (window._pbRingPct||35) + '% 100%)' + ';"></span>'
+            : SKIN_FX(s.id, 46, false))
+      +   '<span style="position:absolute;inset:7px;border-radius:50%;background:#0c0824;z-index:2;"></span>'
+      + '</div>'
+      + '<div style="flex:1;min-width:0;">'
+      +   '<div style="font-family:\'Cinzel\',serif;font-size:0.8rem;letter-spacing:0.05em;color:#fff;">' + s.name + '</div>'
+      +   '<div style="font-size:0.64rem;letter-spacing:0.14em;color:' + col + ';font-family:\'Cinzel\',serif;text-transform:uppercase;margin-top:0.1rem;">' + s.rarity + '</div>'
+      +   '<div style="font-size:0.68rem;color:rgba(255,255,255,0.35);margin-top:0.15rem;line-height:1.35;">' + s.desc + '</div>'
+      + '</div>'
+      + action
+      + '</div>';
+  }).join('');
+  if (typeof forgeStoreRender === 'function') forgeStoreRender();
+}
+
+// ── Forge showcase in the Void Store (big cards, full effects) ──
+// Works even with the wallet disconnected: prices and previews show for
+// everyone (that's the marketing), only buying/equipping needs a wallet.
+async function forgeStoreRender() {
+  const grid = document.getElementById('forge-store-grid');
+  if (!grid) return;
+  const unlocked = (typeof featsLoad === 'function') ? featsLoad() : {};
+  const ltc = await ltcUsdPrice();
+  grid.innerHTML = SKINS.filter(s => s.id !== 'ring_default').map(s => {
+    const col = SKIN_RARITY_COLORS[s.rarity];
+    const owned = _myOwned.includes(s.id);
+    const equipped = _mySkin === s.id;
+    let action;
+    if (equipped) {
+      action = '<div style="text-align:center;font-family:\'Cinzel\',serif;font-size:0.58rem;letter-spacing:0.14em;color:rgba(0,229,204,0.85);border:1px solid rgba(0,229,204,0.4);border-radius:4px;padding:0.5rem;">✓ EQUIPPED</div>';
+    } else if (owned) {
+      action = '<button onclick="skinEquip(\'' + s.id + '\')" style="width:100%;font-family:\'Cinzel\',serif;font-size:0.58rem;letter-spacing:0.14em;color:#fff;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.25);border-radius:4px;padding:0.5rem;cursor:pointer;text-transform:uppercase;">Equip</button>';
+    } else if (s.rarity === 'relic') {
+      const done = !!unlocked[s.featId];
+      action = '<div style="text-align:center;font-family:\'Cinzel\',serif;font-size:0.55rem;letter-spacing:0.1em;color:' + (done ? col : 'rgba(255,255,255,0.35)') + ';border:1px dashed ' + col + '44;border-radius:4px;padding:0.5rem;">' + (done ? 'UNLOCKING…' : '🔒 FIGHT 50 DUELS — NEVER SOLD') + '</div>';
+    } else {
+      const priceLine = ltc
+        ? skinZkAmount(SKIN_PRICE_USD[s.rarity], ltc) + ' zkLTC <span style="opacity:0.55;">· ~$' + SKIN_PRICE_USD[s.rarity] + '</span>'
+        : 'price feed offline';
+      action = '<button onclick="skinBuy(\'' + s.id + '\')" ' + (ltc ? '' : 'disabled ') + 'style="width:100%;font-family:\'Cinzel\',serif;font-size:0.58rem;letter-spacing:0.08em;color:' + col + ';background:transparent;border:1px solid ' + col + '66;border-radius:4px;padding:0.5rem;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background=\'' + col + '15\'" onmouseout="this.style.background=\'transparent\'">' + priceLine + '</button>';
+    }
+    return '<div style="background:rgba(255,255,255,0.02);border:1px solid ' + col + '40;border-radius:8px;padding:1.1rem 0.9rem;text-align:center;' + (equipped ? 'box-shadow:0 0 18px ' + col + '22;' : '') + '">'
+      + '<div style="position:relative;width:64px;height:64px;margin:0 auto 0.8rem;">'
+      +   SKIN_FX(s.id, 64, false)
+      +   '<span style="position:absolute;inset:9px;border-radius:50%;background:#0c0824;z-index:2;display:flex;align-items:center;justify-content:center;">' + (typeof avatarHTMLFor === 'function' && typeof _myAvatarId !== 'undefined' ? avatarHTMLFor(_myAvatarId, 40) : '') + '</span>'
+      + '</div>'
+      + '<div style="font-family:\'Cinzel\',serif;font-size:0.78rem;letter-spacing:0.05em;color:#fff;">' + s.name + '</div>'
+      + '<div style="font-size:0.55rem;letter-spacing:0.18em;color:' + col + ';font-family:\'Cinzel\',serif;text-transform:uppercase;margin:0.25rem 0 0.4rem;">' + s.rarity + '</div>'
+      + '<div style="font-size:0.62rem;color:rgba(255,255,255,0.4);line-height:1.45;min-height:2.4em;margin-bottom:0.8rem;">' + s.desc + '</div>'
+      + action
+      + '</div>';
+  }).join('');
+}
+
+function profileCopyAddr() {
+  if (!connectedAddress) { showToast('Connect your wallet first'); return; }
+  try {
+    navigator.clipboard.writeText(connectedAddress).then(
+      () => showToast('📋 Address copied'),
+      () => showToast(connectedAddress)
+    );
+  } catch(e) { showToast(connectedAddress); }
+}
+
 function profilePanelRender() {
-  // Header: avatar + name + rank
+  // Header: rank ring + avatar + name + rank
+  const ringEl = document.getElementById('profile-panel-ring');
+  if (ringEl) {
+    const c = window._pbRingColor || 'rgba(0,229,204,0.55)';
+    const p = window._pbRingPct || 0;
+    ringEl.style.background = 'conic-gradient(' + c + ' 0 ' + p + '%, rgba(255,255,255,0.08) ' + p + '% 100%)';
+    if (typeof skinApplyMine === 'function') skinApplyMine(); // equipped skin wins
+  }
   const avatarBox = document.getElementById('profile-panel-avatar');
-  if (avatarBox) avatarBox.innerHTML = avatarHTMLFor(_myAvatarId, 38);
+  if (avatarBox) avatarBox.innerHTML = avatarHTMLFor(_myAvatarId, 42);
 
   const nameEl = document.getElementById('profile-panel-name');
   if (nameEl) {
@@ -7989,12 +8376,13 @@ function profilePanelRender() {
   const rankEl = document.getElementById('profile-panel-rank');
   if (rankEl) {
     const rankNames = ['Simple Holder','Apprentice Litecoiner','Devoted Litecoiner','Silver Maximalist'];
-    const rankMoons = ['🌑','🌒','🌓','🌕'];
     if (typeof _burnRank !== 'undefined' && _burnRank >= 0) {
       const idx = Math.min(_burnRank, 3);
-      rankEl.textContent = rankMoons[idx] + ' ' + rankNames[idx];
+      rankEl.textContent = rankNames[idx] + ' · ' + ['I','II','III','IV'][idx];
+      rankEl.style.color = (typeof RANKS_DATA !== 'undefined' && RANKS_DATA[idx]) ? RANKS_DATA[idx].color : 'rgba(0,229,204,0.65)';
     } else {
       rankEl.textContent = '· Unranked ·';
+      rankEl.style.color = 'rgba(255,255,255,0.35)';
     }
   }
 
