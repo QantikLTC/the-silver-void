@@ -3453,13 +3453,34 @@ async function loadUserData(){
     // Re-verify the player's actual on-chain NFT mint status — _nftMinted
     // alone only reflects mints made THIS session, so a player who minted
     // in a previous visit would otherwise never see this feat unlock.
-    if (rankIdx >= 0 && connectedAddress) {
+    // FIX: check EVERY rank pool from 0 up to the current rank, not just
+    // the current one — a player who minted their Rank-1 NFT and later
+    // ranked up to Devoted had the feat stuck locked forever, because only
+    // the Devoted pool (never minted) was being checked.
+    if (rankIdx >= 0 && connectedAddress && !_nftMinted && _nftMintCheckedWallet !== connectedAddress) {
+      _nftMintCheckedWallet = connectedAddress; // at most once per wallet per page load
       try {
-        const _statusCheck = typeof checkNFTStatus === 'function' ? await checkNFTStatus(rankIdx) : null;
-        if (_statusCheck && _statusCheck.claimed) _nftMinted = true;
+        for (let _ri = 0; _ri <= rankIdx && !_nftMinted; _ri++) {
+          const _statusCheck = typeof checkNFTStatus === 'function' ? await checkNFTStatus(_ri) : null;
+          if (_statusCheck && _statusCheck.claimed) _nftMinted = true;
+        }
       } catch (e) { console.warn('NFT mint re-check failed:', e); }
     }
     if (typeof featsCheck === 'function') featsCheck();
+    // Kick ONE background chain scan per wallet right after connect. The
+    // duel-count feats (duels_10/50, wins_10, saga_2/3/4…) need the exact
+    // on-chain counters from the Duelist-board scan; before this, that scan
+    // only ran when the player opened the Duelist tab or after the 5-minute
+    // interval — a player who never did either kept those feats locked even
+    // with 10+ duels on-chain. The scan's completion handler already calls
+    // featsCheck(), so milestones unlock (with the banner) seconds after
+    // connecting. Fire-and-forget: loadUserData must stay fast.
+    if (typeof duelistLeaderboardRefresh === 'function'
+        && typeof _duelistLBScanning !== 'undefined' && !_duelistLBScanning
+        && _featsBgScanWallet !== connectedAddress) {
+      _featsBgScanWallet = connectedAddress;
+      duelistLeaderboardRefresh(false).catch(() => {});
+    }
     const customRankName = rankIdx>=0 ? ((typeof RANKS_DATA!=='undefined'&&RANKS_DATA[rankIdx])?RANKS_DATA[rankIdx].name:['Simple Holder','Apprentice Litecoiner','Devoted Litecoiner','Silver Maximalist'][rankIdx]) : '— No rank yet —';
     document.getElementById('xp-rank-label').textContent = rankIdx>=0 ? customRankName+' · Rank '+(rankIdx+1) : '— Burn ≥ 0.5 zkLTC —';
     document.getElementById('xp-rank-label').style.color = rankIdx>=0 ? '' : 'rgba(255,255,255,0.3)';
@@ -3469,11 +3490,13 @@ async function loadUserData(){
     if(typeof updateRCCBadge==='function') updateRCCBadge(rankNum);
     if(typeof selectBadge2==='function') selectBadge2(Math.min(rankNum>=4?4:rankNum,4));
     if(typeof updateNFTButton==='function') updateNFTButton(rankNum);
-    // Detect rank-up and trigger animation
-    if(rankNum >= 0 && rankNum > prevRank) {
+    // Detect rank-up and trigger animation — only AFTER the first data load
+    // has seeded prevRank, otherwise every page load/connect replayed the
+    // animation for players who already held a rank.
+    if(_rankSeeded && rankNum >= 0 && rankNum > prevRank) {
       setTimeout(function(){ if(typeof triggerRankUp==='function') triggerRankUp(rankNum); }, 800);
     }
-    prevRank = rankNum;
+    prevRank = rankNum; _rankSeeded = true;
     // Update rank showcase
     updateRankShowcase(rankNum,rankName,burnedEth);
     // Update nav
@@ -3962,6 +3985,9 @@ const NFT_ABI = [
 ];
 let nftContract = null;
 let prevRank = -1;
+let _rankSeeded = false; // true once the first loadUserData has run
+let _nftMintCheckedWallet = null; // wallet whose NFT mint status was re-verified
+let _featsBgScanWallet = null;    // wallet for which the connect-time chain scan was kicked
 
 let nftReadContract = null;
 async function initNFTContract() {
@@ -4522,7 +4548,11 @@ let _ruPCTO=null,_ruPCAnim=null,_lastRkPC=-1;
 
 // ══ RANK UP — SINGLE FUNCTION ══
 function triggerRankUp(n) {
-  const idx = Math.min(n - 1, 4);
+  // n is the 0-BASED rank index coming from loadUserData
+  // (0=Simple Holder, 1=Apprentice, 2=Devoted, 3=Silver Maximalist).
+  // The old code did `n - 1` (assumed 1-based) — every rank-up displayed
+  // the PREVIOUS rank's art/name, and reaching Rank 1 showed nothing.
+  const idx = Math.min(n, RU_RANKS.length - 1);
   if (idx < 0) return;
   const r = RU_RANKS[idx];
   if (!r) return;
@@ -4847,18 +4877,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(op) op.addEventListener('click',function(e){if(e.target===this)closeRankUpPC();});
 });
 
-// Hook rank up detection
-const _origUD=loadUserData;
-window.loadUserData=async function(){
-  await _origUD();
-  const lbl=document.getElementById('xp-rank-label');
-  if(lbl){
-    const m=lbl.textContent.match(/Rank (\d+)/);
-    const rn=m?parseInt(m[1]):0;
-    if(_lastRkPC>=0&&rn>_lastRkPC) setTimeout(()=>triggerRankUpPC(rn),600);
-    _lastRkPC=rn;
-  }
-};
+// NOTE: the old "PC" rank-up hook (a loadUserData wrapper calling
+// triggerRankUpPC) was removed: triggerRankUpPC was never defined, so it
+// threw a ReferenceError on every rank change, and rank-up detection is
+// already handled directly inside loadUserData via triggerRankUp().
 
 
 function selectBadge2(i) {
@@ -6376,6 +6398,78 @@ document.addEventListener('DOMContentLoaded', function() {
 .feats-scroll::-webkit-scrollbar-thumb { background:rgba(0,229,204,0.35); border-radius:4px; }
 .feats-scroll::-webkit-scrollbar-thumb:hover { background:rgba(0,229,204,0.55); }
 .feats-scroll { scrollbar-width:thin; scrollbar-color:rgba(0,229,204,0.35) rgba(255,255,255,0.03); }
+
+/* ═══ FEAT UNLOCK BANNER ═══ */
+#feat-banner {
+  position:fixed; top:18px; left:50%; z-index:9500;
+  transform:translateX(-50%) translateY(-140%) scale(0.92);
+  opacity:0; pointer-events:none; cursor:pointer;
+  width:min(420px, calc(100vw - 28px));
+  transition:transform 0.55s cubic-bezier(0.16,1,0.3,1), opacity 0.4s ease;
+}
+#feat-banner.active { transform:translateX(-50%) translateY(0) scale(1); opacity:1; pointer-events:all; }
+#feat-banner .fb-card {
+  position:relative; overflow:hidden; border-radius:8px;
+  background:linear-gradient(135deg, rgba(14,10,32,0.98), rgba(5,3,18,0.98));
+  border:1px solid var(--fb-c, #00e5cc);
+  box-shadow:0 0 0 1px rgba(255,255,255,0.04), 0 0 28px var(--fb-glow, rgba(0,229,204,0.35)), 0 14px 40px rgba(0,0,0,0.6);
+  display:flex; align-items:center; gap:0.9rem; padding:0.85rem 1.05rem;
+  animation:fbPulse 2.2s ease-in-out infinite;
+}
+@keyframes fbPulse {
+  0%,100% { box-shadow:0 0 0 1px rgba(255,255,255,0.04), 0 0 22px var(--fb-glow, rgba(0,229,204,0.3)), 0 14px 40px rgba(0,0,0,0.6); }
+  50%     { box-shadow:0 0 0 1px rgba(255,255,255,0.04), 0 0 44px var(--fb-glow, rgba(0,229,204,0.55)), 0 14px 40px rgba(0,0,0,0.6); }
+}
+#feat-banner .fb-card::after { /* shine sweep */
+  content:''; position:absolute; top:0; left:-80%; width:55%; height:100%;
+  background:linear-gradient(105deg, transparent, rgba(255,255,255,0.16), transparent);
+  transform:skewX(-18deg); animation:fbShine 2.4s ease-in-out infinite;
+}
+@keyframes fbShine { 0%{left:-80%;} 55%{left:130%;} 100%{left:130%;} }
+#feat-banner .fb-icon {
+  flex:0 0 auto; width:58px; height:58px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-size:1.7rem;
+  background:radial-gradient(circle at 35% 30%, var(--fb-glow, rgba(0,229,204,0.35)), rgba(0,0,0,0.4));
+  border:2px solid var(--fb-c, #00e5cc); overflow:hidden;
+  animation:fbIconPop 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.25s both;
+  box-shadow:0 0 18px var(--fb-glow, rgba(0,229,204,0.4));
+}
+#feat-banner .fb-icon img { width:100%; height:100%; object-fit:cover; display:block; }
+@keyframes fbIconPop { 0%{transform:scale(0) rotate(-25deg);} 70%{transform:scale(1.18) rotate(4deg);} 100%{transform:scale(1) rotate(0);} }
+#feat-banner .fb-label {
+  font-family:'Cinzel',serif; font-size:0.62rem; letter-spacing:0.28em; text-transform:uppercase;
+  color:var(--fb-c, #00e5cc); margin-bottom:0.15rem;
+}
+#feat-banner .fb-name { font-family:'Cinzel',serif; font-size:1.02rem; color:#fff; line-height:1.2; text-shadow:0 0 12px var(--fb-glow, rgba(0,229,204,0.45)); }
+#feat-banner .fb-desc { font-size:0.72rem; color:rgba(255,255,255,0.55); margin-top:0.2rem; line-height:1.3; }
+#feat-banner .fb-count {
+  position:absolute; top:0.55rem; right:0.7rem; font-size:0.62rem;
+  font-family:'Cinzel',serif; color:rgba(255,255,255,0.45); letter-spacing:0.08em;
+}
+#feat-banner .fb-spark {
+  position:absolute; width:5px; height:5px; border-radius:50%;
+  background:var(--fb-c, #00e5cc); opacity:0; pointer-events:none;
+  animation:fbSpark 1.4s ease-out forwards;
+}
+@keyframes fbSpark {
+  0%   { opacity:0; transform:translate(0,0) scale(0.4); }
+  15%  { opacity:1; }
+  100% { opacity:0; transform:translate(var(--sx,0), var(--sy,-46px)) scale(1); }
+}
+</style>
+<!-- Feat unlock banner — populated & shown by featShowUnlock() -->
+<div id="feat-banner" onclick="document.getElementById('feat-banner').classList.remove('active'); if(typeof featsOpen==='function') featsOpen();">
+  <div class="fb-card">
+    <div class="fb-icon" id="fb-icon">🏆</div>
+    <div style="min-width:0;">
+      <div class="fb-label" id="fb-label">⚜ Feat Unlocked</div>
+      <div class="fb-name" id="fb-name"></div>
+      <div class="fb-desc" id="fb-desc"></div>
+    </div>
+    <div class="fb-count" id="fb-count"></div>
+  </div>
+</div>
+<style>
 </style>
 <div id="feats-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,1,12,0.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1.5rem;" onclick="if(event.target===this)this.style.display='none'">
   <div class="feats-scroll" style="background:linear-gradient(135deg,rgba(12,8,30,0.99),rgba(6,3,20,0.99));border:1px solid rgba(0,229,204,0.25);border-radius:6px;max-width:680px;width:100%;max-height:85vh;overflow-y:auto;padding:1.8rem;position:relative;box-shadow:0 0 50px rgba(0,229,204,0.06);">
@@ -6539,12 +6633,71 @@ function featsEvaluate() {
 // Called after each duel resolves
 function featsCheck() {
   const newly = featsEvaluate();
-  newly.forEach((f, i) => {
-    setTimeout(() => {
-      if (typeof showToast === 'function') showToast('🏆 Feat unlocked: ' + f.name);
-    }, i * 1200);
-  });
+  newly.forEach(f => featShowUnlock(f));
   featsUpdateBadge();
+}
+
+// ═══ FEAT UNLOCK ANIMATION ═══
+// Queued banner: if several feats unlock at once (common — first_duel +
+// saga_1 together), they play one after the other instead of overwriting.
+const _featColors = { Duel:'#00e5cc', Burn:'#ff8a3c', Saga:'#b075ff' };
+let _featQueue = [], _featShowing = false, _featHideTO = null;
+function featShowUnlock(f) {
+  _featQueue.push(f);
+  if (!_featShowing) _featPlayNext();
+}
+function _featPlayNext() {
+  const f = _featQueue.shift();
+  const banner = document.getElementById('feat-banner');
+  if (!f || !banner) { _featShowing = false; return; }
+  _featShowing = true;
+  const color = _featColors[f.cat] || '#00e5cc';
+  banner.style.setProperty('--fb-c', color);
+  banner.style.setProperty('--fb-glow', color + '59'); // ~35% alpha
+  // Icon: Saga feats show their Arweave art, others their emoji
+  const iconEl = document.getElementById('fb-icon');
+  if (iconEl) {
+    if (f.artUrl) iconEl.innerHTML = '<img src="' + f.artUrl + '" alt="" />';
+    else iconEl.textContent = f.icon || '🏆';
+    // retrigger the pop animation
+    iconEl.style.animation = 'none'; iconEl.offsetHeight;
+    iconEl.style.animation = '';
+  }
+  const lbl = document.getElementById('fb-label');
+  if (lbl) { lbl.textContent = '⚜ ' + (f.cat === 'Saga' ? 'Saga Chapter Unlocked' : 'Feat Unlocked'); }
+  const nameEl = document.getElementById('fb-name'); if (nameEl) nameEl.textContent = f.name;
+  const descEl = document.getElementById('fb-desc'); if (descEl) descEl.textContent = f.desc || '';
+  // Progress counter (e.g. 12 / 22)
+  const cntEl = document.getElementById('fb-count');
+  if (cntEl) {
+    try {
+      const u = featsLoad();
+      const c = Object.keys(u).filter(k => FEATS.some(x => x.id === k)).length;
+      cntEl.textContent = c + ' / ' + FEATS.length;
+    } catch { cntEl.textContent = ''; }
+  }
+  // Sparkles burst around the card
+  banner.querySelectorAll('.fb-spark').forEach(s => s.remove());
+  const card = banner.querySelector('.fb-card');
+  if (card) {
+    for (let i = 0; i < 10; i++) {
+      const s = document.createElement('span');
+      s.className = 'fb-spark';
+      s.style.left = (8 + Math.random() * 84) + '%';
+      s.style.top  = (20 + Math.random() * 60) + '%';
+      s.style.setProperty('--sx', (Math.random() * 60 - 30) + 'px');
+      s.style.setProperty('--sy', (-30 - Math.random() * 40) + 'px');
+      s.style.animationDelay = (0.15 + Math.random() * 0.7) + 's';
+      card.appendChild(s);
+    }
+  }
+  banner.classList.add('active');
+  // Auto-dismiss, then play the next queued feat
+  clearTimeout(_featHideTO);
+  _featHideTO = setTimeout(() => {
+    banner.classList.remove('active');
+    setTimeout(_featPlayNext, 650); // wait for the slide-out transition
+  }, 4600);
 }
 
 function featsUpdateBadge() {
