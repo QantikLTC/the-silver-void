@@ -8222,6 +8222,19 @@ async function skinEquip(id) {
     if (!r.ok) { const e = await r.json().catch(()=>({})); showToast(e.error || 'Equip failed', true); return; }
     _mySkin = id;
     _skinCache[connectedAddress.toLowerCase()] = { skin: id, ts: Date.now() };
+    // Patch my row in the cached Duelist leaderboard so the new ring shows
+    // instantly instead of waiting for the next 5-min chain scan
+    try {
+      if (typeof _duelistLBCache !== 'undefined' && _duelistLBCache && Array.isArray(_duelistLBCache.rows)) {
+        const me = _duelistLBCache.rows.find(r => r.wallet === connectedAddress.toLowerCase());
+        if (me) {
+          me.skin = (id === 'ring_default') ? null : id;
+          if (typeof duelistLeaderboardRender === 'function') {
+            duelistLeaderboardRender(_duelistLBCache.rows, _duelistLBCache.updatedAt, _duelistLBCache);
+          }
+        }
+      }
+    } catch(e) {}
     skinApplyMine();
     forgeRender();
     showToast('✨ ' + (SKINS.find(s=>s.id===id)||{name:id}).name + ' equipped');
