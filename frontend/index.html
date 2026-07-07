@@ -3657,9 +3657,10 @@ function renderLB(list, page){
     const numClass=idx===0?'gold':idx===1?'silver-r':idx===2?'bronze':'';
     const numSymbol=idx===0?'⬡':idx===1?'◆':idx===2?'◈':(idx+1);
     const initials=p.name.slice(2,4).toUpperCase();
+    const _dflt = (typeof avatarHTMLFor === 'function') ? avatarHTMLFor('default', 46) : initials;
     const avatarBlock = p.avatarHTML
       ? `<div class="lb-avatar" style="background:${bg};border:1px solid ${bc};overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;">${p.avatarHTML}</div>`
-      : `<div class="lb-avatar" style="background:${bg};border:1px solid ${bc};color:${c}">${initials}</div>`;
+      : `<div class="lb-avatar" style="background:${bg};border:1px solid ${bc};overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;color:${c}">${_dflt}</div>`;
     // Equipped Forge skin: same lite ring treatment as the Duelist board
     const avatarCell = (p.skin && p.skin !== 'ring_default' && typeof SKIN_FX === 'function')
       ? `<div style="position:relative;flex-shrink:0;padding:3px;border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${SKIN_FX(p.skin, 52, true)}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
@@ -4305,7 +4306,7 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
     const numSymbol = i===0?'⬡':i===1?'◆':i===2?'◈':(i+1);
     const avatarBlock = r.avatar
       ? `<div class="lb-avatar" style="background:rgba(119,85,204,0.12);border:1px solid rgba(119,85,204,0.35);overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;">${r.avatar}</div>`
-      : `<div class="lb-avatar" style="background:rgba(119,85,204,0.12);border:1px solid rgba(119,85,204,0.35);color:#9d7fee;">${(r.name||'??').slice(0,2).toUpperCase()}</div>`;
+      : `<div class="lb-avatar" style="background:rgba(119,85,204,0.12);border:1px solid rgba(119,85,204,0.35);overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;color:#9d7fee;">${(typeof avatarHTMLFor === 'function') ? avatarHTMLFor('default', 46) : (r.name||'??').slice(0,2).toUpperCase()}</div>`;
     // Equipped Forge skin: wrap the avatar in a lite version of the ring
     // (no blur/particles — 15 animated rings per page must stay cheap)
     const avatarCell = (r.skin && r.skin !== 'ring_default' && typeof SKIN_FX === 'function')
