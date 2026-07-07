@@ -2039,6 +2039,36 @@ body::after {
 </style>
 </head>
 <body>
+<!-- ═══════════════ ANNOUNCEMENT BANNER (hardcoded) ═══════════════ -->
+<!-- To change the message: edit the text below. To hide the banner:
+     add style="display:none" back onto #sv-announce, or delete this block.
+     Dismissible per-visitor via the ✕ (remembered until the text changes). -->
+<div id="sv-announce" style="position:fixed;top:0;left:0;right:0;z-index:99998;background:linear-gradient(90deg,rgba(20,12,40,0.97),rgba(30,16,50,0.97));border-bottom:1px solid rgba(255,200,120,0.35);backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(0,0,0,0.4);">
+  <div style="max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:0.8rem;padding:0.6rem 1rem;">
+    <span style="flex-shrink:0;font-size:1rem;">⚠️</span>
+    <span id="sv-announce-text" style="flex:1;font-size:0.8rem;line-height:1.4;color:rgba(255,235,200,0.92);">Some Duelist Saga mints (e.g. Sanctuary Glimpse) may currently fail for eligible players. A fix is coming in an upcoming contract redeployment — your progress is safe, no duels or burns are lost.</span>
+    <button onclick="svAnnounceDismiss()" title="Dismiss" style="flex-shrink:0;background:transparent;border:none;color:rgba(255,255,255,0.45);font-size:1.1rem;cursor:pointer;line-height:1;padding:0.2rem 0.4rem;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.45)'">✕</button>
+  </div>
+</div>
+<script>
+// Banner version — bump this string whenever you change the message text
+// above, so the banner re-appears for visitors who dismissed the old one.
+var _svAnnounceVer = 'saga-redeploy-2026-07';
+(function(){
+  try {
+    if (localStorage.getItem('svann_' + _svAnnounceVer) === 'dismissed') {
+      var b = document.getElementById('sv-announce');
+      if (b) b.style.display = 'none';
+    }
+  } catch (e) {}
+})();
+function svAnnounceDismiss() {
+  var bar = document.getElementById('sv-announce');
+  if (bar) bar.style.display = 'none';
+  try { localStorage.setItem('svann_' + _svAnnounceVer, 'dismissed'); } catch (e) {}
+}
+</script>
+
 <!-- ═══════════════ INTRO OVERLAY ═══════════════ -->
 <div id="sv-intro" style="position:fixed;inset:0;z-index:100000;background:radial-gradient(ellipse at 50% 40%,#0a0628 0%,#04021a 60%,#020110 100%);display:flex;align-items:center;justify-content:center;overflow:hidden;opacity:1;transition:opacity 0.8s ease;">
   <canvas id="sv-intro-canvas" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
