@@ -3660,10 +3660,14 @@ function renderLB(list, page){
     const avatarBlock = p.avatarHTML
       ? `<div class="lb-avatar" style="background:${bg};border:1px solid ${bc};overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;">${p.avatarHTML}</div>`
       : `<div class="lb-avatar" style="background:${bg};border:1px solid ${bc};color:${c}">${initials}</div>`;
+    // Equipped Forge skin: same lite ring treatment as the Duelist board
+    const avatarCell = (p.skin && p.skin !== 'ring_default' && typeof SKIN_FX === 'function')
+      ? `<div style="position:relative;flex-shrink:0;padding:3px;border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${SKIN_FX(p.skin, 52, true)}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
+      : avatarBlock;
     return `<div class="lb-row ${numClass}">
       <div class="lb-rank-num ${numClass}">${numSymbol}</div>
       <div class="lb-user">
-        ${avatarBlock}
+        ${avatarCell}
         <div>
           <div class="lb-addr">${p.name}</div>
           <span class="lb-badge-chip" style="background:${bg};border:1px solid ${bc};color:${c}">${p.tier}</span>
@@ -3765,6 +3769,8 @@ async function loadLeaderboard(){
         const avId = typeof avatarFetch === 'function' ? await avatarFetch(addr) : null;
         if (avId) avatarHTML = typeof avatarHTMLFor === 'function' ? avatarHTMLFor(avId, 46) : null;
       } catch(e) {}
+      let skinId = null;
+      try { skinId = typeof skinFetchCached === 'function' ? await skinFetchCached(addr) : null; } catch(e) {}
       return{
         rank:i+1,
         init:initials,
@@ -3772,7 +3778,8 @@ async function loadLeaderboard(){
         addr:shortAddr,
         tier:rankName,
         ltc:burnedEth,
-        avatarHTML:avatarHTML
+        avatarHTML:avatarHTML,
+        skin:skinId
       };
     }));
 
