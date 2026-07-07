@@ -3748,7 +3748,7 @@ async function loadLeaderboard(){
     const limit=Math.min(burnerCount,50);
     const [addresses,amounts]=await fc2.getTopBurners(limit);
     console.log('Top burners:',addresses);
-
+    if (typeof profilesBatchPrefetch === 'function') await profilesBatchPrefetch(addresses);
     const rows=await Promise.all(addresses.map(async(addr,i)=>{
       const burnedEth=parseFloat(ethers.formatEther(amounts[i]));
       if(burnedEth===0) return null;
@@ -4103,7 +4103,7 @@ async function updateNFTButton(rankNum) {
 // Scans every resolved duel on-chain and tallies a score per wallet.
 // This is heavier than a simple read, so it's cached and only re-scanned
 // periodically (not on every page view) — see DUELIST_LB_REFRESH_MS below.
-const DUELIST_LB_REFRESH_MS = 5 * 60 * 1000; // 5 minutes
+const DUELIST_LB_REFRESH_MS = 10 * 60 * 1000; // 10 min — halves background Vercel/RPC load
 let _duelistLBCache = null;       // { rows: [...], updatedAt: timestamp }
 let _duelistLBScanning = false;
 let _arenaBgScanWallet = null; // wallet address for which we've already fired the background Arena-record scan this page load — prevents re-triggering forever for wallets with zero duels played
@@ -4187,6 +4187,7 @@ async function duelistLeaderboardScan() {
 
   // Build sorted rows with display names
   const wallets = Object.keys(scores);
+  if (typeof profilesBatchPrefetch === 'function') await profilesBatchPrefetch(wallets);
   const rows = await Promise.all(wallets.map(async w => {
     let displayName = w.slice(0,6) + '...' + w.slice(-4);
     let avatarHTML = '<span style="font-size:1.4rem;">👤</span>';
@@ -7503,7 +7504,42 @@ const USERNAME_CHANGE_FEE = '0.05'; // zkLTC — charged on-chain before any cha
 const CREATOR_ADDRESS = '0x5489667F306a6F03F550FCB129F765f83FaCB24E';
 let _myUsername = null; // cached current username for this wallet
 
+// ═══ PROFILE BATCH CACHE ═══
+// One Vercel invocation per LEADERBOARD SCAN instead of 3 per WALLET.
+// The old pattern (usernameFetch + avatarFetch + skinFetch for every row,
+// every 5 minutes, per open tab) was burning through Vercel's Fluid CPU
+// quota. profilesBatchPrefetch() fills this cache with a single /api/profiles
+// call; the individual fetchers below become cache hits during scans.
+const PROFILES_API = '/api/profiles';
+const _profileCache = {}; // wallet -> { username, avatar, skin, ts }
+const PROFILE_TTL = 15 * 60 * 1000;
+function _profileGet(wallet) {
+  const c = _profileCache[wallet.toLowerCase()];
+  return (c && Date.now() - c.ts < PROFILE_TTL) ? c : null;
+}
+async function profilesBatchPrefetch(wallets) {
+  const need = [...new Set(wallets.map(w => w.toLowerCase()))]
+    .filter(w => !_profileGet(w))
+    .sort(); // sorted -> stable URL -> Vercel CDN cache hits across users
+  if (!need.length) return;
+  try {
+    for (let i = 0; i < need.length; i += 50) { // endpoint caps at 60/call
+      const chunk = need.slice(i, i + 50);
+      const res = await fetch(PROFILES_API + '?wallets=' + chunk.join(','));
+      if (!res.ok) return; // endpoint missing/erroring -> fetchers fall back
+      const data = await res.json();
+      for (const w of chunk) {
+        const p = (data.profiles && data.profiles[w]) || {};
+        _profileCache[w] = { username: p.username || null, avatar: p.avatar || null, skin: p.skin || null, ts: Date.now() };
+        _skinCache[w] = { skin: p.skin || null, ts: Date.now() }; // keep skin cache coherent
+      }
+    }
+  } catch (e) { console.warn('profiles batch failed:', e); }
+}
+
 async function usernameFetch(wallet) {
+  const hit = _profileGet(wallet);
+  if (hit) return hit.username;
   try {
     const res = await fetch(`${USERNAME_API}?wallet=${encodeURIComponent(wallet)}`);
     if (!res.ok) return null;
@@ -7725,6 +7761,8 @@ function avatarOnlyUnlocked() {
 }
 
 async function avatarFetch(wallet) {
+  const hit = typeof _profileGet === 'function' ? _profileGet(wallet) : null;
+  if (hit) return hit.avatar;
   try {
     const res = await fetch(`${AVATAR_API}?wallet=${encodeURIComponent(wallet)}`);
     if (!res.ok) return null;
@@ -8199,8 +8237,10 @@ let _mySkin = 'ring_default', _myOwned = [], _skinWalletLoaded = null;
 const _skinCache = {}; // wallet -> {skin, ts} for leaderboard rendering
 async function skinFetchCached(wallet) {
   const k = wallet.toLowerCase();
+  const p = typeof _profileGet === 'function' ? _profileGet(k) : null;
+  if (p) return p.skin;
   const c = _skinCache[k];
-  if (c && Date.now() - c.ts < 600000) return c.skin;
+  if (c && Date.now() - c.ts < 1800000) return c.skin;
   try {
     const r = await fetch(SKIN_API + '?wallet=' + encodeURIComponent(k));
     if (!r.ok) return null;
