@@ -7885,9 +7885,13 @@ function avatarHTMLFor(id, size) {
   const info = avatarRenderInfoFor(id);
   const s = size || 32;
   if (info.type === 'image') {
-    return `<img src="${info.url}" style="width:${s}px;height:${s}px;border-radius:50%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><span style="display:none;width:${s}px;height:${s}px;border-radius:50%;align-items:center;justify-content:center;font-size:${Math.round(s*0.6)}px;">🌑</span>`;
+    // width/height:100% so the image fills whatever the container's actual
+    // size is (the .lb-avatar box shrinks on mobile via CSS); a fixed px
+    // width here used to overflow the shrunk container and push the name
+    // off-screen. max-width caps it at the requested size on desktop.
+    return `<img src="${info.url}" style="width:100%;height:100%;max-width:${s}px;max-height:${s}px;border-radius:50%;object-fit:cover;display:block;" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=&quot;font-size:${Math.round(s*0.6)}px;&quot;>👤</span>';">`;
   }
-  return `<span style="display:flex;width:${s}px;height:${s}px;align-items:center;justify-content:center;font-size:${Math.round(s*0.6)}px;">${info.icon}</span>`;
+  return `<span style="display:flex;width:100%;height:100%;max-width:${s}px;max-height:${s}px;align-items:center;justify-content:center;font-size:${Math.round(s*0.6)}px;">${info.icon}</span>`;
 }
 
 function avatarUpdateButtonIcon() {
