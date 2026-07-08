@@ -1578,12 +1578,19 @@ body::after {
   align-items:center; transition:background 0.2s;
 }
 /* Mobile: the fixed 40+64×3+90px columns (plus 3rem padding) overflow a
-   ~380px phone screen and shove the Score column off-grid — same class of
-   bug as the duel-section 1fr 1fr grid. Tighter columns + padding fit. */
+   ~380px phone screen and shove the Score column off-grid. Tighter columns
+   + padding fit. Score column stays wide enough for the number + PTS. */
 @media(max-width:768px){
-  .lb-row-duel { grid-template-columns:24px 1fr 34px 34px 34px 56px; padding:0.7rem 0.6rem; }
+  .lb-row-duel { grid-template-columns:20px minmax(0,1fr) 30px 30px 30px 46px; padding:0.7rem 0.5rem; gap:2px; }
   .lb-row-duel .lb-avatar { width:38px; height:38px; font-size:0.65rem; }
-  .lb-row-duel .lb-addr { font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lb-row-duel .lb-addr { font-size:0.82rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lb-stat-col { font-size:0.66rem; }
+}
+@media(max-width:400px){
+  .lb-row-duel { grid-template-columns:0 minmax(0,1fr) 26px 26px 26px 42px; padding:0.65rem 0.4rem; gap:1px; }
+  .lb-row-duel .lb-rank-num { display:none; } /* drop the rank number on very narrow screens to save width */
+  .lb-row-duel .lb-avatar { width:34px; height:34px; }
+  .lb-stat-col { font-size:0.62rem; }
 }
 .lb-row-duel:last-child { border-bottom:none; }
 .lb-row-duel:hover { background:rgba(0,229,204,0.02); }
@@ -1595,10 +1602,6 @@ body::after {
 .lb-row-duel.bronze:hover { background:linear-gradient(to right,rgba(160,112,48,0.14),rgba(160,112,48,0.04)); }
 .lb-stat-col { text-align:center; font-family:'Cinzel',serif; font-size:0.78rem; }
 .lb-stat-col-label { display:block; font-size:0.5rem; letter-spacing:0.1em; color:rgba(255,255,255,0.25); text-transform:uppercase; margin-bottom:0.15rem; }
-@media(max-width:700px){
-  .lb-row-duel { grid-template-columns:30px 1fr 44px 44px 44px 70px; padding:0.7rem 0.8rem; }
-  .lb-stat-col { font-size:0.68rem; }
-}
 
 /* Top-3 tinted bands — gold / silver / bronze */
 .lb-row.gold { background:linear-gradient(to right,rgba(200,168,74,0.1),rgba(200,168,74,0.02)); border-left:2px solid #c8a84a; }
@@ -2059,12 +2062,28 @@ var _svAnnounceVer = 'saga-redeploy-2026-07';
     if (localStorage.getItem('svann_' + _svAnnounceVer) === 'dismissed') {
       var b = document.getElementById('sv-announce');
       if (b) b.style.display = 'none';
+      return;
     }
   } catch (e) {}
+  // Push the whole page down by the banner's height so it doesn't overlap the
+  // nav/content. Re-measured on resize (text wraps to more lines on narrow
+  // screens = taller banner).
+  function svAnnounceOffset() {
+    var b = document.getElementById('sv-announce');
+    if (!b || b.style.display === 'none') { document.body.style.paddingTop = ''; return; }
+    document.body.style.paddingTop = b.offsetHeight + 'px';
+  }
+  window.addEventListener('resize', svAnnounceOffset);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', svAnnounceOffset);
+  } else { svAnnounceOffset(); }
+  // expose so dismiss can clear it
+  window._svAnnounceOffset = svAnnounceOffset;
 })();
 function svAnnounceDismiss() {
   var bar = document.getElementById('sv-announce');
   if (bar) bar.style.display = 'none';
+  document.body.style.paddingTop = '';
   try { localStorage.setItem('svann_' + _svAnnounceVer, 'dismissed'); } catch (e) {}
 }
 </script>
