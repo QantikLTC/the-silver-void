@@ -2845,6 +2845,15 @@ function svIntroParticles() {
         <span style="text-align:right">Amount</span>
         <span style="text-align:right">Rank</span>
       </div>
+      <!-- Search + "my position" tools -->
+      <div style="display:flex;gap:0.6rem;align-items:center;margin:0.8rem 0;flex-wrap:wrap;">
+        <div style="flex:1;min-width:180px;position:relative;">
+          <input id="lb-search" type="text" placeholder="Search name or address..." oninput="lbSearch(this.value)" autocomplete="off" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(0,229,204,0.25);border-radius:8px;padding:0.5rem 0.8rem 0.5rem 2rem;color:#fff;font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.05em;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='rgba(0,229,204,0.6)'" onblur="this.style.borderColor='rgba(0,229,204,0.25)'">
+          <span style="position:absolute;left:0.7rem;top:50%;transform:translateY(-50%);color:rgba(0,229,204,0.5);font-size:0.75rem;pointer-events:none;">⌕</span>
+        </div>
+        <button id="lb-find-me" onclick="lbFindMe()" style="display:none;background:rgba(0,229,204,0.1);border:1px solid rgba(0,229,204,0.4);border-radius:8px;padding:0.5rem 1rem;color:var(--teal);font-family:'Cinzel',serif;font-size:0.66rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:all 0.2s;" onmouseover="this.style.background='rgba(0,229,204,0.2)'" onmouseout="this.style.background='rgba(0,229,204,0.1)'">◎ Find me</button>
+      </div>
+      <div id="lb-my-position" style="display:none;margin-bottom:0.8rem;padding:0.6rem 0.9rem;background:linear-gradient(90deg,rgba(0,229,204,0.08),rgba(0,229,204,0.02));border:1px solid rgba(0,229,204,0.3);border-radius:8px;font-family:'Cinzel',serif;font-size:0.72rem;color:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:space-between;gap:0.5rem;"></div>
       <div id="lb-rows">
         <div class="lb-empty"><strong>Loading...</strong>Calling the blockchain...</div>
       </div>
@@ -3222,6 +3231,7 @@ const RANKS_DATA = [
 
 let provider=null, signer=null, contract=null, connectedAddress=null;
 let allBurners=[];
+let _lbTotalBurners=0;
 const readProvider = new ethers.JsonRpcProvider(RPC);
 const readContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, readProvider);
 
@@ -3337,6 +3347,7 @@ async function connectWallet(){
     const _pb = document.getElementById('profile-btn'); if(_pb) _pb.style.display='flex';
     await loadUserData();
     await loadChainData();
+    if (typeof lbUpdateMyPosition === 'function') lbUpdateMyPosition();
     showToast('Wallet connected — Welcome to the Void');
     setTimeout(updateSteps,500);
     // Small delay to ensure duelReadContract is ready
@@ -3740,6 +3751,73 @@ function renderLB(list, page){
     </div>` : '';
 
   wrap.innerHTML = rows + pagination;
+  lbUpdateMyPosition();
+}
+
+// ═══ LEADERBOARD SEARCH + MY POSITION ═══
+// Search filters the loaded burners (top 100) by name or address. My-position
+// shows the connected wallet's exact rank among ALL burners — even those past
+// the displayed page — and jumps to their row.
+function lbSearch(q) {
+  q = (q || '').trim().toLowerCase();
+  if (!q) { renderLB(allBurners); return; }
+  const filtered = allBurners.filter(p =>
+    (p.name && p.name.toLowerCase().includes(q)) ||
+    (p.addr && p.addr.toLowerCase().includes(q)) ||
+    (p.fullAddr && p.fullAddr.toLowerCase().includes(q))
+  );
+  renderLB(filtered);
+  const wrap = document.getElementById('lb-rows');
+  if (wrap && filtered.length === 0) {
+    wrap.innerHTML = '<div class="lb-empty"><strong>No match</strong>No sacrifiant found for "' + q.replace(/[<>]/g,'') + '" in the top 100.</div>';
+  }
+}
+
+function lbMyIndex() {
+  if (!connectedAddress) return -1;
+  const me = connectedAddress.toLowerCase();
+  return allBurners.findIndex(p => (p.fullAddr || '').toLowerCase() === me);
+}
+
+function lbUpdateMyPosition() {
+  const bar = document.getElementById('lb-my-position');
+  const findBtn = document.getElementById('lb-find-me');
+  if (!bar) return;
+  const idx = lbMyIndex();
+  if (idx < 0) {
+    bar.style.display = 'none';
+    if (findBtn) findBtn.style.display = 'none';
+    return;
+  }
+  const me = allBurners[idx];
+  const total = (typeof _lbTotalBurners === 'number' && _lbTotalBurners > 0) ? _lbTotalBurners : allBurners.length;
+  bar.style.display = 'flex';
+  bar.innerHTML = '<span>◈ Your position: <b style="color:var(--teal);">#' + (idx + 1) + '</b> of ' + total
+    + ' &nbsp;·&nbsp; ' + me.ltc.toFixed(3) + ' zkLTC</span>'
+    + '<span onclick="lbFindMe()" style="color:var(--teal);cursor:pointer;font-size:0.62rem;letter-spacing:0.1em;">JUMP →</span>';
+  if (findBtn) findBtn.style.display = 'block';
+}
+
+function lbFindMe() {
+  const idx = lbMyIndex();
+  if (idx < 0) { showToast('Connect the wallet you burned with to find your position'); return; }
+  // Clear any active search so the full list (and thus my row) is shown
+  const searchInput = document.getElementById('lb-search');
+  if (searchInput && searchInput.value) { searchInput.value = ''; }
+  const targetPage = Math.floor(idx / _lbPerPage);
+  renderLB(allBurners, targetPage);
+  // Highlight + scroll to my row after render
+  setTimeout(() => {
+    const rows = document.querySelectorAll('#lb-rows .lb-row');
+    const localIdx = idx - targetPage * _lbPerPage;
+    const el = rows[localIdx];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.style.transition = 'box-shadow 0.3s';
+      el.style.boxShadow = '0 0 0 2px var(--teal), 0 0 18px rgba(0,229,204,0.4)';
+      setTimeout(() => { el.style.boxShadow = ''; }, 2200);
+    }
+  }, 60);
 }
 
 function filtNew(el){
@@ -3799,7 +3877,7 @@ async function loadLeaderboard(){
       return;
     }
 
-    const limit=Math.min(burnerCount,50);
+    const limit=Math.min(burnerCount,100);
     const [addresses,amounts]=await fc2.getTopBurners(limit);
     console.log('Top burners:',addresses);
     if (typeof profilesBatchPrefetch === 'function') await profilesBatchPrefetch(addresses);
@@ -3830,6 +3908,7 @@ async function loadLeaderboard(){
         init:initials,
         name:displayName,
         addr:shortAddr,
+        fullAddr:addr,
         tier:rankName,
         ltc:burnedEth,
         avatarHTML:avatarHTML,
@@ -3838,6 +3917,7 @@ async function loadLeaderboard(){
     }));
 
     allBurners=rows.filter(Boolean);
+    _lbTotalBurners = burnerCount;
     console.log('All burners:',allBurners);
     renderLB(allBurners);
 
@@ -6814,8 +6894,17 @@ async function featsOpen() {
     try {
       await initSagaContract();
       if (sagaReadContract) {
-        const results = await Promise.all([1,2,3,4].map(id => sagaReadContract.hasMinted(connectedAddress, id).catch(() => false)));
-        results.forEach((minted, i) => { _sagaMintedCache[i+1] = minted; });
+      const results = await Promise.all([1,2,3,4].map(async id => {
+        // Retry once on failure — a single flaky RPC read must NOT be
+        // silently treated as "not minted", which would wrongly re-show the
+        // Mint button for an NFT the player already owns.
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try { return await sagaReadContract.hasMinted(connectedAddress, id); }
+          catch (e) { if (attempt === 1) return null; }
+        }
+        return null;
+      }));
+      results.forEach((minted, i) => { if (minted !== null) _sagaMintedCache[i+1] = minted; });
       }
     } catch (e) { console.warn('Could not preload saga minted status:', e); }
   }
@@ -6884,9 +6973,26 @@ async function sagaMint(sagaId) {
 
   const btn = document.getElementById('saga-mint-btn-' + sagaId);
   const origText = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = 'Confirm in MetaMask...'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Checking...'; }
 
   try {
+    // Guard: the minted-status preload can silently fail on a flaky mobile
+    // RPC, leaving the "Mint" button showing for an NFT the player already
+    // owns. Re-check on-chain right before minting; if already owned, just
+    // fix the UI instead of sending a tx that will revert with
+    // "already minted" and look like a bug to the user.
+    let already = false;
+    try {
+      already = await (sagaReadContract || sagaContract).hasMinted(connectedAddress, sagaId);
+    } catch (e) { /* if this read fails, fall through and let the mint try */ }
+    if (already) {
+      _sagaMintedCache[sagaId] = true;
+      showToast('✓ You already own this Saga NFT');
+      if (typeof featsOpen === 'function') featsOpen(); // re-render to the "✓ NFT MINTED" state
+      return;
+    }
+
+    if (btn) btn.textContent = 'Confirm in MetaMask...';
     const tx = await sagaContract.mint(sagaId, { value: ethers.parseEther('0.05') });
     if (btn) btn.textContent = 'Minting...';
     await tx.wait();
@@ -6896,6 +7002,15 @@ async function sagaMint(sagaId) {
     featsOpen(); // re-render so the button becomes "✓ NFT MINTED"
   } catch (e) {
     console.error('sagaMint error:', e);
+    // If the revert is specifically "already minted", treat it as success-ish:
+    // the player owns it, so correct the UI rather than showing a scary error.
+    const msg = (e && (e.reason || e.shortMessage || e.message) || '').toLowerCase();
+    if (msg.includes('already minted')) {
+      _sagaMintedCache[sagaId] = true;
+      showToast('✓ You already own this Saga NFT');
+      if (typeof featsOpen === 'function') featsOpen();
+      return;
+    }
     showToast(typeof duelFriendlyError === 'function' ? duelFriendlyError(e) : '✖ Mint failed', true);
     if (btn) { btn.disabled = false; btn.textContent = origText; }
   }
