@@ -1582,14 +1582,17 @@ body::after {
    + padding fit. Score column stays wide enough for the number + PTS. */
 @media(max-width:768px){
   .lb-row-duel { grid-template-columns:20px minmax(0,1fr) 30px 30px 30px 46px; padding:0.7rem 0.5rem; gap:2px; }
+  .lb-row-duel .lb-user { gap:0.5rem; }
   .lb-row-duel .lb-avatar { width:38px; height:38px; font-size:0.65rem; }
-  .lb-row-duel .lb-addr { font-size:0.82rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lb-row-duel .lb-addr { font-size:0.82rem; }
   .lb-stat-col { font-size:0.66rem; }
 }
 @media(max-width:400px){
   .lb-row-duel { grid-template-columns:0 minmax(0,1fr) 26px 26px 26px 42px; padding:0.65rem 0.4rem; gap:1px; }
   .lb-row-duel .lb-rank-num { display:none; } /* drop the rank number on very narrow screens to save width */
+  .lb-row-duel .lb-user { gap:0.4rem; }
   .lb-row-duel .lb-avatar { width:34px; height:34px; }
+  .lb-row-duel .lb-addr { font-size:0.75rem; }
   .lb-stat-col { font-size:0.62rem; }
 }
 .lb-row-duel:last-child { border-bottom:none; }
@@ -1621,7 +1624,8 @@ body::after {
 .lb-rank-num.bronze { color:#a07030; }
 
 /* User cell */
-.lb-user { display:flex; align-items:center; gap:0.75rem; }
+.lb-user { display:flex; align-items:center; gap:0.75rem; min-width:0; overflow:hidden; }
+.lb-user .lb-addr { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .lb-avatar {
   width:50px; height:50px; border-radius:50%; flex-shrink:0;
   display:flex; align-items:center; justify-content:center;
