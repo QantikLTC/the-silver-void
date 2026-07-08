@@ -4270,7 +4270,13 @@ async function duelistLeaderboardRefresh(force) {
   }
 
   try {
-    const scanResult = await duelistLeaderboardScan();
+    // Guard against a hung request (common on mobile / flaky LTE): if the
+    // scan hasn't resolved in 25s, force a rejection so the catch below can
+    // show a retry prompt instead of "Scanning..." spinning forever.
+    const scanResult = await Promise.race([
+      duelistLeaderboardScan(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('scan timeout')), 25000))
+    ]);
     _duelistLBCache = { ...scanResult, updatedAt: Date.now() };
     duelistLeaderboardRender(_duelistLBCache.rows, _duelistLBCache.updatedAt, _duelistLBCache);
     // Fresh exact on-chain counters just landed — re-evaluate feats now, so
@@ -4280,7 +4286,10 @@ async function duelistLeaderboardRefresh(force) {
   } catch (e) {
     console.error('Duelist leaderboard scan failed:', e);
     if (rowsContainer && !isFresh) {
-      rowsContainer.innerHTML = '<div style="text-align:center;padding:2rem 0;color:#ff8899;">Could not load — try refresh.</div>';
+      const isTimeout = e && e.message === 'scan timeout';
+      rowsContainer.innerHTML = '<div style="text-align:center;padding:2rem 0;color:#ff8899;">'
+        + (isTimeout ? 'Connection slow — ' : 'Could not load — ')
+        + '<span onclick="duelistLeaderboardRefresh(true)" style="color:var(--teal);cursor:pointer;text-decoration:underline;">tap to retry</span></div>';
     }
   } finally {
     _duelistLBScanning = false;
@@ -7556,7 +7565,16 @@ async function profilesBatchPrefetch(wallets) {
   try {
     for (let i = 0; i < need.length; i += 50) { // endpoint caps at 60/call
       const chunk = need.slice(i, i + 50);
-      const res = await fetch(PROFILES_API + '?wallets=' + chunk.join(','));
+      // AbortController timeout: on flaky mobile connections a fetch can hang
+      // indefinitely; abort after 12s so the caller falls back gracefully.
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 12000);
+      let res;
+      try {
+        res = await fetch(PROFILES_API + '?wallets=' + chunk.join(','), { signal: ctrl.signal });
+      } finally {
+        clearTimeout(to);
+      }
       if (!res.ok) return; // endpoint missing/erroring -> fetchers fall back
       const data = await res.json();
       for (const w of chunk) {
