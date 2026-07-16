@@ -70,6 +70,13 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
+      // Stat globale : total de skins forgés (aucun wallet requis).
+      if (req.query && req.query.stats === '1') {
+        const data = await redisCall(`/get/${encodeURIComponent('skins:sold:total')}`, { method: 'GET' });
+        res.status(200).json({ totalForged: Number(data.result) || 0 });
+        return;
+      }
+
       const { wallet } = req.query || {};
       if (!wallet) {
         res.status(400).json({ error: 'Missing wallet' });
@@ -114,6 +121,11 @@ export default async function handler(req, res) {
             `/set/${encodeURIComponent('skintx:' + walletKey + ':' + buy)}/${encodeURIComponent(tx)}`,
             { method: 'POST' }
           );
+          // Compteur global de skins forgés (achats pay\u00e9s uniquement,
+          // pas les d\u00e9blocages par haut fait qui utilisent tx:"feat").
+          if (tx !== 'feat') {
+            await redisCall(`/incr/${encodeURIComponent('skins:sold:total')}`, { method: 'POST' });
+          }
         }
         res.status(200).json({ ok: true, owned });
         return;
