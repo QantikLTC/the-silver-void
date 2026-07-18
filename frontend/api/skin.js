@@ -73,6 +73,9 @@ export default async function handler(req, res) {
       // Stat globale : total de skins forgés (aucun wallet requis).
       if (req.query && req.query.stats === '1') {
         const data = await redisCall(`/get/${encodeURIComponent('skins:sold:total')}`, { method: 'GET' });
+        // Cache CDN : les requêtes identiques dans les 60 s sont servies par
+        // l'edge sans invoquer la fonction (économise le CPU Fluid).
+        res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
         res.status(200).json({ totalForged: Number(data.result) || 0 });
         return;
       }
