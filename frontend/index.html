@@ -10390,18 +10390,34 @@ function goStats(){
     }
     return '—';
   }
+  // Comme firstVal, mais retient la plus GRANDE valeur numérique.
+  // Les compteurs de duels ne peuvent que monter : entre deux lectures du
+  // même contrat (leaderboard vs onglet Duels, rafraîchis à des moments
+  // différents), la plus élevée est donc la plus récente. Évite d'afficher
+  // 96 ici et 100 là-bas, et empêche le chiffre de reculer.
+  function maxVal(){
+    var best = null;
+    for (var i = 0; i < arguments.length; i++){
+      var v = txt(arguments[i]);
+      if (!v || v.trim() === '' || v.trim() === '—') continue;
+      var n = parseFloat(v.replace(/[^0-9.\-]/g, ''));
+      if (isNaN(n)) continue;
+      if (best === null || n > best.n) best = { n: n, raw: v };
+    }
+    return best ? best.raw : '—';
+  }
   function syncHub(){
     set('vh-total',       txt('hero-total'));
     set('vh-sacrifiants', txt('hero-burners'));
     set('vh-burns',       txt('hero-burns'));
     // Duels : lb-duel-* (leaderboard) ou duel-stat-duels (contrat), selon ce qui est prêt.
-    set('vh-duels',    firstVal('lb-duel-total-played', 'duel-stat-duels'));
+    set('vh-duels',    maxVal('lb-duel-total-played', 'duel-stat-duels'));
     set('vh-duelists', txt('lb-duel-total-players'));
     // module Ritual
     set('vh-mod-burn',      txt('hero-total'));
     set('vh-mod-offerings', txt('hero-burns'));
     // module Duels
-    set('vh-mod-duels', firstVal('lb-duel-total-played', 'duel-stat-duels'));
+    set('vh-mod-duels', maxVal('lb-duel-total-played', 'duel-stat-duels'));
     set('vh-mod-open',  txt('duel-stat-open'));
     // module Store
     set('vh-mod-sales',  txt('store-stat-sales'));
