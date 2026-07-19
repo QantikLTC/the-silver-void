@@ -4264,6 +4264,43 @@ function chroniclesFeedback(slug) {
   }
 }
 
+// ═══ MESURE DE LECTURE (Vercel Analytics) ═══
+// Entièrement optionnelle : si Analytics est absent (plan changé, bloqueur de
+// pub, script non chargé, réseau coupé), cette fonction ne fait STRICTEMENT
+// rien et le site continue de fonctionner à l'identique. Aucun appel ici ne
+// doit pouvoir interrompre la lecture.
+function svTrack(event, props) {
+  try {
+    if (typeof window === 'undefined') return;
+    if (typeof window.va !== 'function') return;   // Analytics non chargé
+    window.va('event', { name: event, data: props || {} });
+  } catch (e) { /* jamais bloquant */ }
+}
+
+// Déclenche « fragment terminé » quand la signature Ł devient visible.
+// Utilise IntersectionObserver s'il existe ; sinon, on n'observe rien.
+function svWatchChronicleEnd(slug) {
+  try {
+    if (typeof IntersectionObserver !== 'function') return;
+    var reader = document.getElementById('chron-reader');
+    if (!reader) return;
+    var sig = reader.querySelector('.chron-sig');
+    if (!sig) return;
+    if (window._svEndObserver) { try { window._svEndObserver.disconnect(); } catch (e) {} }
+    var fired = false;
+    window._svEndObserver = new IntersectionObserver(function (entries) {
+      for (var i = 0; i < entries.length; i++) {
+        if (entries[i].isIntersecting && !fired) {
+          fired = true;
+          svTrack('chronicle_finish', { slug: slug, lang: (typeof _chronLang !== 'undefined' ? _chronLang : 'en') });
+          try { window._svEndObserver.disconnect(); } catch (e) {}
+        }
+      }
+    }, { root: reader, threshold: 0.5 });
+    window._svEndObserver.observe(sig);
+  } catch (e) { /* jamais bloquant */ }
+}
+
 function chroniclesReadBySlug(slug, keepScroll) {
   const a = CHRONICLES_ARTICLES.find(x => x.slug === slug);
   if (!a) return;
@@ -4313,6 +4350,9 @@ function chroniclesReadBySlug(slug, keepScroll) {
   document.body.style.overflow = 'hidden';
   if (!keepScroll) r.scrollTop = 0;
   if (history.pushState) history.pushState(null, '', '#chronicles/' + slug);
+  // Mesure optionnelle : n'interrompt jamais la lecture si elle échoue.
+  svTrack('chronicle_open', { slug: slug, lang: (typeof _chronLang !== 'undefined' ? _chronLang : 'en') });
+  svWatchChronicleEnd(slug);
 }
 
 function chroniclesCloseReader() {
@@ -10500,6 +10540,19 @@ function goStats(){
   else update();
 })();
 </script>
+
+<!-- ═══════════════ VERCEL WEB ANALYTICS (optionnel) ═══════════════
+     Chargé en async et en defer : si le script est indisponible (plan
+     modifié, bloqueur de pub, réseau), la file d'attente window.va reste
+     inerte et le site fonctionne exactement pareil. Rien ici n'est requis
+     au bon fonctionnement des Chroniques ni du reste du site. -->
+<script>
+  // File d'attente officielle Vercel : les événements envoyés avant le
+  // chargement du script sont conservés, et simplement ignorés s'il
+  // n'arrive jamais.
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/insights/script.js" onerror="window.va=function(){};"></script>
 
 </body>
 </html>
