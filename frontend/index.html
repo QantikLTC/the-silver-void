@@ -1770,6 +1770,25 @@ body::after {
 .rc-new-name { font-size:0.58rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:0.2rem; }
 .rc-new-req { font-size:0.5rem; opacity:0.35; }
 .rc-new-stars { font-size:0.65rem; margin-top:0.35rem; display:flex; gap:2px; justify-content:center; }
+/* ═══ MOBILE — bouton de feedback flottant ═══
+   Il recouvrait le lien « Read the Chronicles » en bas de carte. */
+@media(max-width:600px){
+  #feedback-fab{ width:46px !important; height:46px !important; font-size:1.15rem !important; right:14px !important; bottom:72px !important; }
+}
+/* ═══ MOBILE — cartes de modules (Ritual / Duels / Store / Chronicles) ═══
+   En 2 colonnes sur téléphone, chaque carte fait ~160px : les libellés
+   (« OFFERINGS », « READ THE CHRONICLES ») débordaient et étaient tronqués.
+   On passe à 1 carte par ligne, ce qui laisse la place aux deux chiffres. */
+@media(max-width:600px){
+  #vh-modules{ grid-template-columns:1fr !important; gap:0.9rem !important; }
+  #vh-modules > div{ padding:1.1rem !important; }
+  /* Les paires de chiffres respirent et ne se coupent plus */
+  #vh-modules > div > div[style*="gap:1.8rem"]{ gap:1.6rem !important; flex-wrap:wrap; }
+  #vh-modules > div > div > div{ min-width:0; }
+  #vh-modules [id^="vh-mod-"]{ font-size:1.2rem !important; }
+  /* Libellés : moins d'espacement, coupe propre */
+  #vh-modules div[style*="letter-spacing:0.14em"]{ letter-spacing:0.07em !important; overflow-wrap:break-word; word-break:normal; line-height:1.35; }
+}
 /* ═══ MOBILE — autres grilles à colonnes fixes ═══ */
 @media(max-width:600px){
   /* Cartes des Chroniques : 1 par ligne, plus lisible qu'un 3-colonnes écrasé */
