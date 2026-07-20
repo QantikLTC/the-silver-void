@@ -1770,6 +1770,33 @@ body::after {
 .rc-new-name { font-size:0.58rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:0.2rem; }
 .rc-new-req { font-size:0.5rem; opacity:0.35; }
 .rc-new-stars { font-size:0.65rem; margin-top:0.35rem; display:flex; gap:2px; justify-content:center; }
+/* ═══ MOBILE — autres grilles à colonnes fixes ═══ */
+@media(max-width:600px){
+  /* Cartes des Chroniques : 1 par ligne, plus lisible qu'un 3-colonnes écrasé */
+  #chron-grid{ grid-template-columns:1fr !important; gap:1rem !important; }
+  /* Sélecteur d'avatars : 6 colonnes étaient inutilisables au doigt */
+  #profile-panel-avatars{ grid-template-columns:repeat(4,1fr) !important; }
+  /* Montants prédéfinis du burn */
+  .burn-presets-row{ gap:0.35rem !important; }
+  .burn-presets-row > *{ min-width:0; font-size:0.72rem !important; padding-left:0.2rem !important; padding-right:0.2rem !important; }
+}
+@media(max-width:380px){
+  #profile-panel-avatars{ grid-template-columns:repeat(3,1fr) !important; }
+}
+/* ═══ MOBILE — tuiles de statistiques du Void Hub ═══
+   grid-template-columns:repeat(4,1fr) en dur débordait sur téléphone :
+   la 4e tuile (Duelists) était tronquée. On passe en 2×2. */
+@media(max-width:600px){
+  #void-hub{ padding-left:0.9rem !important; padding-right:0.9rem !important; }
+  #vh-tiles{ grid-template-columns:repeat(2,1fr) !important; gap:0.6rem !important; margin-bottom:2rem !important; }
+  #vh-tiles > div{ padding:0.9rem 0.5rem !important; min-width:0; }
+  #vh-tiles span[id^="vh-"]{ font-size:1.3rem !important; }
+  #vh-tiles span:not([id]){ font-size:0.5rem !important; letter-spacing:0.12em !important; line-height:1.3; overflow-wrap:break-word; }
+}
+@media(max-width:380px){
+  #vh-tiles span[id^="vh-"]{ font-size:1.15rem !important; }
+  #vh-tiles span:not([id]){ font-size:0.46rem !important; letter-spacing:0.08em !important; }
+}
 /* ═══ MOBILE — bandeau des rangs (.rcard-new, généré depuis RANKS_DATA) ═══
    min-width:140px + padding:1.2rem + gap:0.75rem : les 4 cartes ne tenaient
    pas sur un écran de 360px, d'où les titres tronqués (« APPRENT... »). */
