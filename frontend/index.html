@@ -9407,9 +9407,9 @@ function avatarHTMLFor(id, size) {
   if (info.type === 'glyph') {
     // 0.82 au lieu de 0.6 : le Ł remplit le cercle au lieu de flotter au centre.
     return `<span style="display:flex;width:100%;height:100%;max-width:${s}px;max-height:${s}px;align-items:center;justify-content:center;`
-         + `font-family:'Cinzel',serif;font-weight:700;line-height:1;`
-         + `font-size:${Math.round(s*0.82)}px;color:var(--teal);`
-         + `text-shadow:0 0 ${Math.max(4,Math.round(s*0.18))}px rgba(0,229,204,0.55);">${info.icon}</span>`;
+         + `font-family:'Cinzel',Georgia,serif;font-weight:700;line-height:1;`
+         + `font-size:${Math.round(s*0.82)}px;color:#00e5cc;`
+         + `text-shadow:0 0 ${Math.max(4,Math.round(s*0.18))}px rgba(0,229,204,0.6);">${info.icon}</span>`;
   }
   return `<span style="display:flex;width:100%;height:100%;max-width:${s}px;max-height:${s}px;align-items:center;justify-content:center;font-size:${Math.round(s*0.6)}px;">${info.icon}</span>`;
 }
@@ -10047,7 +10047,11 @@ async function forgeStoreRender() {
       action = '<button onclick="skinEquip(\'' + s.id + '\')" style="width:100%;font-family:\'Cinzel\',serif;font-size:0.58rem;letter-spacing:0.14em;color:#fff;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.25);border-radius:4px;padding:0.5rem;cursor:pointer;text-transform:uppercase;">Equip</button>';
     } else if (s.rarity === 'relic') {
       const done = !!unlocked[s.featId];
-      action = '<div style="text-align:center;font-family:\'Cinzel\',serif;font-size:0.55rem;letter-spacing:0.1em;color:' + (done ? col : 'rgba(255,255,255,0.35)') + ';border:1px dashed ' + col + '44;border-radius:4px;padding:0.5rem;">' + (done ? 'UNLOCKING…' : '🔒 FIGHT 50 DUELS — NEVER SOLD') + '</div>';
+      // La condition vient du haut fait lié : écrire « FIGHT 50 DUELS » en dur
+      // affichait la mauvaise consigne pour tout relic autre que Devouring Shadow.
+      const feat = (typeof FEATS !== 'undefined') ? FEATS.find(f => f.id === s.featId) : null;
+      const req = feat ? (feat.desc || feat.name).replace(/\.$/, '').toUpperCase() : 'COMPLETE ITS FEAT';
+      action = '<div style="text-align:center;font-family:\'Cinzel\',serif;font-size:0.55rem;letter-spacing:0.1em;color:' + (done ? col : 'rgba(255,255,255,0.35)') + ';border:1px dashed ' + col + '44;border-radius:4px;padding:0.5rem;">' + (done ? 'UNLOCKING…' : '🔒 ' + req + ' — NEVER SOLD') + '</div>';
     } else {
       const priceLine = ltc
         ? skinZkAmount(SKIN_PRICE_USD[s.rarity], ltc) + ' zkLTC <span style="opacity:0.55;">· ~$' + SKIN_PRICE_USD[s.rarity] + '</span>'
@@ -10121,7 +10125,7 @@ function profilePanelRender() {
         ? `<img src="${a.url}" style="width:100%;height:100%;border-radius:4px;object-fit:cover;" onerror="this.outerHTML='🌑';" />`
         : a.type === 'glyph'
         // Le Ł est un caractère, pas un emoji : plus grand et coloré.
-        ? `<span style="font-family:'Cinzel',serif;font-weight:700;font-size:1.7rem;line-height:1;color:var(--teal);text-shadow:0 0 8px rgba(0,229,204,0.5);">${a.icon}</span>`
+        ? `<span style="font-family:'Cinzel',Georgia,serif;font-weight:700;font-size:1.9rem;line-height:1;color:#00e5cc;text-shadow:0 0 10px rgba(0,229,204,0.75),0 0 22px rgba(0,229,204,0.35);">${a.icon}</span>`
         : `<span style="font-size:1.1rem;">${a.icon}</span>`;
       return `<div onclick="avatarSelect('${a.id}');profilePanelRender();" title="${a.name}" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:${isActive?'rgba(0,229,204,0.12)':'rgba(255,255,255,0.025)'};border:1px solid ${isActive?'rgba(0,229,204,0.55)':'rgba(255,255,255,0.07)'};box-shadow:${isActive?'0 0 8px rgba(0,229,204,0.25)':'none'};border-radius:3px;cursor:pointer;overflow:hidden;transition:all 0.15s;" onmouseover="this.style.borderColor='rgba(0,229,204,0.4)'" onmouseout="this.style.borderColor='${isActive?'rgba(0,229,204,0.55)':'rgba(255,255,255,0.07)'}'">${inner}</div>`;
     }).join('');
