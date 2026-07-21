@@ -5823,20 +5823,8 @@ svInterval(() => duelistLeaderboardRefresh(false), DUELIST_LB_REFRESH_MS);
 
 // ═══ INIT ═══
 setTimeout(function(){ updateVortex(0.5); }, 100);
-// Les contrats duel/store doivent être prêts AVANT le premier loadChainData :
-// sinon leur part de burn est ignorée et le grand total n'affiche que le
-// rituel (446 au lieu de 451). Ces initialisations ne demandent pas de wallet,
-// elles créent seulement les contrats en lecture sur le provider partagé.
-(async function(){
-  try {
-    await Promise.all([
-      (typeof initDuelContract === 'function')  ? initDuelContract().catch(()=>{})  : Promise.resolve(),
-      (typeof initStoreContract === 'function') ? initStoreContract().catch(()=>{}) : Promise.resolve()
-    ]);
-  } catch(e) {}
-  loadChainData();
-  loadLeaderboard();
-})();
+loadChainData();
+loadLeaderboard();
 svInterval(()=>{loadChainData();loadLeaderboard();},60000);
 
 if(window.ethereum){
@@ -10621,5 +10609,25 @@ function goStats(){
 </script>
 <script defer src="/_vercel/insights/script.js" onerror="window.va=function(){};"></script>
 
+
+<script>
+// ═══ TOTAL COMPLET (rituel + duels + store) ═══
+// initDuelContract et initStoreContract sont définis dans des blocs <script>
+// situés APRÈS le bloc d'init principal : au moment où celui-ci s'exécute,
+// ces fonctions n'existent pas encore et la part duel/store du grand total
+// était silencieusement ignorée (447 au lieu de 452).
+// On relance donc le calcul une fois toute la page chargée.
+window.addEventListener('load', function () {
+  setTimeout(async function () {
+    try {
+      await Promise.all([
+        (typeof initDuelContract === 'function')  ? initDuelContract().catch(function(){})  : Promise.resolve(),
+        (typeof initStoreContract === 'function') ? initStoreContract().catch(function(){}) : Promise.resolve()
+      ]);
+    } catch (e) {}
+    if (typeof loadChainData === 'function') { try { await loadChainData(); } catch (e) {} }
+  }, 400);
+});
+</script>
 </body>
 </html>
