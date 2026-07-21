@@ -8421,14 +8421,15 @@ async function sagaMint(sagaId) {
 
     <!-- ACQUIRE FILTER — switch between NFT relics and Forge skins -->
     <div id="store-acquire-filter" style="display:flex;justify-content:center;gap:0.5rem;margin-bottom:1.4rem;">
-      <button id="store-filter-relics" onclick="storeAcquireFilter('relics')" style="padding:0.45rem 1.3rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;background:rgba(119,85,204,0.14);border:1px solid rgba(119,85,204,0.5);color:#b9a3f5;border-radius:999px;transition:all 0.2s;">🏺 Relics (NFT)</button>
-      <button id="store-filter-skins" onclick="storeAcquireFilter('skins')" style="padding:0.45rem 1.3rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);border-radius:999px;transition:all 0.2s;">⚒ Ring Skins</button>
+      <button id="store-filter-relics" onclick="storeAcquireFilter('relics')" style="padding:0.45rem 1.3rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);border-radius:999px;transition:all 0.2s;">🏺 Relics (NFT)</button>
+      <button id="store-filter-skins" onclick="storeAcquireFilter('skins')" style="padding:0.45rem 1.3rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;background:rgba(0,229,204,0.14);border:1px solid rgba(0,229,204,0.5);color:var(--teal);border-radius:999px;transition:all 0.2s;">⚒ Ring Skins</button>
     </div>
 
     <!-- FORGE TAB — cosmetic ring skins showcase -->
     <div id="store-tab-content-forge" style="display:none;">
       <div style="text-align:center;margin-bottom:1.2rem;">
-        <div style="font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.2em;color:#ffd27a;text-transform:uppercase;">Ring Skins — worn in the Arena, seen by all</div>
+        <div style="font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.24em;color:#ffd27a;text-transform:uppercase;">⚒ Ring Skins</div>
+        <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.18em;color:rgba(255,210,122,0.6);text-transform:uppercase;margin-top:0.3rem;">Worn in the Arena, seen by all</div>
         <div style="font-size:0.68rem;color:rgba(255,255,255,0.35);font-style:italic;margin-top:0.25rem;">Half of every purchase is burned in your name and counts toward your rank 🔥</div>
         <div id="forge-forged-wrap" style="display:none;margin-top:0.9rem;">
           <span id="forge-forged-count" style="font-family:'Cinzel',serif;font-size:1.35rem;font-weight:600;color:var(--teal);">—</span>
@@ -8532,12 +8533,15 @@ function storeClose() {
 // only source of truth for "what has actually sold"). storeRefreshListings()
 // only ever looks at *active* listings.
 
-let _storeAcquireFilter = 'relics';
+// Les Ring Skins s'affichent à l'ouverture du Store ; les deux boutons
+// (Relics / Ring Skins) ne servent qu'à filtrer ensuite.
+let _storeAcquireFilter = 'skins';
 function storeSwitchTab(tab) {
   // Back-compat: old callers still say 'browse' / 'forge' — both live under
   // the Acquire tab now, they just pick the matching filter.
-  if (tab === 'browse') { tab = 'acquire'; _storeAcquireFilter = 'relics'; }
-  if (tab === 'forge')  { tab = 'acquire'; _storeAcquireFilter = 'skins'; }
+  // Entrée ciblée depuis le hub : on isole la catégorie demandée.
+  if (tab === 'browse') { tab = 'acquire'; _storeShow = { skins:false, relics:true }; _storeAcquireFilter = 'relics'; }
+  if (tab === 'forge')  { tab = 'acquire'; _storeShow = { skins:true, relics:false }; _storeAcquireFilter = 'skins'; }
   const acquireBtn = document.getElementById('store-tab-acquire');
   const sellBtn = document.getElementById('store-tab-sell');
   const filterBar = document.getElementById('store-acquire-filter');
@@ -8554,7 +8558,7 @@ function storeSwitchTab(tab) {
   if (filterBar) filterBar.style.display = acquire ? 'flex' : 'none';
   if (sellContent) sellContent.style.display = acquire ? 'none' : 'block';
   if (acquire) {
-    storeAcquireFilter(_storeAcquireFilter);
+    storeApplyFilter();
   } else {
     const b = document.getElementById('store-tab-content-browse');
     const f = document.getElementById('store-tab-content-forge');
@@ -8563,24 +8567,48 @@ function storeSwitchTab(tab) {
     storeScanMyNFTs();
   }
 }
+// Les deux catégories sont visibles par défaut. Chaque bouton agit comme une
+// case à cocher : il masque ou réaffiche sa catégorie. On empêche d'éteindre
+// les deux, sinon la boutique apparaîtrait vide.
+let _storeShow = { skins: true, relics: true };
+
 function storeAcquireFilter(filter) {
-  _storeAcquireFilter = filter;
-  const relics = filter === 'relics';
+  // Bascule la catégorie demandée...
+  if (filter === 'relics' || filter === 'skins') {
+    const other = filter === 'relics' ? 'skins' : 'relics';
+    if (_storeShow[filter] && !_storeShow[other]) {
+      // Seule catégorie affichée : recliquer dessus réaffiche tout.
+      _storeShow[other] = true;
+    } else {
+      _storeShow[filter] = !_storeShow[filter];
+      // Garde-fou : jamais les deux éteintes.
+      if (!_storeShow.skins && !_storeShow.relics) _storeShow[filter] = true;
+    }
+  }
+  _storeAcquireFilter = _storeShow.skins ? 'skins' : 'relics'; // compat. ancien code
+  storeApplyFilter();
+}
+
+function storeApplyFilter() {
   const browseContent = document.getElementById('store-tab-content-browse');
   const forgeContent = document.getElementById('store-tab-content-forge');
-  if (browseContent) browseContent.style.display = relics ? 'block' : 'none';
-  if (forgeContent) forgeContent.style.display = relics ? 'none' : 'block';
+  if (browseContent) browseContent.style.display = _storeShow.relics ? 'block' : 'none';
+  if (forgeContent) forgeContent.style.display = _storeShow.skins ? 'block' : 'none';
   const chip = (id, active, color, bg, border) => {
     const el = document.getElementById(id);
     if (!el) return;
     el.style.background = active ? bg : 'transparent';
     el.style.borderColor = active ? border : 'rgba(255,255,255,0.12)';
     el.style.color = active ? color : 'rgba(255,255,255,0.4)';
+    el.style.opacity = active ? '1' : '0.55';
   };
-  chip('store-filter-relics', relics, '#b9a3f5', 'rgba(119,85,204,0.14)', 'rgba(119,85,204,0.5)');
-  chip('store-filter-skins', !relics, '#ffd27a', 'rgba(255,210,122,0.12)', 'rgba(255,210,122,0.5)');
-  if (relics) storeRefreshListings();
-  else { if (typeof mySkinLoad === 'function' && connectedAddress) mySkinLoad().then(() => forgeStoreRender()); forgeStoreRender(); }
+  chip('store-filter-relics', _storeShow.relics, '#b9a3f5', 'rgba(119,85,204,0.14)', 'rgba(119,85,204,0.5)');
+  chip('store-filter-skins', _storeShow.skins, '#ffd27a', 'rgba(255,210,122,0.12)', 'rgba(255,210,122,0.5)');
+  if (_storeShow.relics) storeRefreshListings();
+  if (_storeShow.skins) {
+    if (typeof mySkinLoad === 'function' && connectedAddress) mySkinLoad().then(() => forgeStoreRender());
+    forgeStoreRender();
+  }
 }
 
 // Maps a known NFT (by contract + saga feat id / rank) to its rarity tier,
@@ -9277,6 +9305,9 @@ async function avatarRefreshPoolCache() {
 function avatarAllUnlocked() {
   const unlocked = typeof featsLoad === 'function' ? featsLoad() : {};
   const list = [{ ...DEFAULT_AVATAR, unlocked: true }]; // default avatar — used when no rank reached yet
+  // Sigil Ł : disponible pour tous, sans condition. Une identité sobre pour
+  // qui ne veut pas d'illustration mais refuse l'avatar générique.
+  list.push({ id: 'ltc_sigil', type: 'glyph', icon: '\u0141', name: 'The Sigil', unlocked: true });
   // One avatar per pool NFT (Common/Rare/Epic/etc. within each rank),
   // unlocked only if this specific NFT was actually minted by the wallet —
   // not just "reached this rank" as before.
@@ -9335,6 +9366,9 @@ async function refreshMyAvatar() {
 // Returns a render descriptor for an avatar id: { type, icon } or { type, url }
 function avatarRenderInfoFor(id) {
   if (id === 'default') return { type: 'emoji', icon: DEFAULT_AVATAR.icon };
+  // Avatar Ł : rendu en type 'glyph' (et non 'emoji') pour qu'il occupe
+  // pleinement le cercle et porte la couleur du projet.
+  if (id === 'ltc_sigil') return { type: 'glyph', icon: '\u0141' };
   // New format: rank_<rankNum>_<nftId> — e.g. "rank_1_2" = rank 1, pool entry 2
   const poolMatch = /^rank_(\d)_(\d+)$/.exec(id);
   if (poolMatch) {
@@ -9355,7 +9389,7 @@ function avatarRenderInfoFor(id) {
 // icon when the avatar is actually an image.
 function avatarIconFor(id) {
   const info = avatarRenderInfoFor(id);
-  return info.type === 'emoji' ? info.icon : '🌑';
+  return (info.type === 'emoji' || info.type === 'glyph') ? info.icon : '🌑';
 }
 
 // Renders the small circular avatar as inline HTML (image or emoji), for use
@@ -9369,6 +9403,13 @@ function avatarHTMLFor(id, size) {
     // width here used to overflow the shrunk container and push the name
     // off-screen. max-width caps it at the requested size on desktop.
     return `<img src="${info.url}" style="width:100%;height:100%;max-width:${s}px;max-height:${s}px;border-radius:50%;object-fit:cover;display:block;" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=&quot;font-size:${Math.round(s*0.6)}px;&quot;>👤</span>';">`;
+  }
+  if (info.type === 'glyph') {
+    // 0.82 au lieu de 0.6 : le Ł remplit le cercle au lieu de flotter au centre.
+    return `<span style="display:flex;width:100%;height:100%;max-width:${s}px;max-height:${s}px;align-items:center;justify-content:center;`
+         + `font-family:'Cinzel',serif;font-weight:700;line-height:1;`
+         + `font-size:${Math.round(s*0.82)}px;color:var(--teal);`
+         + `text-shadow:0 0 ${Math.max(4,Math.round(s*0.18))}px rgba(0,229,204,0.55);">${info.icon}</span>`;
   }
   return `<span style="display:flex;width:100%;height:100%;max-width:${s}px;max-height:${s}px;align-items:center;justify-content:center;font-size:${Math.round(s*0.6)}px;">${info.icon}</span>`;
 }
@@ -9508,6 +9549,9 @@ async function avatarSelect(id) {
   @keyframes fgfall{0%{transform:translateY(-20px) scale(0.4);opacity:0}20%{opacity:0.9}100%{transform:translateY(0) scale(1);opacity:0}}
   @keyframes fgbreathe{0%,100%{box-shadow:0 0 6px rgba(120,60,220,0.25)}50%{box-shadow:0 0 16px rgba(120,60,220,0.6)}}
   @keyframes fgglint{0%,88%,100%{opacity:0}92%{opacity:1}}
+  @keyframes svHollow{0%,100%{transform:scale(0.42);opacity:0.9}50%{transform:scale(0.78);opacity:1}}
+  @keyframes svBolt{0%,100%{opacity:0}6%{opacity:1}11%{opacity:0.15}16%{opacity:0.95}22%{opacity:0}}
+  @keyframes svFade{0%,100%{opacity:0.85}50%{opacity:0.18}}
   .fgl{position:absolute;inset:0;border-radius:50%;pointer-events:none}
   .fgp{position:absolute;border-radius:50%;pointer-events:none;z-index:1}
   .fgo{position:absolute;inset:0;pointer-events:none;z-index:4}
@@ -9722,6 +9766,10 @@ const SKINS = [
   { id:'ring_shadow',  name:'Blaze of Shadows',   rarity:'legendary', desc:'The dark mirror — spectral violet flames.' },
   { id:'ring_84m',     name:'84 Millions',        rarity:'legendary', desc:'The whole supply, engraved in gold ticks.' },
   { id:'ring_devour',  name:'Devouring Shadow',   rarity:'relic',     featId:'duels_50', desc:'Sparks FALL into it. Earned, never sold — 50 duels fought.' },
+  { id:'ring_halving', name:'Halving',            rarity:'rare',      desc:'Cut in two. Twice as scarce.' },
+  { id:'ring_bolt',    name:'Lightning',          rarity:'epic',      desc:'A single strike, never twice the same.' },
+  { id:'ring_mimble',  name:'Mimblewimble',       rarity:'epic',      desc:'Half there. Half nowhere at all.' },
+  { id:'ring_hollow',  name:'Hollow Gold',        rarity:'relic',     featId:'burn_50',  desc:'It shines. There is nothing inside. Earned, never sold — 50 offerings.' },
 ];
 
 // ── Effect generator: returns the animated layers for a skin ──
@@ -9761,6 +9809,22 @@ function SKIN_FX(id, size, lite) {
       + '<span class="fgo" style="animation:fgspin 5s linear infinite;"><span class="fgg" style="animation:fgspinr 5s linear infinite;width:'+g+'px;height:'+g+'px;margin-left:-'+Math.round(g/2)+'px;font-size:'+g+'px;color:#ffd27a;text-shadow:0 0 8px rgba(255,210,122,1);">Ł</span></span>'
       + '<span class="fgo" style="animation:fgspinr 7.5s linear infinite;inset:3px;"><span class="fgg" style="animation:fgspin 7.5s linear infinite;width:'+Math.round(g*0.8)+'px;height:'+Math.round(g*0.8)+'px;margin-left:-'+Math.round(g*0.4)+'px;font-size:'+Math.round(g*0.8)+'px;color:#eef2f9;text-shadow:0 0 6px rgba(223,230,242,0.9);">Ł</span></span>'
       + '<span class="fgo" style="animation:fgspin 10s linear infinite;inset:-3px;"><span class="fgg" style="animation:fgspinr 10s linear infinite;width:'+Math.round(g*0.6)+'px;height:'+Math.round(g*0.6)+'px;margin-left:-'+Math.round(g*0.3)+'px;font-size:'+Math.round(g*0.6)+'px;color:#9aa4b8;text-shadow:0 0 5px rgba(154,164,184,0.8);">Ł</span></span>';
+    case 'ring_halving': return ''
+      + '<span class="fgl" style="background:conic-gradient(rgba(201,212,232,0.78) 0 168deg, transparent 168deg 180deg, rgba(201,212,232,0.78) 180deg 348deg, transparent 348deg 360deg);animation:fgspin 20s linear infinite;"></span>'
+      + (lite ? '' : '<span class="fgl" style="inset:2px;background:radial-gradient(circle,transparent 62%,rgba(201,212,232,0.14) 100%);"></span>');
+    case 'ring_bolt': return ''
+      + '<span class="fgl" style="background:conic-gradient(from 180deg,#0a1030,#141c4a 40%,#0a1030 70%);"></span>'
+      + '<span class="fgl" style="background:conic-gradient(from 20deg,transparent 0 8deg,#eaf4ff 12deg,#7ec8ff 16deg,transparent 24deg);animation:svBolt 3.4s ease-in-out infinite;"></span>'
+      + (lite ? '' : '<span class="fgl" style="background:conic-gradient(from 200deg,transparent 0 6deg,#cfe8ff 10deg,transparent 18deg);animation:svBolt 3.4s ease-in-out infinite 1.6s;"></span>')
+      + '<span class="fgp" style="top:3px;left:52%;width:3px;height:3px;background:#eaf4ff;box-shadow:0 0 7px #7ec8ff;animation:svBolt 3.4s ease-in-out infinite 0.2s;"></span>';
+    case 'ring_mimble': return ''
+      + '<span class="fgl" style="background:conic-gradient(from 0deg,rgba(160,120,255,0.75),transparent 25%,rgba(160,120,255,0.6) 45%,transparent 70%,rgba(160,120,255,0.7) 92%);animation:fgspin 22s linear infinite;"></span>'
+      + '<span class="fgl" style="background:conic-gradient(from 120deg,transparent,rgba(6,4,32,0.9) 30%,transparent 55%,rgba(6,4,32,0.85) 80%,transparent);animation:svFade 5s ease-in-out infinite;"></span>'
+      + (lite ? '' : '<span class="fgl" style="animation:fgbreathe 4.5s ease-in-out infinite;"></span>');
+    case 'ring_hollow': return ''
+      + '<span class="fgl" style="background:conic-gradient(from 40deg,#6b4a12,#d9a441 22%,#ffe9a8 34%,#d9a441 48%,#8a5f18 70%,#6b4a12);animation:fgspin 26s linear infinite;"></span>'
+      + '<span class="fgl" style="background:radial-gradient(circle,#04020e 44%,transparent 46%);animation:svHollow 6s ease-in-out infinite;"></span>'
+      + (lite ? '' : '<span class="fgl" style="background:conic-gradient(transparent,rgba(255,255,255,0.9) 50%,transparent 58%);animation:fgglint 7s linear infinite;"></span>');
     case 'ring_devour': return ''
       + '<span class="fgl" style="background:conic-gradient(#000,#12071f 30%,#000 50%,#0d0517 75%,#000);border:1px solid rgba(120,60,220,0.3);animation:fgspin 11s linear infinite'+(lite?'':', fgbreathe 3.2s ease-in-out infinite')+';"></span>'
       + (lite ? '' : '<span class="fgl" style="inset:-2px;background:conic-gradient(transparent,rgba(60,20,110,0.5) 50%,transparent);animation:fgspinr 6s linear infinite;filter:blur(3px);"></span>'
@@ -9965,7 +10029,14 @@ async function forgeStoreRender() {
   if (!grid) return;
   const unlocked = (typeof featsLoad === 'function') ? featsLoad() : {};
   const ltc = await ltcUsdPrice();
-  grid.innerHTML = SKINS.filter(s => s.id !== 'ring_default').map(s => {
+  // Tri par rareté croissante : rare → epic → legendary → relic.
+  // Fait à l'affichage plutôt que dans le tableau SKINS, pour que l'ordre
+  // reste correct quels que soient les ajouts futurs.
+  const RARITY_ORDER = { rare:1, epic:2, legendary:3, relic:4 };
+  grid.innerHTML = SKINS.filter(s => s.id !== 'ring_default')
+    .slice()
+    .sort((a,b) => (RARITY_ORDER[a.rarity]||99) - (RARITY_ORDER[b.rarity]||99))
+    .map(s => {
     const col = SKIN_RARITY_COLORS[s.rarity];
     const owned = _myOwned.includes(s.id);
     const equipped = _mySkin === s.id;
@@ -10048,6 +10119,9 @@ function profilePanelRender() {
       const isActive = a.id === _myAvatarId;
       const inner = a.type === 'image'
         ? `<img src="${a.url}" style="width:100%;height:100%;border-radius:4px;object-fit:cover;" onerror="this.outerHTML='🌑';" />`
+        : a.type === 'glyph'
+        // Le Ł est un caractère, pas un emoji : plus grand et coloré.
+        ? `<span style="font-family:'Cinzel',serif;font-weight:700;font-size:1.7rem;line-height:1;color:var(--teal);text-shadow:0 0 8px rgba(0,229,204,0.5);">${a.icon}</span>`
         : `<span style="font-size:1.1rem;">${a.icon}</span>`;
       return `<div onclick="avatarSelect('${a.id}');profilePanelRender();" title="${a.name}" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:${isActive?'rgba(0,229,204,0.12)':'rgba(255,255,255,0.025)'};border:1px solid ${isActive?'rgba(0,229,204,0.55)':'rgba(255,255,255,0.07)'};box-shadow:${isActive?'0 0 8px rgba(0,229,204,0.25)':'none'};border-radius:3px;cursor:pointer;overflow:hidden;transition:all 0.15s;" onmouseover="this.style.borderColor='rgba(0,229,204,0.4)'" onmouseout="this.style.borderColor='${isActive?'rgba(0,229,204,0.55)':'rgba(255,255,255,0.07)'}'">${inner}</div>`;
     }).join('');
