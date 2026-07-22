@@ -5045,7 +5045,10 @@ function renderLB(list, page){
   const rows = pageItems.map((p,localIdx)=>{
     const idx = start + localIdx;
     const c=getRankColor(p.tier);
-    const bg=c+'12'; const bc=c+'35';
+    // Fond du portrait : dégradé radial (clair en haut-gauche, sombre en bas)
+    // plutôt qu'un aplat pâle, pour s'accorder aux avatars illustrés.
+    const bg='radial-gradient(circle at 38% 30%, '+c+'33 0%, '+c+'14 45%, rgba(6,10,30,0.85) 100%)';
+    const bc=c+'55';
     const numClass=idx===0?'gold':idx===1?'silver-r':idx===2?'bronze':'';
     const numSymbol=idx===0?'⬡':idx===1?'◆':idx===2?'◈':(idx+1);
     const initials=p.name.slice(2,4).toUpperCase();
@@ -5776,8 +5779,8 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
     const numClass = i===0?'gold':i===1?'silver-r':i===2?'bronze':'';
     const numSymbol = i===0?'⬡':i===1?'◆':i===2?'◈':(i+1);
     const avatarBlock = r.avatar
-      ? `<div class="lb-avatar" style="background:rgba(119,85,204,0.12);border:1px solid rgba(119,85,204,0.35);overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;">${r.avatar}</div>`
-      : `<div class="lb-avatar" style="background:rgba(119,85,204,0.12);border:1px solid rgba(119,85,204,0.35);overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;color:#9d7fee;">${(typeof avatarHTMLFor === 'function') ? avatarHTMLFor('default', 46) : (r.name||'??').slice(0,2).toUpperCase()}</div>`;
+      ? `<div class="lb-avatar" style="background:radial-gradient(circle at 38% 30%, rgba(0,229,204,0.22) 0%, rgba(0,229,204,0.08) 45%, rgba(6,10,30,0.85) 100%);border:1px solid rgba(0,229,204,0.35);overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;">${r.avatar}</div>`
+      : `<div class="lb-avatar" style="background:radial-gradient(circle at 38% 30%, rgba(0,229,204,0.22) 0%, rgba(0,229,204,0.08) 45%, rgba(6,10,30,0.85) 100%);border:1px solid rgba(0,229,204,0.35);overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;color:#9d7fee;">${(typeof avatarHTMLFor === 'function') ? avatarHTMLFor('default', 46) : (r.name||'??').slice(0,2).toUpperCase()}</div>`;
     // Equipped Forge skin: wrap the avatar in a lite version of the ring
     // (no blur/particles — 15 animated rings per page must stay cheap)
     const avatarCell = (r.skin && r.skin !== 'ring_default' && typeof SKIN_FX === 'function')
