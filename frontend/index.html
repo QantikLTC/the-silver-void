@@ -9408,11 +9408,15 @@ function avatarHTMLFor(id, size) {
     return `<img src="${info.url}" style="width:100%;height:100%;max-width:${s}px;max-height:${s}px;border-radius:50%;object-fit:cover;display:block;" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=&quot;font-size:${Math.round(s*0.6)}px;&quot;>👤</span>';">`;
   }
   if (info.type === 'glyph') {
-    // 0.82 au lieu de 0.6 : le Ł remplit le cercle au lieu de flotter au centre.
-    return `<span style="display:flex;width:100%;height:100%;max-width:${s}px;max-height:${s}px;align-items:center;justify-content:center;`
+    // Le Ł est un AVATAR à part entière, comme une image. Le wrapper remplit
+    // tout le conteneur avec un disque noir (recouvrant le fond des initiales),
+    // et le Ł teal se pose au centre. Le skin forge s'enroule autour via avatarCell.
+    return `<span style="display:flex;width:100%;height:100%;align-items:center;justify-content:center;`
+         + `border-radius:50%;overflow:hidden;`
+         + `background:radial-gradient(circle at 42% 36%, #10182f 0%, #070b1f 68%, #03040f 100%);`
          + `font-family:'Cinzel',Georgia,serif;font-weight:600 !important;font-synthesis:none;-webkit-font-synthesis:none;line-height:1;`
-         + `font-size:${Math.round(s*0.82)}px;color:#00e5cc;-webkit-text-fill-color:#00e5cc;`
-         + `text-shadow:0 0 ${Math.max(4,Math.round(s*0.18))}px rgba(0,229,204,0.6);">${info.icon}</span>`;
+         + `font-size:${Math.round(s*0.62)}px;color:#00e5cc;-webkit-text-fill-color:#00e5cc;`
+         + `text-shadow:0 0 ${Math.max(5,Math.round(s*0.2))}px rgba(0,229,204,0.75);">${info.icon}</span>`;
   }
   return `<span style="display:flex;width:100%;height:100%;max-width:${s}px;max-height:${s}px;align-items:center;justify-content:center;font-size:${Math.round(s*0.6)}px;">${info.icon}</span>`;
 }
@@ -10128,7 +10132,7 @@ function profilePanelRender() {
         ? `<img src="${a.url}" style="width:100%;height:100%;border-radius:4px;object-fit:cover;" onerror="this.outerHTML='🌑';" />`
         : a.type === 'glyph'
         // Le Ł est un caractère, pas un emoji : plus grand et coloré.
-        ? `<span style="font-family:'Cinzel',Georgia,serif;font-weight:600;font-synthesis:none;-webkit-font-synthesis:none;font-size:1.9rem;line-height:1;color:#00e5cc;-webkit-text-fill-color:#00e5cc;text-shadow:0 0 10px rgba(0,229,204,0.75),0 0 22px rgba(0,229,204,0.35);">${a.icon}</span>`
+        ? `<span style="display:flex;width:100%;height:100%;align-items:center;justify-content:center;border-radius:6px;background:radial-gradient(circle at 42% 36%, #12193a 0%, #060a1e 70%, #04061a 100%);font-family:'Cinzel',Georgia,serif;font-weight:600;font-synthesis:none;-webkit-font-synthesis:none;font-size:1.7rem;line-height:1;color:#00e5cc;-webkit-text-fill-color:#00e5cc;text-shadow:0 0 10px rgba(0,229,204,0.75),0 0 22px rgba(0,229,204,0.35);">${a.icon}</span>`
         : `<span style="font-size:1.1rem;">${a.icon}</span>`;
       return `<div onclick="avatarSelect('${a.id}');profilePanelRender();" title="${a.name}" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:${isActive?'rgba(0,229,204,0.12)':'rgba(255,255,255,0.025)'};border:1px solid ${isActive?'rgba(0,229,204,0.55)':'rgba(255,255,255,0.07)'};box-shadow:${isActive?'0 0 8px rgba(0,229,204,0.25)':'none'};border-radius:3px;cursor:pointer;overflow:hidden;transition:all 0.15s;" onmouseover="this.style.borderColor='rgba(0,229,204,0.4)'" onmouseout="this.style.borderColor='${isActive?'rgba(0,229,204,0.55)':'rgba(255,255,255,0.07)'}'">${inner}</div>`;
     }).join('');
