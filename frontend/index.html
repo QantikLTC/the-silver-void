@@ -9934,7 +9934,7 @@ async function skinFetchCached(wallet) {
   // (profils via CDN, puis _skinCache 30 min) renvoyaient sinon l'ancien anneau
   // longtemps après un changement d'équipement.
   if (connectedAddress && k === connectedAddress.toLowerCase()) {
-    return (_mySkin && _mySkin !== 'ring_default') ? _mySkin : null;
+    return _mySkin || null;
   }
   const p = typeof _profileGet === 'function' ? _profileGet(k) : null;
   if (p) return p.skin;
