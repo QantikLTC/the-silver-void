@@ -5230,7 +5230,12 @@ async function loadLeaderboard(){
         if (uname) displayName = uname;
       } catch(e) {}
       try {
-        const avId = typeof avatarFetch === 'function' ? await avatarFetch(addr) : null;
+        // Pour SA PROPRE ligne, on connaît déjà la valeur à jour (_myAvatarId) :
+        // le cache de profils peut être périmé et affichait l'ancien portrait.
+        const _isMe = connectedAddress && addr.toLowerCase() === connectedAddress.toLowerCase();
+        const avId = _isMe
+          ? (_myAvatarId && _myAvatarId !== 'default' ? _myAvatarId : null)
+          : (typeof avatarFetch === 'function' ? await avatarFetch(addr) : null);
         if (avId) avatarHTML = typeof avatarHTMLFor === 'function' ? avatarHTMLFor(avId, 46) : null;
       } catch(e) {}
       let skinId = null;
@@ -5662,7 +5667,11 @@ async function duelistLeaderboardScan() {
       if (uname) displayName = uname;
     } catch(e) {}
     try {
-      const avId = typeof avatarFetch === 'function' ? await avatarFetch(w) : null;
+      // Sa propre ligne : _myAvatarId est la valeur à jour, le cache peut être périmé.
+      const _isMe = connectedAddress && w.toLowerCase() === connectedAddress.toLowerCase();
+      const avId = _isMe
+        ? (_myAvatarId && _myAvatarId !== 'default' ? _myAvatarId : null)
+        : (typeof avatarFetch === 'function' ? await avatarFetch(w) : null);
       if (avId) avatarHTML = typeof avatarHTMLFor === 'function' ? avatarHTMLFor(avId, 46) : avatarHTML;
     } catch(e) {}
     let skinId = null;
