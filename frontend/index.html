@@ -9116,7 +9116,12 @@ async function profilesBatchPrefetch(wallets) {
       const to = setTimeout(() => ctrl.abort(), 12000);
       let res;
       try {
-        res = await fetch(PROFILES_API + '?wallets=' + chunk.join(','), { signal: ctrl.signal });
+        // Si sa propre adresse est dans le lot, on demande une réponse fraîche :
+        // /api/profiles est mis en cache au CDN (s-maxage), ce qui renvoyait
+        // l'ancien avatar pendant plusieurs minutes après un changement.
+        const _mine = connectedAddress && chunk.indexOf(connectedAddress.toLowerCase()) !== -1;
+        const _url = PROFILES_API + '?wallets=' + chunk.join(',') + (_mine ? '&fresh=1' : '');
+        res = await fetch(_url, { signal: ctrl.signal });
       } finally {
         clearTimeout(to);
       }
