@@ -9402,13 +9402,22 @@ async function refreshMyAvatar() {
 // Met à jour le portrait de SA PROPRE ligne dans les classements déjà rendus,
 // sans relancer de scan blockchain (qui prend plusieurs secondes).
 function lbRefreshAvatars() {
-  if (!connectedAddress || typeof avatarHTMLFor !== 'function') return;
-  const html = avatarHTMLFor(_myAvatarId, 46);
+  if (!connectedAddress) return;
   const addr = connectedAddress.toLowerCase();
+  const html = (typeof avatarHTMLFor === 'function') ? avatarHTMLFor(_myAvatarId, 46) : null;
+  // L'anneau (skin) est rendu dans un <span> superposé, sœur du portrait :
+  // on le met à jour aussi, sinon l'ancien effet reste après un changement.
+  const fx = (typeof SKIN_FX === 'function' && _mySkin && _mySkin !== 'ring_default')
+    ? SKIN_FX(_mySkin, 52, true) : null;
   document.querySelectorAll('[data-lb-wallet]').forEach(function (el) {
     if ((el.getAttribute('data-lb-wallet') || '').toLowerCase() !== addr) return;
     const box = el.querySelector('.lb-avatar');
-    if (box) box.innerHTML = html;
+    if (box && html) box.innerHTML = html;
+    if (fx) {
+      const wrap = box ? box.closest('div[style*="position:relative"]') : null;
+      const layer = wrap ? wrap.querySelector('span[style*="position:absolute"]') : null;
+      if (layer) layer.innerHTML = fx;
+    }
   });
 }
 
@@ -9921,6 +9930,12 @@ let _mySkin = 'ring_default', _myOwned = [], _skinWalletLoaded = null;
 const _skinCache = {}; // wallet -> {skin, ts} for leaderboard rendering
 async function skinFetchCached(wallet) {
   const k = wallet.toLowerCase();
+  // Sa propre ligne : _mySkin est la valeur à jour. Les deux caches ci-dessous
+  // (profils via CDN, puis _skinCache 30 min) renvoyaient sinon l'ancien anneau
+  // longtemps après un changement d'équipement.
+  if (connectedAddress && k === connectedAddress.toLowerCase()) {
+    return (_mySkin && _mySkin !== 'ring_default') ? _mySkin : null;
+  }
   const p = typeof _profileGet === 'function' ? _profileGet(k) : null;
   if (p) return p.skin;
   const c = _skinCache[k];
@@ -9952,6 +9967,16 @@ async function skinEquip(id) {
       body: JSON.stringify({ wallet: connectedAddress.toLowerCase(), skin: id }) });
     if (!r.ok) { const e = await r.json().catch(()=>({})); showToast(e.error || 'Equip failed', true); return; }
     _mySkin = id;
+    // Purger les caches pour que les classements montrent le nouvel anneau.
+    try {
+      const _k = connectedAddress ? connectedAddress.toLowerCase() : null;
+      if (_k) {
+        if (typeof _skinCache !== 'undefined') delete _skinCache[_k];
+        if (typeof _profileCache !== 'undefined' && _profileCache[_k]) {
+          _profileCache[_k] = Object.assign({}, _profileCache[_k], { skin: id, ts: Date.now() });
+        }
+      }
+    } catch(e) {}
     _skinCache[connectedAddress.toLowerCase()] = { skin: id, ts: Date.now() };
     // Patch my row in the cached Duelist leaderboard so the new ring shows
     // instantly instead of waiting for the next 5-min chain scan
@@ -9967,6 +9992,7 @@ async function skinEquip(id) {
       }
     } catch(e) {}
     skinApplyMine();
+    if (typeof lbRefreshAvatars === 'function') { try { lbRefreshAvatars(); } catch(e) {} }
     forgeRender();
     showToast('✨ ' + (SKINS.find(s=>s.id===id)||{name:id}).name + ' equipped');
   } catch(e) { showToast('Equip failed', true); }
