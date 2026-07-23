@@ -5057,8 +5057,15 @@ function renderLB(list, page){
       ? `<div class="lb-avatar" style="background:${bg};border:1px solid ${bc};overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;">${p.avatarHTML}</div>`
       : `<div class="lb-avatar" style="background:${bg};border:1px solid ${bc};overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;color:${c}">${_dflt}</div>`;
     // Equipped Forge skin: same lite ring treatment as the Duelist board
-    const avatarCell = (p.skin && p.skin !== 'ring_default' && typeof SKIN_FX === 'function')
-      ? `<div style="position:relative;flex-shrink:0;padding:3px;border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${SKIN_FX(p.skin, 52, true)}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
+    // Rank Progress ('ring_default') n'a pas d'effet dans SKIN_FX : son anneau
+    // est dessiné à part, à partir de la couleur du rang. On le reproduit ici
+    // pour qu'il s'affiche aussi dans le classement, et pas seulement dans la
+    // forge et sur le bouton wallet.
+    const _ringFX = (p.skin === 'ring_default')
+      ? '<span class="fgl" style="background:conic-gradient(' + c + ' 0 100%);opacity:0.75;"></span>'
+      : ((p.skin && typeof SKIN_FX === 'function') ? SKIN_FX(p.skin, 52, true) : null);
+    const avatarCell = (_ringFX && typeof SKIN_FX === 'function')
+      ? `<div style="position:relative;flex-shrink:0;padding:3px;border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${_ringFX}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
       : avatarBlock;
     return `<div class="lb-row ${numClass}" data-lb-wallet="${p.addr || ''}">
       <div class="lb-rank-num ${numClass}">${numSymbol}</div>
@@ -5792,8 +5799,13 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
       : `<div class="lb-avatar" style="background:radial-gradient(circle at 38% 30%, rgba(0,229,204,0.22) 0%, rgba(0,229,204,0.08) 45%, rgba(6,10,30,0.85) 100%);border:1px solid rgba(0,229,204,0.35);overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;color:#9d7fee;">${(typeof avatarHTMLFor === 'function') ? avatarHTMLFor('default', 46) : (r.name||'??').slice(0,2).toUpperCase()}</div>`;
     // Equipped Forge skin: wrap the avatar in a lite version of the ring
     // (no blur/particles — 15 animated rings per page must stay cheap)
-    const avatarCell = (r.skin && r.skin !== 'ring_default' && typeof SKIN_FX === 'function')
-      ? `<div style="position:relative;flex-shrink:0;padding:3px;border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${SKIN_FX(r.skin, 52, true)}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
+    // Même traitement que chez les sacrifiants : Rank Progress n'a pas d'effet
+    // SKIN_FX, on dessine son anneau (teal, couleur de l'Arène) directement.
+    const _ringFXd = (r.skin === 'ring_default')
+      ? '<span class="fgl" style="background:conic-gradient(rgba(0,229,204,0.55) 0 100%);opacity:0.75;"></span>'
+      : ((r.skin && typeof SKIN_FX === 'function') ? SKIN_FX(r.skin, 52, true) : null);
+    const avatarCell = (_ringFXd && typeof SKIN_FX === 'function')
+      ? `<div style="position:relative;flex-shrink:0;padding:3px;border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${_ringFXd}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
       : avatarBlock;
     return `<div class="lb-row-duel ${numClass}" data-lb-wallet="${r.wallet || ''}">
       <div class="lb-rank-num ${numClass}">${numSymbol}</div>
