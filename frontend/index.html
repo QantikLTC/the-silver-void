@@ -5026,10 +5026,13 @@ let _lbPage = 0;
 let _lbCurrentList = [];
 const _lbPerPage = 15;
 
-function renderLB(list, page){
+function renderLB(list, page, keepPage){
   const wrap=document.getElementById('lb-rows');
   if(!wrap) return;
-  if (list !== undefined) { _lbCurrentList = list; _lbPage = 0; }
+  // keepPage=true : rafraîchissement automatique (toutes les 30 s). On garde
+  // la page courante, sinon le lecteur était renvoyé en page 1 sans arrêt.
+  // Un changement de ligue ou une recherche, eux, repartent bien en page 1.
+  if (list !== undefined) { _lbCurrentList = list; if (!keepPage) _lbPage = 0; }
   if (page !== undefined) { _lbPage = page; }
   const fullList = _lbCurrentList;
   if(!fullList.length){
@@ -5047,7 +5050,10 @@ function renderLB(list, page){
     const c=getRankColor(p.tier);
     // Fond du portrait : dégradé radial (clair en haut-gauche, sombre en bas)
     // plutôt qu'un aplat pâle, pour s'accorder aux avatars illustrés.
-    const bg='radial-gradient(circle at 38% 30%, '+c+'33 0%, '+c+'14 45%, rgba(6,10,30,0.85) 100%)';
+    // Fond du portrait : bleu très sombre, neutre. La couleur du rang ne sert
+    // plus qu'à la bordure — c'est l'effet de skin, autour, qui doit être
+    // l'élément coloré, pas le disque derrière la silhouette.
+    const bg='radial-gradient(circle at 38% 30%, #101a3a 0%, #0a1228 55%, #050a18 100%)';
     const bc=c+'55';
     const numClass=idx===0?'gold':idx===1?'silver-r':idx===2?'bronze':'';
     const numSymbol=idx===0?'⬡':idx===1?'◆':idx===2?'◈':(idx+1);
@@ -5055,7 +5061,7 @@ function renderLB(list, page){
     const _dflt = (typeof avatarHTMLFor === 'function') ? avatarHTMLFor('default', 46) : initials;
     const avatarBlock = p.avatarHTML
       ? `<div class="lb-avatar" style="background:${bg};border:1px solid ${bc};overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;">${p.avatarHTML}</div>`
-      : `<div class="lb-avatar" style="background:${bg};border:1px solid ${bc};overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;color:${c}">${_dflt}</div>`;
+      : `<div class="lb-avatar" style="background:${bg};border:1px solid ${bc};overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;color:rgba(201,212,232,0.5)">${_dflt}</div>`;
     // Equipped Forge skin: same lite ring treatment as the Duelist board
     // Rank Progress ('ring_default') n'a pas d'effet dans SKIN_FX : son anneau
     // est dessiné à part, à partir de la couleur du rang. On le reproduit ici
@@ -5263,7 +5269,9 @@ async function loadLeaderboard(){
     allBurners=rows.filter(Boolean);
     _lbTotalBurners = burnerCount;
     console.log('All burners:',allBurners);
-    renderLB(allBurners);
+    // keepPage : ce rendu vient du rafraîchissement périodique (30 s).
+    // Sans lui, un lecteur en page 2 était ramené en page 1 à chaque cycle.
+    renderLB(allBurners, undefined, true);
 
   }catch(e){
     console.error('Leaderboard error:',e);
