@@ -5060,7 +5060,7 @@ function renderLB(list, page){
     const avatarCell = (p.skin && p.skin !== 'ring_default' && typeof SKIN_FX === 'function')
       ? `<div style="position:relative;flex-shrink:0;padding:3px;border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${SKIN_FX(p.skin, 52, true)}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
       : avatarBlock;
-    return `<div class="lb-row ${numClass}">
+    return `<div class="lb-row ${numClass}" data-lb-wallet="${p.addr || ''}">
       <div class="lb-rank-num ${numClass}">${numSymbol}</div>
       <div class="lb-user">
         ${avatarCell}
@@ -5795,7 +5795,7 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
     const avatarCell = (r.skin && r.skin !== 'ring_default' && typeof SKIN_FX === 'function')
       ? `<div style="position:relative;flex-shrink:0;padding:3px;border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${SKIN_FX(r.skin, 52, true)}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
       : avatarBlock;
-    return `<div class="lb-row-duel ${numClass}">
+    return `<div class="lb-row-duel ${numClass}" data-lb-wallet="${r.wallet || ''}">
       <div class="lb-rank-num ${numClass}">${numSymbol}</div>
       <div class="lb-user">
         ${avatarCell}
@@ -9380,7 +9380,8 @@ async function refreshMyAvatar() {
   // Son propre avatar est toujours relu depuis le serveur (source de vérité).
   const saved = await avatarFetch(connectedAddress, true);
   _myAvatarId = saved || 'default';
-  // Aligner le cache pour que le leaderboard affiche la même chose.
+  // Aligner le cache de profils sur la valeur qui vient du serveur, pour que
+  // les leaderboards affichent la même chose que le bouton wallet.
   try {
     const _k = connectedAddress.toLowerCase();
     if (typeof _profileCache !== 'undefined') {
@@ -9388,11 +9389,22 @@ async function refreshMyAvatar() {
     }
   } catch(e) {}
   avatarUpdateButtonIcon();
-  // Le leaderboard a pu être rendu AVANT que l'avatar ne soit relu (son cache
-  // contenait alors l'ancien). Une fois la bonne valeur connue et le cache
-  // réaligné, on redessine les classements pour qu'ils concordent.
-  if (typeof loadLeaderboard === 'function') { try { loadLeaderboard(); } catch(e) {} }
-  if (typeof duelistLeaderboardRefresh === 'function') { try { duelistLeaderboardRefresh(false); } catch(e) {} }
+  // Les classements ont pu être rendus avant que l'avatar ne soit relu.
+  // On redessine à partir du cache (désormais à jour) sans refaire de scan.
+  if (typeof lbRefreshAvatars === 'function') { try { lbRefreshAvatars(); } catch(e) {} }
+}
+
+// Met à jour le portrait de SA PROPRE ligne dans les classements déjà rendus,
+// sans relancer de scan blockchain (qui prend plusieurs secondes).
+function lbRefreshAvatars() {
+  if (!connectedAddress || typeof avatarHTMLFor !== 'function') return;
+  const html = avatarHTMLFor(_myAvatarId, 46);
+  const addr = connectedAddress.toLowerCase();
+  document.querySelectorAll('[data-lb-wallet]').forEach(function (el) {
+    if ((el.getAttribute('data-lb-wallet') || '').toLowerCase() !== addr) return;
+    const box = el.querySelector('.lb-avatar');
+    if (box) box.innerHTML = html;
+  });
 }
 
 // Returns a render descriptor for an avatar id: { type, icon } or { type, url }
