@@ -5065,7 +5065,7 @@ function renderLB(list, page){
       ? '<span class="fgl" style="background:conic-gradient(' + c + ' 0 100%);opacity:0.75;"></span>'
       : ((p.skin && typeof SKIN_FX === 'function') ? SKIN_FX(p.skin, 52, true) : null);
     const avatarCell = (_ringFX && typeof SKIN_FX === 'function')
-      ? `<div style="position:relative;flex-shrink:0;padding:3px;border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${_ringFX}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
+      ? `<div style="position:relative;flex-shrink:0;padding:9px;margin:-3px;border-radius:50%;display:flex;align-items:center;justify-content:center;overflow:visible;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${_ringFX}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
       : avatarBlock;
     return `<div class="lb-row ${numClass}" data-lb-wallet="${p.addr || ''}">
       <div class="lb-rank-num ${numClass}">${numSymbol}</div>
@@ -5805,7 +5805,7 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
       ? '<span class="fgl" style="background:conic-gradient(rgba(0,229,204,0.55) 0 100%);opacity:0.75;"></span>'
       : ((r.skin && typeof SKIN_FX === 'function') ? SKIN_FX(r.skin, 52, true) : null);
     const avatarCell = (_ringFXd && typeof SKIN_FX === 'function')
-      ? `<div style="position:relative;flex-shrink:0;padding:3px;border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${_ringFXd}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
+      ? `<div style="position:relative;flex-shrink:0;padding:9px;margin:-3px;border-radius:50%;display:flex;align-items:center;justify-content:center;overflow:visible;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${_ringFXd}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
       : avatarBlock;
     return `<div class="lb-row-duel ${numClass}" data-lb-wallet="${r.wallet || ''}">
       <div class="lb-rank-num ${numClass}">${numSymbol}</div>
@@ -9899,7 +9899,7 @@ function SKIN_FX(id, size, lite) {
       + '<span class="fgl" style="background:conic-gradient(rgba(201,212,232,0.78) 0 168deg, transparent 168deg 180deg, rgba(201,212,232,0.78) 180deg 348deg, transparent 348deg 360deg);animation:fgspin 20s linear infinite;"></span>'
       + (lite ? '' : '<span class="fgl" style="inset:2px;background:radial-gradient(circle,transparent 62%,rgba(201,212,232,0.14) 100%);"></span>');
     case 'ring_bolt': return ''
-      + '<span class="fgl" style="background:conic-gradient(from 180deg,#0a1030,#141c4a 40%,#0a1030 70%);"></span>'
+      + '<span class="fgl" style="background:conic-gradient(from 180deg,#1e3a6e,#4a7fd4 30%,#8fc4ff 50%,#4a7fd4 70%,#1e3a6e);animation:fgspin 9s linear infinite;"></span>'
       + '<span class="fgl" style="background:conic-gradient(from 20deg,transparent 0 8deg,#eaf4ff 12deg,#7ec8ff 16deg,transparent 24deg);animation:svBolt 3.4s ease-in-out infinite;"></span>'
       + (lite ? '' : '<span class="fgl" style="background:conic-gradient(from 200deg,transparent 0 6deg,#cfe8ff 10deg,transparent 18deg);animation:svBolt 3.4s ease-in-out infinite 1.6s;"></span>')
       + '<span class="fgp" style="top:3px;left:52%;width:3px;height:3px;background:#eaf4ff;box-shadow:0 0 7px #7ec8ff;animation:svBolt 3.4s ease-in-out infinite 0.2s;"></span>';
