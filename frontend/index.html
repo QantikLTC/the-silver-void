@@ -9348,8 +9348,12 @@ function avatarOnlyUnlocked() {
   return avatarAllUnlocked().filter(a => a.unlocked);
 }
 
-async function avatarFetch(wallet) {
-  const hit = typeof _profileGet === 'function' ? _profileGet(wallet) : null;
+async function avatarFetch(wallet, force) {
+  // force=true : ignorer le cache de profils. Ce cache est alimenté par le
+  // leaderboard et peut contenir un avatar périmé ; s'y fier pour SON PROPRE
+  // avatar faisait revenir l'ancien portrait à chaque reconnexion, sans
+  // qu'aucune requête ne soit envoyée au serveur.
+  const hit = (!force && typeof _profileGet === 'function') ? _profileGet(wallet) : null;
   if (hit) return hit.avatar;
   try {
     const res = await fetch(`${AVATAR_API}?wallet=${encodeURIComponent(wallet)}`);
@@ -9364,8 +9368,16 @@ async function avatarFetch(wallet) {
 
 async function refreshMyAvatar() {
   if (!connectedAddress) { _myAvatarId = 'default'; return; }
-  const saved = await avatarFetch(connectedAddress);
+  // Son propre avatar est toujours relu depuis le serveur (source de vérité).
+  const saved = await avatarFetch(connectedAddress, true);
   _myAvatarId = saved || 'default';
+  // Aligner le cache pour que le leaderboard affiche la même chose.
+  try {
+    const _k = connectedAddress.toLowerCase();
+    if (typeof _profileCache !== 'undefined') {
+      _profileCache[_k] = Object.assign({}, _profileCache[_k], { avatar: _myAvatarId, ts: Date.now() });
+    }
+  } catch(e) {}
   avatarUpdateButtonIcon();
 }
 
@@ -9507,9 +9519,21 @@ async function avatarSelect(id) {
     });
     if (!res.ok) { showToast('Could not save avatar', true); return; }
     _myAvatarId = id;
+    // Mettre à jour le cache de profils immédiatement : sinon _profileGet
+    // renvoie l'ancien avatar au prochain refreshMyAvatar / leaderboard,
+    // et l'ancien portrait « revient » après rechargement.
+    try {
+      const _k = connectedAddress.toLowerCase();
+      if (typeof _profileCache !== 'undefined') {
+        _profileCache[_k] = Object.assign({}, _profileCache[_k], { avatar: id, ts: Date.now() });
+      }
+    } catch(e) {}
     avatarUpdateButtonIcon();
     showToast('✦ Avatar updated');
     avatarOpen(); // re-render to show the new active selection
+    // Rafraîchir le leaderboard pour que le nouveau portrait y apparaisse tout de suite
+    if (typeof loadLeaderboard === 'function') { try { loadLeaderboard(); } catch(e) {} }
+    if (typeof duelistLeaderboardRefresh === 'function') { try { duelistLeaderboardRefresh(false); } catch(e) {} }
   } catch (e) {
     console.error('avatarSelect error:', e);
     showToast('Network error — try again', true);
