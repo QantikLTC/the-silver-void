@@ -43,6 +43,7 @@ export default async function handler(req, res) {
     res.status(204).end();
     return;
   }
+
   if (req.method !== 'GET') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
@@ -63,6 +64,7 @@ export default async function handler(req, res) {
     // One MGET for the whole board: [u1, a1, s1, u2, a2, s2, ...]
     const keys = [];
     for (const w of wallets) keys.push(`username:${w}`, `avatar:${w}`, `skin:${w}`);
+
     const data = await redisCall('/mget/' + keys.map(encodeURIComponent).join('/'), { method: 'GET' });
     const vals = Array.isArray(data.result) ? data.result : [];
 
@@ -75,10 +77,22 @@ export default async function handler(req, res) {
       };
     });
 
-    // CDN edge cache: identical requests within 2 min are served by
-    // Vercel's edge without invoking this function; stale responses can
-    // be served up to 10 min while revalidating in the background.
-    res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
+    // A player can ask for a single wallet (their own) to bypass the shared
+    // board cache — that request is never cached, so a freshly changed
+    // avatar or username shows up immediately instead of waiting for the
+    // edge entry to expire. Board-sized requests keep their cache.
+    if (req.query.fresh === '1' || wallets.length === 1) {
+      res.setHeader('Cache-Control', 'no-store');
+    } else {
+      // CDN edge cache. Kept short: cosmetic changes (avatar, username,
+      // ring skin) must become visible quickly, otherwise a player who
+      // just changed their portrait keeps seeing the old one served from
+      // the edge, with no way to force a refresh. 15s still absorbs the
+      // bulk of repeated scans (every open tab, every 30s refresh cycle)
+      // which is what the quota protection actually needs.
+      res.setHeader('Cache-Control', 'public, s-maxage=15, stale-while-revalidate=60');
+    }
+
     res.status(200).json({ profiles });
   } catch (e) {
     console.error('profiles.js error:', e);
