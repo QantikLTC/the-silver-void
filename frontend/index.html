@@ -5065,7 +5065,7 @@ function renderLB(list, page){
       ? '<span class="fgl" style="background:conic-gradient(' + c + ' 0 100%);opacity:0.75;"></span>'
       : ((p.skin && typeof SKIN_FX === 'function') ? SKIN_FX(p.skin, 52, true) : null);
     const avatarCell = (_ringFX && typeof SKIN_FX === 'function')
-      ? `<div style="position:relative;flex-shrink:0;padding:9px;margin:-3px;border-radius:50%;display:flex;align-items:center;justify-content:center;overflow:visible;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${_ringFX}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
+      ? `<div style="position:relative;flex-shrink:0;padding:7px;margin:-2px;border-radius:50%;display:flex;align-items:center;justify-content:center;overflow:visible;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${_ringFX}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
       : avatarBlock;
     return `<div class="lb-row ${numClass}" data-lb-wallet="${p.addr || ''}">
       <div class="lb-rank-num ${numClass}">${numSymbol}</div>
@@ -5805,7 +5805,7 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
       ? '<span class="fgl" style="background:conic-gradient(rgba(0,229,204,0.55) 0 100%);opacity:0.75;"></span>'
       : ((r.skin && typeof SKIN_FX === 'function') ? SKIN_FX(r.skin, 52, true) : null);
     const avatarCell = (_ringFXd && typeof SKIN_FX === 'function')
-      ? `<div style="position:relative;flex-shrink:0;padding:9px;margin:-3px;border-radius:50%;display:flex;align-items:center;justify-content:center;overflow:visible;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${_ringFXd}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
+      ? `<div style="position:relative;flex-shrink:0;padding:7px;margin:-2px;border-radius:50%;display:flex;align-items:center;justify-content:center;overflow:visible;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${_ringFXd}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
       : avatarBlock;
     return `<div class="lb-row-duel ${numClass}" data-lb-wallet="${r.wallet || ''}">
       <div class="lb-rank-num ${numClass}">${numSymbol}</div>
