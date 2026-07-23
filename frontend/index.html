@@ -9837,7 +9837,11 @@ document.addEventListener('click', (e) => {
 const SKIN_API = '/api/skin';
 // Wallet receiving the treasury half. Leave '' to burn 100% instead
 // (single tx) until the treasury address is decided.
-const FORGE_TREASURY = '';
+// Chaque achat de skin est désormais scindé en DEUX transactions :
+//   1) la moitié brûlée au nom du joueur (compte pour son rang)
+//   2) la moitié envoyée ici
+// Le joueur signe donc deux fois — c'est visible et volontaire.
+const FORGE_TREASURY = '0x5489667F306a6F03F550FCB129F765f83FaCB24E';
 const SKIN_PRICE_USD = { rare: 2, epic: 3.5, legendary: 5 };
 // Safety clamps on the converted amount, whatever the price feed says:
 const SKIN_ZK_MIN = 0.001, SKIN_ZK_MAX = 0.5;
