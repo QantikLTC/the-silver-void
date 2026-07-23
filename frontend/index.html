@@ -9855,15 +9855,15 @@ function SKIN_FX(id, size, lite) {
   switch(id) {
     case 'ring_ember': return ''
       + '<span class="fgl" style="background:conic-gradient(from 200deg,#3a0d00,#a82800 20%,#ff6a00 42%,#ffc84d 50%,#ff6a00 58%,#a82800 80%,#3a0d00);animation:fgspin 7s linear infinite;'+(lite?'':'filter:blur(0.6px);')+'"></span>'
-      + (lite ? '' : '<span class="fgl" style="inset:-3px;background:conic-gradient(from 30deg,transparent,rgba(255,140,0,0.5) 45%,rgba(255,220,120,0.7) 50%,rgba(255,140,0,0.5) 55%,transparent);animation:fgspinr 3.2s linear infinite;filter:blur(2.5px);"></span>'
+      + (lite ? '' : '<span class="fgl" style="inset:-3px;background:conic-gradient(from 30deg,transparent,rgba(255,140,0,0.5) 45%,rgba(255,220,120,0.7) 50%,rgba(255,140,0,0.5) 55%,transparent);animation:fgspinr 3.2s linear infinite;filter:blur(2.5px);"></span>')
       + '<span class="fgp" style="top:2px;left:26%;width:4px;height:4px;background:#ffb347;box-shadow:0 0 6px #ff8c00;animation:fgrise 1.6s ease-out infinite;"></span>'
       + '<span class="fgp" style="top:4px;left:58%;width:3px;height:3px;background:#ffd27a;box-shadow:0 0 5px #ffb347;animation:fgrise 2.1s ease-out 0.5s infinite;"></span>'
-      + '<span class="fgp" style="top:0;left:44%;width:3px;height:3px;background:#ff8c5a;box-shadow:0 0 5px #ff6a00;animation:fgrise 1.9s ease-out 1s infinite;"></span>');
+      + '<span class="fgp" style="top:0;left:44%;width:3px;height:3px;background:#ff8c5a;box-shadow:0 0 5px #ff6a00;animation:fgrise 1.9s ease-out 1s infinite;"></span>';
     case 'ring_shadow': return ''
       + '<span class="fgl" style="background:conic-gradient(from 200deg,#000,#1c0533 18%,#5a1fae 40%,#a86bff 50%,#5a1fae 60%,#1c0533 82%,#000);animation:fgspin 8s linear infinite;'+(lite?'':'filter:blur(0.6px);')+'"></span>'
-      + (lite ? '' : '<span class="fgl" style="inset:-3px;background:conic-gradient(from 40deg,transparent,rgba(90,31,174,0.55) 45%,rgba(190,140,255,0.6) 50%,rgba(90,31,174,0.55) 55%,transparent);animation:fgspinr 3.4s linear infinite;filter:blur(2.6px);"></span>'
+      + (lite ? '' : '<span class="fgl" style="inset:-3px;background:conic-gradient(from 40deg,transparent,rgba(90,31,174,0.55) 45%,rgba(190,140,255,0.6) 50%,rgba(90,31,174,0.55) 55%,transparent);animation:fgspinr 3.4s linear infinite;filter:blur(2.6px);"></span>')
       + '<span class="fgp" style="top:2px;left:24%;width:4px;height:4px;background:#a86bff;box-shadow:0 0 6px #7a3bff;animation:fgrise 1.8s ease-out infinite;"></span>'
-      + '<span class="fgp" style="top:4px;left:60%;width:3px;height:3px;background:#c9a2ff;box-shadow:0 0 5px #a86bff;animation:fgrise 2.3s ease-out 0.6s infinite;"></span>');
+      + '<span class="fgp" style="top:4px;left:60%;width:3px;height:3px;background:#c9a2ff;box-shadow:0 0 5px #a86bff;animation:fgrise 2.3s ease-out 0.6s infinite;"></span>';
     case 'ring_eclipse': return ''
       + (lite
         ? '<span class="fgl" style="inset:-1px;background:conic-gradient(rgba(255,106,0,0.15),rgba(255,154,77,0.55),rgba(255,106,0,0.15));animation:fgspin 5s linear infinite;"></span>'
@@ -9901,9 +9901,9 @@ function SKIN_FX(id, size, lite) {
       + (lite ? '' : '<span class="fgl" style="background:conic-gradient(transparent,rgba(255,255,255,0.9) 50%,transparent 58%);animation:fgglint 7s linear infinite;"></span>');
     case 'ring_devour': return ''
       + '<span class="fgl" style="background:conic-gradient(#000,#12071f 30%,#000 50%,#0d0517 75%,#000);border:1px solid rgba(120,60,220,0.3);animation:fgspin 11s linear infinite'+(lite?'':', fgbreathe 3.2s ease-in-out infinite')+';"></span>'
-      + (lite ? '' : '<span class="fgl" style="inset:-2px;background:conic-gradient(transparent,rgba(60,20,110,0.5) 50%,transparent);animation:fgspinr 6s linear infinite;filter:blur(3px);"></span>'
+      + (lite ? '' : '<span class="fgl" style="inset:-2px;background:conic-gradient(transparent,rgba(60,20,110,0.5) 50%,transparent);animation:fgspinr 6s linear infinite;filter:blur(3px);"></span>')
       + '<span class="fgp" style="top:0;left:30%;width:3px;height:3px;background:#c9a2ff;box-shadow:0 0 5px #a86bff;animation:fgfall 2.2s ease-in infinite;"></span>'
-      + '<span class="fgp" style="top:0;left:55%;width:3px;height:3px;background:#fff;box-shadow:0 0 4px #c9a2ff;animation:fgfall 1.7s ease-in 0.8s infinite;"></span>');
+      + '<span class="fgp" style="top:0;left:55%;width:3px;height:3px;background:#fff;box-shadow:0 0 4px #c9a2ff;animation:fgfall 1.7s ease-in 0.8s infinite;"></span>';
     default: return '';
   }
 }
