@@ -9379,6 +9379,11 @@ async function refreshMyAvatar() {
     }
   } catch(e) {}
   avatarUpdateButtonIcon();
+  // Le leaderboard a pu être rendu AVANT que l'avatar ne soit relu (son cache
+  // contenait alors l'ancien). Une fois la bonne valeur connue et le cache
+  // réaligné, on redessine les classements pour qu'ils concordent.
+  if (typeof loadLeaderboard === 'function') { try { loadLeaderboard(); } catch(e) {} }
+  if (typeof duelistLeaderboardRefresh === 'function') { try { duelistLeaderboardRefresh(false); } catch(e) {} }
 }
 
 // Returns a render descriptor for an avatar id: { type, icon } or { type, url }
