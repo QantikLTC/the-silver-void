@@ -97,6 +97,14 @@ Each rank unlocks a unique NFT pool with Common, Rare, and Epic variants — eac
 
 ---
 
+## 📜 The Chronicles of the Void
+
+A bilingual (English / French) work of serial fiction, published fragment by fragment inside the DApp. A medieval-fantasy tale that carries the very real fight for incorruptible money into a world of forges and grimoires — following an Academy apprentice who cannot forget a baker's words: "The coins shrink faster than the bread."
+
+A preface and three fragments are live; the story continues. Reading is tracked with privacy-friendly custom events, so future ecosystem quests can reward readers.
+
+---
+
 ## 🔧 Tech Stack & Architecture
 
 - **Network:** LiteForge Testnet · Chain ID 4441
