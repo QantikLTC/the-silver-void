@@ -20,6 +20,7 @@ A single-page Web3 DApp designed as a dark-fantasy MMO hub where users interact 
 - **The Void Store:** A built-in marketplace to buy, sell, and trade every relic — rank NFTs and Saga pieces alike.
 - **Names & Avatars:** Set a display name and choose an avatar from your unlocked ranks, feats, and Saga chapters.
 - **The Hall of Feats:** A WoW-style achievement tracker spanning burning, duels, and the Saga.
+- **The Chronicles of the Void:** — A bilingual (EN/FR) work of serial fiction woven into the lore.
 
 **No staking. No yield. Pure sacrifice & competition. For the Litecoin ecosystem.**
 
@@ -102,12 +103,12 @@ Each rank unlocks a unique NFT pool with Common, Rare, and Epic variants — eac
 - **Contracts:**
   - **Burn Protocol (Pensieve):** `0x0AD3f776C45FF457d2d8e211A3174A4Db201b656` — sends 100% to `0x000...dEaD`
   - **Rank NFT Contract:** `0xd278847e150B8fa3bf8fbAF46c0B780A029A9217` — ERC-721 + EIP-2981 royalties
-  - **Duel Contract:** `0x78b70AA24ca90690AD2b21d5c1980F55420A0AA1` — commit-reveal PvP, 75/20/5 split
-  - **Duelist Saga Contract:** `0xBCe2079dFE9D8ef7ca5acC7690Da3aC4417A6145` — milestone-gated ERC-721, on-chain eligibility re-check
-  - **The Void Store:** `0xc3f26f69e704f5c0feC4D5B5f4bA5f39154Afb01` — generic marketplace, 80/17/3 split
+  - **Duel Contract:** `0x25fC7C0cC6B57Af003cd873A37B764F07c4A1187` — commit-reveal PvP, 75/20/5 split
+  - **Duelist Saga Contract:** `0xB715bc47A5a2Ab31f3F6a09211E53c8eb9CCDe76` — milestone-gated ERC-721, on-chain eligibility re-check
+  - **The Void Store:** `0x50FbF3fe230c67913e4a8dB9230D538ADAA08Ef7` — generic marketplace, 80/17/3 split
 - **Backend:** Vercel serverless functions + Upstash Redis (KV) — encrypted secret backup, names, avatars
 - **Frontend:** Vanilla HTML5 / CSS3 / JavaScript, `ethers.js v6`
-- **NFT Artwork & Metadata:** IPFS via Pinata
+- **NFT Artwork & Metadata:** IPFS via Arweave
 - **Hosting:** Vercel
 
 ```
@@ -119,11 +120,13 @@ the-silver-void/
 │   ├── SilverVoidDuelistSaga.sol   # Saga NFTs — milestone-gated, on-chain verified
 │   └── SilverVoidStore.sol         # The Void Store — generic NFT marketplace
 ├── frontend/
-│   ├── index.html                  # Main DApp & immersive lore intro
+│   ├── index.html                  # Main DApp, immersive lore intro & Chronicles
 │   └── api/
 │       ├── secret.js               # Encrypted cross-device secret backup
 │       ├── username.js             # Display name storage
-│       └── avatar.js               # Avatar selection storage
+│       ├── avatar.js               # Avatar selection storage
+│       ├── skin.js                 # Ring skin ownership & equipped state
+│       └── profiles.js             # Batched name + avatar + skin read
 └── README.md
 ```
 
