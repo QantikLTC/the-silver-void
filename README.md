@@ -136,4 +136,4 @@ the-silver-void/
 
 Burn zkLTC into the void. Duel for glory. Trade your relics. A deflationary ritual ecosystem built on LiteForge Testnet, where sacrifice is proof.
 
-[the-silver-void.vercel.app](https://the-silver-void.vercel.app)
+Live → https://www.thesilvervoid.com/
