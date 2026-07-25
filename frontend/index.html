@@ -2215,6 +2215,49 @@ body::after {
 .pool-claim-main-btn:hover { transform:scale(1.02); filter:brightness(1.1); }
 .pool-claim-fee { font-size:0.5rem; letter-spacing:0.2em; color:rgba(255,255,255,0.25); margin-top:0.5rem; text-transform:uppercase; }
 
+
+/* ═══ UI Voûte (variante B) — cartes du store ═══ */
+.vb-card{position:relative;border-radius:9px;overflow:hidden;cursor:default;
+  background:linear-gradient(160deg,rgba(14,20,44,0.9),rgba(6,10,28,0.95));
+  border:1px solid rgba(255,255,255,0.06);
+  transition:transform 0.18s,border-color 0.18s,box-shadow 0.18s;}
+.vb-card:hover{transform:translateY(-4px);border-color:var(--rc,rgba(255,255,255,0.25));
+  box-shadow:0 10px 30px rgba(0,0,0,0.5);}
+.vb-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--rc,#555);opacity:0.9;z-index:3;}
+.vb-art{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 40% 35%,rgba(40,54,110,0.45),rgba(6,10,30,0.9));}
+.vb-ring{position:relative;width:84px;height:84px;border-radius:50%;}
+.vb-disc{position:absolute;inset:9px;border-radius:50%;background:#0c0824;z-index:2;
+  display:flex;align-items:center;justify-content:center;}
+.vb-rar{position:absolute;top:8px;left:8px;z-index:3;font-family:'Cinzel',serif;font-size:0.5rem;
+  letter-spacing:0.16em;text-transform:uppercase;padding:0.2rem 0.5rem;border-radius:3px;
+  background:rgba(4,2,20,0.8);color:var(--rc,#aaa);border:1px solid var(--rc,#555);}
+.vb-flag{position:absolute;top:8px;right:8px;z-index:3;width:20px;height:20px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:0.7rem;
+  background:rgba(0,229,204,0.15);border:1px solid rgba(0,229,204,0.5);color:var(--teal);}
+.vb-body{padding:0.7rem 0.8rem 0.85rem;}
+.vb-name{font-family:'Cinzel',serif;font-size:0.8rem;letter-spacing:0.02em;margin-bottom:0.15rem;color:#fff;}
+.vb-desc{font-size:0.85rem;color:rgba(255,255,255,0.42);line-height:1.35;min-height:2.3em;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.vb-foot{display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-top:0.7rem;
+  padding-top:0.6rem;border-top:1px solid rgba(255,255,255,0.06);}
+.vb-price{display:flex;flex-direction:column;line-height:1.1;min-width:0;}
+.vb-zk{font-family:'Cinzel',serif;font-size:0.86rem;color:#fff;white-space:nowrap;}
+.vb-usd{font-size:0.8rem;color:var(--silver-dim);}
+.vb-cta{flex-shrink:0;font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.12em;text-transform:uppercase;
+  padding:0.42rem 0.85rem;border-radius:4px;cursor:pointer;transition:all 0.18s;
+  background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.75);}
+.vb-cta:hover{background:var(--rc,rgba(255,255,255,0.1));border-color:var(--rc,#888);color:#04021a;font-weight:600;}
+.vb-cta-eq{background:rgba(0,229,204,0.12);border-color:rgba(0,229,204,0.5);color:var(--teal);cursor:default;}
+.vb-cta-eq:hover{background:rgba(0,229,204,0.12);color:var(--teal);font-weight:400;}
+.vb-cta-lock{background:transparent;border-style:dashed;color:rgba(255,255,255,0.35);cursor:not-allowed;}
+.vb-cta-lock:hover{background:transparent;border-color:rgba(255,255,255,0.2);color:rgba(255,255,255,0.35);font-weight:400;}
+.vb-burn{font-size:0.54rem;color:#ff9a4d;letter-spacing:0.05em;margin-top:0.5rem;text-align:center;}
+@media(max-width:600px){
+  #forge-store-grid{grid-template-columns:repeat(2,1fr) !important;gap:0.6rem !important;}
+  .vb-ring{width:72px;height:72px;}
+  .vb-cta{padding:0.4rem 0.6rem;}
+}
 </style>
 </head>
 <body>
@@ -8704,7 +8747,7 @@ async function sagaMint(sagaId) {
           <span style="font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-left:0.45rem;">Skins Forged</span>
         </div>
       </div>
-      <div id="forge-store-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.9rem;">
+      <div id="forge-store-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:0.85rem;">
         <div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;grid-column:1/-1;">Lighting the forge...</div>
       </div>
     </div>
@@ -8716,7 +8759,7 @@ async function sagaMint(sagaId) {
         <span style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:rgba(255,255,255,0.4);text-transform:uppercase;">All Relics — by rarity</span>
         <button id="store-refresh-btn" onclick="storeRefreshListings()" style="background:transparent;border:1px solid rgba(0,229,204,0.3);color:rgba(0,229,204,0.7);font-size:0.6rem;padding:0.35rem 0.6rem;border-radius:3px;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:0.05em;">↻ Refresh</button>
       </div>
-      <div id="store-listings-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.9rem;">
+      <div id="store-listings-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:0.85rem;">
         <div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;grid-column:1/-1;">Scanning the store...</div>
       </div>
     </div>
@@ -8961,22 +9004,27 @@ function storeRelicCard(l, relic) {
   const color = STORE_RARITY_COLOR[relic.rarity] || STORE_RARITY_COLOR.common;
   const img = relic.artUrl
     ? `<img src="${relic.artUrl}" onclick="event.stopPropagation();storeZoomImage('${relic.artUrl}')" style="position:absolute;width:100%;height:100%;object-fit:cover;cursor:zoom-in;" onerror="this.style.display='none';" title="Click to view full image" />`
-    : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.6rem;background:linear-gradient(135deg,rgba(0,229,204,0.1),rgba(119,85,204,0.06));">🖼</div>`;
+    : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.8rem;background:linear-gradient(135deg,rgba(0,229,204,0.1),rgba(119,85,204,0.06));">\ud83d\uddbc</div>`;
+  const cta = isMine
+    ? `<span class="vb-cta vb-cta-lock" onclick="storeCancel(${l.id})" style="cursor:pointer;">Cancel</span>`
+    : `<span class="vb-cta" style="--rc:${color};" onclick="storeBuy(${l.id})">Buy</span>`;
   return `
-  <div style="position:relative;border-radius:4px;overflow:hidden;aspect-ratio:1;box-shadow:0 0 0 1.5px ${color}66;">
-    ${img}
-    <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(4,2,26,0.95),transparent 55%);pointer-events:none;"></div>
-    <div style="position:absolute;top:6px;left:6px;font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.08em;color:${color};text-transform:uppercase;">${relic.rarity}</div>
-    <div style="position:absolute;bottom:8px;left:8px;right:8px;">
-      <div style="font-family:'Cinzel',serif;font-size:0.7rem;color:#fff;">${relic.name}</div>
-      <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);margin:0.1rem 0 0.3rem;">${shortSeller}</div>
-      <div style="font-family:'Cinzel',serif;font-size:0.72rem;color:${color};margin-bottom:0.4rem;">${priceStr} zkLTC</div>
-      ${isMine
-        ? `<button onclick="storeCancel(${l.id})" style="width:100%;padding:0.3rem;font-size:0.55rem;letter-spacing:0.05em;cursor:pointer;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.6);border-radius:2px;font-family:'Cinzel',serif;text-transform:uppercase;">Cancel</button>`
-        : `<button onclick="storeBuy(${l.id})" style="width:100%;padding:0.3rem;font-size:0.55rem;letter-spacing:0.05em;cursor:pointer;background:rgba(0,0,0,0.4);border:1px solid ${color}88;color:${color};border-radius:2px;font-family:'Cinzel',serif;text-transform:uppercase;">Buy Now</button>`}
+  <div class="vb-card" style="--rc:${color};">
+    <div class="vb-art" style="padding:0;overflow:hidden;">
+      ${img}
+      <span class="vb-rar" style="--rc:${color};">${relic.rarity}</span>
+    </div>
+    <div class="vb-body">
+      <div class="vb-name">${relic.name}</div>
+      <div class="vb-desc" style="min-height:0;">${shortSeller}</div>
+      <div class="vb-foot">
+        <div class="vb-price"><span class="vb-zk">${priceStr}</span><span class="vb-usd">zkLTC</span></div>
+        ${cta}
+      </div>
     </div>
   </div>`;
 }
+
 
 // Fullscreen lightbox — click anywhere to close. Lets the player see the
 // full, uncropped artwork instead of a cropped card thumbnail.
@@ -10380,10 +10428,10 @@ async function forgeStoreRender() {
   if (!grid) return;
   const unlocked = (typeof featsLoad === 'function') ? featsLoad() : {};
   const ltc = await ltcUsdPrice();
-  // Tri par rareté croissante : rare → epic → legendary → relic.
-  // Fait à l'affichage plutôt que dans le tableau SKINS, pour que l'ordre
-  // reste correct quels que soient les ajouts futurs.
   const RARITY_ORDER = { rare:1, epic:2, legendary:3, relic:4 };
+  const avatarInner = (typeof avatarHTMLFor === 'function' && typeof _myAvatarId !== 'undefined')
+    ? avatarHTMLFor(_myAvatarId, 44) : '';
+
   grid.innerHTML = SKINS.filter(s => s.id !== 'ring_default')
     .slice()
     .sort((a,b) => (RARITY_ORDER[a.rarity]||99) - (RARITY_ORDER[b.rarity]||99))
@@ -10391,39 +10439,58 @@ async function forgeStoreRender() {
     const col = SKIN_RARITY_COLORS[s.rarity];
     const owned = _myOwned.includes(s.id);
     const equipped = _mySkin === s.id;
-    let action;
+
+    // ── Coin bas : prix (gauche) + action (droite), toujours au même endroit ──
+    let priceHTML, ctaHTML;
     if (equipped) {
-      action = '<div style="text-align:center;font-family:\'Cinzel\',serif;font-size:0.58rem;letter-spacing:0.14em;color:rgba(0,229,204,0.85);border:1px solid rgba(0,229,204,0.4);border-radius:4px;padding:0.5rem;">✓ EQUIPPED</div>';
+      priceHTML = '<div class="vb-price"><span class="vb-zk" style="color:' + col + ';">Equipped</span></div>';
+      ctaHTML = '<span class="vb-cta vb-cta-eq" onclick="skinEquip(\'' + s.id + '\')">\u2713 ON</span>';
     } else if (owned) {
-      action = '<button onclick="skinEquip(\'' + s.id + '\')" style="width:100%;font-family:\'Cinzel\',serif;font-size:0.58rem;letter-spacing:0.14em;color:#fff;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.25);border-radius:4px;padding:0.5rem;cursor:pointer;text-transform:uppercase;">Equip</button>';
+      priceHTML = '<div class="vb-price"><span class="vb-zk" style="opacity:0.6;">Owned</span></div>';
+      ctaHTML = '<span class="vb-cta" style="--rc:' + col + ';" onclick="skinEquip(\'' + s.id + '\')">Equip</span>';
     } else if (s.rarity === 'relic') {
       const done = !!unlocked[s.featId];
-      // La condition vient du haut fait lié : écrire « FIGHT 50 DUELS » en dur
-      // affichait la mauvaise consigne pour tout relic autre que Devouring Shadow.
       const feat = (typeof FEATS !== 'undefined') ? FEATS.find(f => f.id === s.featId) : null;
       const req = feat ? (feat.desc || feat.name).replace(/\.$/, '').toUpperCase() : 'COMPLETE ITS FEAT';
-      action = '<div style="text-align:center;font-family:\'Cinzel\',serif;font-size:0.55rem;letter-spacing:0.1em;color:' + (done ? col : 'rgba(255,255,255,0.35)') + ';border:1px dashed ' + col + '44;border-radius:4px;padding:0.5rem;">' + (done ? 'UNLOCKING…' : '🔒 ' + req + ' — NEVER SOLD') + '</div>';
+      priceHTML = '<div class="vb-price"><span class="vb-zk" style="color:' + col + ';font-size:0.68rem;letter-spacing:0.1em;">\ud83d\udd12 ' + (done ? 'UNLOCKING\u2026' : 'Earned only') + '</span></div>';
+      ctaHTML = done
+        ? '<span class="vb-cta" style="--rc:' + col + ';">\u2026</span>'
+        : '<span class="vb-cta vb-cta-lock" title="' + req + ' \u2014 NEVER SOLD">Locked</span>';
     } else {
-      const priceLine = ltc
-        ? skinZkAmount(SKIN_PRICE_USD[s.rarity], ltc) + ' zkLTC <span style="opacity:0.55;">· ~$' + SKIN_PRICE_USD[s.rarity] + '</span>'
-        : 'price feed offline';
-      action = '<button onclick="skinBuy(\'' + s.id + '\')" ' + (ltc ? '' : 'disabled ') + 'style="width:100%;font-family:\'Cinzel\',serif;font-size:0.58rem;letter-spacing:0.08em;color:' + col + ';background:transparent;border:1px solid ' + col + '66;border-radius:4px;padding:0.5rem;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background=\'' + col + '15\'" onmouseout="this.style.background=\'transparent\'">' + priceLine + '</button>';
+      const zk = ltc ? skinZkAmount(SKIN_PRICE_USD[s.rarity], ltc) : null;
+      priceHTML = ltc
+        ? '<div class="vb-price"><span class="vb-zk">' + zk + '</span><span class="vb-usd">~$' + SKIN_PRICE_USD[s.rarity] + '</span></div>'
+        : '<div class="vb-price"><span class="vb-usd">price feed offline</span></div>';
+      ctaHTML = ltc
+        ? '<span class="vb-cta" style="--rc:' + col + ';" onclick="skinBuy(\'' + s.id + '\')">Forge</span>'
+        : '<span class="vb-cta vb-cta-lock">\u2014</span>';
     }
-    return '<div style="background:rgba(255,255,255,0.02);border:1px solid ' + col + '40;border-radius:8px;padding:1.1rem 0.9rem;text-align:center;' + (equipped ? 'box-shadow:0 0 18px ' + col + '22;' : '') + '">'
-      + '<div style="position:relative;width:64px;height:64px;margin:0 auto 0.8rem;">'
-      +   SKIN_FX(s.id, 64, false)
-      +   '<span style="position:absolute;inset:9px;border-radius:50%;background:#0c0824;z-index:2;display:flex;align-items:center;justify-content:center;">' + (typeof avatarHTMLFor === 'function' && typeof _myAvatarId !== 'undefined' ? avatarHTMLFor(_myAvatarId, 40) : '') + '</span>'
+
+    const flag = equipped
+      ? '<span class="vb-flag">\u2713</span>'
+      : (owned ? '<span class="vb-flag" style="opacity:0.6;">\u25c8</span>' : '');
+
+    const burnNote = (s.rarity !== 'relic' && !owned && !equipped)
+      ? '<div class="vb-burn">\ud83d\udd25 50% burned in your name</div>' : '';
+
+    return '<div class="vb-card" style="--rc:' + col + ';">'
+      + '<div class="vb-art">'
+      +   '<div class="vb-ring">' + SKIN_FX(s.id, 84, false)
+      +     '<span class="vb-disc">' + avatarInner + '</span>'
+      +   '</div>'
+      +   '<span class="vb-rar" style="--rc:' + col + ';">' + s.rarity + '</span>'
+      +   flag
       + '</div>'
-      + '<div style="font-family:\'Cinzel\',serif;font-size:0.78rem;letter-spacing:0.05em;color:#fff;">' + s.name + '</div>'
-      + '<div style="font-size:0.55rem;letter-spacing:0.18em;color:' + col + ';font-family:\'Cinzel\',serif;text-transform:uppercase;margin:0.25rem 0 0.4rem;">' + s.rarity + '</div>'
-      + '<div style="font-size:0.62rem;color:rgba(255,255,255,0.4);line-height:1.45;min-height:2.4em;margin-bottom:0.8rem;">' + s.desc + '</div>'
-      + action
-      + (s.rarity !== 'relic' && !owned && !equipped
-          ? '<div style="font-size:0.56rem;color:#ff9a4d;letter-spacing:0.06em;margin-top:0.5rem;">🔥 50% burned in your name → counts toward your rank</div>'
-          : '')
+      + '<div class="vb-body">'
+      +   '<div class="vb-name">' + s.name + '</div>'
+      +   '<div class="vb-desc">' + s.desc + '</div>'
+      +   '<div class="vb-foot">' + priceHTML + ctaHTML + '</div>'
+      +   burnNote
+      + '</div>'
       + '</div>';
   }).join('');
 }
+
 
 function profileCopyAddr() {
   if (!connectedAddress) { showToast('Connect your wallet first'); return; }
