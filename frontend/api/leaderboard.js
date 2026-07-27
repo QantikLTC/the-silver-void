@@ -1,63 +1,57 @@
-// /api/leaderboard — cached, incrementally-updated leaderboard.
+// /api/leaderboard — classement des sacrifiants, via l'API de l'explorateur.
 //
-// LE FRONT NE PARLE PLUS JAMAIS AU RPC DIRECTEMENT. Il appelle cet
-// endpoint, qui sert une liste déjà triée et calculée depuis Redis.
+// LE FRONT NE PARLE PLUS JAMAIS AU RPC. Il appelle cet endpoint, qui sert
+// une liste déjà triée et calculée, mise en cache dans Redis.
 //
-// Pourquoi "incrémental" : le RPC de ce testnet est très lent pour
-// eth_getLogs (parfois des dizaines de secondes, parfois bloqué), et il
-// y a des centaines de burners répartis sur des centaines de milliers de
-// blocs. Un seul appel ne peut pas tout scanner avant que Vercel ne coupe
-// la fonction. Donc chaque exécution scanne un morceau, là où la
-// précédente s'est arrêtée, sauvegarde sa progression, et sert ce qui est
-// déjà connu — qui devient de plus en plus complet au fil du temps.
+// POURQUOI L'EXPLORATEUR PLUTÔT QUE LE RPC :
+// Le RPC de ce testnet (liteforge.rpc.caldera.xyz) est pathologiquement
+// lent pour eth_getLogs — des dizaines de secondes par tranche, souvent
+// des timeouts complets. Impossible de scanner ~750 burners comme ça.
+// L'explorateur Blockscout, lui, a DÉJÀ indexé tous les events : on lui
+// demande directement la liste des burns du contrat et il répond en une
+// fraction de seconde, page par page. Rapide, fiable, zéro timeout.
 //
-// ASTUCE CLÉ : l'event Burned() du contrat contient déjà le total cumulé
-// du burner (newBurnerTotal). Pas besoin d'appeler getBurnerInfo() par
-// adresse après le scan — décoder l'event suffit.
+// CE QUE FAIT LE CONTRAT (event réellement émis, vu via l'explorateur) :
+//   Burned(address indexed user, uint256 amount, uint256 date,
+//          uint256 nonce, uint256 targetChainID)
+//   -> `amount` est le montant de CE burn précis, PAS un cumul.
+//      Il faut donc SOMMER tous les `amount` par adresse pour obtenir
+//      le total brûlé de chaque sacrifiant.
+//
+// L'explorateur renvoie les paramètres DÉJÀ DÉCODÉS (decoded.parameters),
+// donc aucun décodage hex ni dépendance ethers n'est nécessaire ici.
 //
 // Stockage (Upstash Redis REST API via Vercel KV) :
-//   leaderboard:<network>:amounts    -> JSON { "0xaddr": "montantWei", ... }
-//   leaderboard:<network>:lastBlock  -> dernier bloc entièrement scanné
-//   leaderboard:<network>:lock       -> verrou anti-scans concurrents
-//   leaderboard:<network>:updatedAt  -> horodatage du dernier scan réussi
+//   leaderboard:<network>:data       -> JSON { leaderboard, totalBurners, updatedAt }
+//   leaderboard:<network>:lock       -> verrou anti-recalculs concurrents
 //
-// Les clés sont préfixées par NETWORK_TAG : le jour du passage au
-// mainnet, changez CONTRACT_ADDRESS / RPC / NETWORK_TAG (3 lignes) et le
-// système repart sur des clés fraîches, sans mélanger avec les données
-// testnet.
-
-import { ethers } from 'ethers';
+// Les clés sont préfixées par NETWORK_TAG : au passage mainnet, changez
+// EXPLORER_BASE / CONTRACT_ADDRESS / NETWORK_TAG et le système repart sur
+// des clés fraîches, sans mélanger avec les données testnet.
 
 // ─── CONFIG — à modifier au moment du passage au mainnet ───────────────
-const RPC = 'https://liteforge.rpc.caldera.xyz/http';
+const EXPLORER_BASE = 'https://liteforge.explorer.caldera.xyz';
 const CONTRACT_ADDRESS = '0x0AD3f776C45FF457d2d8e211A3174A4Db201b656';
-const NETWORK_TAG = 'liteforge-testnet-v2'; // ex: 'litecoin-mainnet' au mainnet
-// Bloc à partir duquel scanner. Les premiers burns du contrat testnet
-// apparaissent vers le bloc ~31-32M ; on démarre à 30M avec une marge de
-// sécurité pour être sûr de tous les capturer, sans traverser 30M de
-// blocs vides depuis zéro. Au mainnet, mettez ici le bloc de déploiement
-// du contrat (que vous connaîtrez au moment où vous le déploierez).
-const START_BLOCK = 30000000;
+const NETWORK_TAG = 'liteforge-testnet-v3';
 // ─────────────────────────────────────────────────────────────────────
 
-const CHUNK_SIZE = 10000;          // plage max acceptée par ce RPC
-const PER_CHUNK_TIMEOUT_MS = 7000; // ce RPC peut bloquer indéfiniment sans ça
-const INVOCATION_BUDGET_MS = 50000; // marge de 10s sous maxDuration=60 (Vercel Pro)
+// topic0 de l'event Burned — sert à ne demander QUE les burns à l'explorateur.
+const BURN_TOPIC = '0xf1b8071d85a68dbc6b0a9b8ff17e44602315ec457cdf743f3eee37cf4a6dd38e';
 
-const KEY_AMOUNTS = `leaderboard:${NETWORK_TAG}:amounts`;
-const KEY_LASTBLOCK = `leaderboard:${NETWORK_TAG}:lastBlock`;
+// Garde-fous pour ne jamais boucler à l'infini ni dépasser le temps Vercel.
+const MAX_PAGES = 200;             // 200 pages × 50 = 10 000 events max
+const FETCH_TIMEOUT_MS = 12000;    // par requête à l'explorateur
+const INVOCATION_BUDGET_MS = 50000; // marge sous maxDuration=60 (Vercel Pro)
+// Durée de validité du cache : au-delà, un appel recalcule. Le cron
+// rafraîchit de toute façon en arrière-plan, donc les visiteurs sont
+// quasi toujours servis instantanément depuis le cache.
+const CACHE_TTL_MS = 60000;
+
+const KEY_DATA = `leaderboard:${NETWORK_TAG}:data`;
 const KEY_LOCK = `leaderboard:${NETWORK_TAG}:lock`;
-const KEY_UPDATED = `leaderboard:${NETWORK_TAG}:updatedAt`;
 
-const IFACE = new ethers.Interface([
-  'event Burned(address indexed burner, uint256 amount, uint256 newBurnerTotal, uint256 globalTotal, uint256 timestamp)'
-]);
-const BURN_TOPIC = IFACE.getEvent('Burned').topicHash;
-
-// Fonctions Vercel avec un temps d'exécution étendu (nécessite le plan Pro).
-export const config = {
-  maxDuration: 60,
-};
+// Fonctions Vercel avec temps d'exécution étendu (plan Pro).
+export const config = { maxDuration: 60 };
 
 async function redisCall(path, opts = {}) {
   const url = `${process.env.KV_REST_API_URL}${path}`;
@@ -83,13 +77,28 @@ function withTimeout(promise, ms) {
   ]);
 }
 
-async function tryAcquireLock() {
-  // SET key 1 NX EX 15 — une seule invocation scanne à la fois.
+async function loadCache() {
   try {
-    const data = await redisCall(`/set/${encodeURIComponent(KEY_LOCK)}/1?NX=true&EX=15`, { method: 'POST' });
+    const data = await redisCall(`/get/${encodeURIComponent(KEY_DATA)}`, { method: 'GET' });
+    return data.result ? JSON.parse(data.result) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function saveCache(payload) {
+  await redisCall(
+    `/set/${encodeURIComponent(KEY_DATA)}/${encodeURIComponent(JSON.stringify(payload))}`,
+    { method: 'POST' }
+  );
+}
+
+async function tryAcquireLock() {
+  try {
+    const data = await redisCall(`/set/${encodeURIComponent(KEY_LOCK)}/1?NX=true&EX=55`, { method: 'POST' });
     return data.result === 'OK';
   } catch {
-    return true; // best-effort : ne pas bloquer le scan si le verrou échoue
+    return true; // best-effort
   }
 }
 
@@ -97,69 +106,75 @@ async function releaseLock() {
   try { await redisCall(`/del/${encodeURIComponent(KEY_LOCK)}`, { method: 'POST' }); } catch {}
 }
 
-async function loadState() {
-  const data = await redisCall(
-    '/mget/' + [KEY_AMOUNTS, KEY_LASTBLOCK].map(encodeURIComponent).join('/'),
-    { method: 'GET' }
-  );
-  const [amountsRaw, lastBlockRaw] = Array.isArray(data.result) ? data.result : [null, null];
-  let amounts = {};
-  try { amounts = amountsRaw ? JSON.parse(amountsRaw) : {}; } catch {}
-  const lastBlock = lastBlockRaw ? Number(lastBlockRaw) : START_BLOCK - 1;
-  return { amounts, lastBlock };
-}
+// Récupère TOUS les events de burn via l'API paginée de l'explorateur,
+// somme les montants par adresse, renvoie la liste triée décroissante.
+async function rebuildFromExplorer() {
+  const totals = {}; // adresse (lowercase) -> BigInt du total brûlé
+  const started = Date.now();
 
-async function saveState(amounts, lastBlock) {
-  await redisCall(
-    `/set/${encodeURIComponent(KEY_AMOUNTS)}/${encodeURIComponent(JSON.stringify(amounts))}`,
-    { method: 'POST' }
-  );
-  await redisCall(
-    `/set/${encodeURIComponent(KEY_LASTBLOCK)}/${encodeURIComponent(String(lastBlock))}`,
-    { method: 'POST' }
-  );
-  await redisCall(
-    `/set/${encodeURIComponent(KEY_UPDATED)}/${encodeURIComponent(new Date().toISOString())}`,
-    { method: 'POST' }
-  );
-}
-
-async function scanIncremental() {
-  const provider = new ethers.JsonRpcProvider(RPC);
-  const { amounts, lastBlock } = await loadState();
-
-  const latest = await withTimeout(provider.getBlockNumber(), PER_CHUNK_TIMEOUT_MS);
-  let from = lastBlock + 1;
-  const invocationStart = Date.now();
-  let scannedAny = false;
-
-  while (from <= latest && (Date.now() - invocationStart) < INVOCATION_BUDGET_MS) {
-    const to = Math.min(from + CHUNK_SIZE - 1, latest);
-    try {
-      const logs = await withTimeout(
-        provider.getLogs({ address: CONTRACT_ADDRESS, topics: [BURN_TOPIC], fromBlock: from, toBlock: to }),
-        PER_CHUNK_TIMEOUT_MS
-      );
-      for (const log of logs) {
-        const parsed = IFACE.parseLog(log);
-        const addr = parsed.args.burner.toLowerCase();
-        amounts[addr] = parsed.args.newBurnerTotal.toString();
-      }
-      scannedAny = true;
-      from = to + 1;
-    } catch (err) {
-      // Cette tranche a timeout ou échoué (RPC capricieux). On s'arrête
-      // ici — la progression déjà faite est sauvegardée ci-dessous, et
-      // la prochaine exécution reprendra exactement au même endroit.
-      console.warn('leaderboard scan: chunk', from, '-', to, 'failed:', err.message);
+  let pageParams = null; // next_page_params de la page précédente
+  for (let page = 0; page < MAX_PAGES; page++) {
+    if (Date.now() - started > INVOCATION_BUDGET_MS) {
+      console.warn('leaderboard: budget temps atteint à la page', page);
       break;
     }
+
+    const qs = new URLSearchParams({ topic0: BURN_TOPIC });
+    if (pageParams) {
+      if (pageParams.block_number != null) qs.set('block_number', String(pageParams.block_number));
+      if (pageParams.index != null) qs.set('index', String(pageParams.index));
+      if (pageParams.items_count != null) qs.set('items_count', String(pageParams.items_count));
+    }
+    const url = `${EXPLORER_BASE}/api/v2/addresses/${CONTRACT_ADDRESS}/logs?${qs.toString()}`;
+
+    let json;
+    try {
+      const res = await withTimeout(fetch(url, { headers: { Accept: 'application/json' } }), FETCH_TIMEOUT_MS);
+      if (!res.ok) throw new Error(`explorer HTTP ${res.status}`);
+      json = await res.json();
+    } catch (err) {
+      console.warn('leaderboard: page', page, 'échouée:', err.message);
+      break; // on garde ce qu'on a déjà accumulé
+    }
+
+    const items = Array.isArray(json.items) ? json.items : [];
+    for (const it of items) {
+      // Voie normale : paramètres déjà décodés par l'explorateur.
+      const params = it.decoded && Array.isArray(it.decoded.parameters) ? it.decoded.parameters : null;
+      let addr = null, amount = null;
+      if (params) {
+        const pUser = params.find(p => p.name === 'user') || params.find(p => p.indexed && p.type === 'address');
+        const pAmt = params.find(p => p.name === 'amount') || params.find(p => !p.indexed && p.type === 'uint256');
+        if (pUser) addr = String(pUser.value).toLowerCase();
+        if (pAmt) amount = pAmt.value;
+      }
+      // Repli : décoder depuis topics/data bruts si jamais `decoded` manque.
+      if ((!addr || amount == null) && Array.isArray(it.topics) && it.topics[1]) {
+        addr = ('0x' + String(it.topics[1]).slice(26)).toLowerCase();
+        if (typeof it.data === 'string' && it.data.length >= 66) {
+          amount = BigInt('0x' + it.data.slice(2, 66)).toString();
+        }
+      }
+      if (!addr || amount == null) continue;
+      try {
+        totals[addr] = (totals[addr] || 0n) + BigInt(amount);
+      } catch { /* valeur non parseable : on ignore cet event */ }
+    }
+
+    pageParams = json.next_page_params || null;
+    if (!pageParams) break; // dernière page atteinte
   }
 
-  if (scannedAny) {
-    await saveState(amounts, from - 1);
-  }
-  return { amounts, lastBlock: from - 1, latest, complete: from > latest };
+  const sorted = Object.entries(totals)
+    .map(([address, total]) => ({ address, amount: total.toString() }))
+    .sort((a, b) => (BigInt(b.amount) > BigInt(a.amount) ? 1 : -1))
+    .slice(0, 100);
+
+  return {
+    leaderboard: sorted,
+    totalBurners: Object.keys(totals).length,
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 export default async function handler(req, res) {
@@ -171,40 +186,42 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
   try {
-    let amounts, lastBlock, complete;
-    const gotLock = await tryAcquireLock();
+    const cached = await loadCache();
+    const fresh = cached && cached.updatedAt &&
+      (Date.now() - new Date(cached.updatedAt).getTime() < CACHE_TTL_MS);
 
-    if (gotLock) {
-      try {
-        const result = await scanIncremental();
-        amounts = result.amounts;
-        lastBlock = result.lastBlock;
-        complete = result.complete;
-      } finally {
-        await releaseLock();
-      }
-    } else {
-      // Un autre appel est en train de scanner — on sert le cache tel quel.
-      const state = await loadState();
-      amounts = state.amounts;
-      lastBlock = state.lastBlock;
-      complete = null; // inconnu sans un nouvel appel getBlockNumber
+    // Cache encore frais → on le sert directement, aucun recalcul.
+    if (fresh) {
+      res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
+      res.status(200).json({ ...cached, cached: true });
+      return;
     }
 
-    const sorted = Object.entries(amounts)
-      .map(([address, amount]) => ({ address, amount }))
-      .sort((a, b) => (BigInt(b.amount) > BigInt(a.amount) ? 1 : -1))
-      .slice(0, 100);
+    // Cache périmé/absent : on tente de recalculer, mais un seul appel à la
+    // fois (verrou). Les autres servent le cache périmé en attendant.
+    const gotLock = await tryAcquireLock();
+    if (!gotLock) {
+      if (cached) {
+        res.setHeader('Cache-Control', 'public, s-maxage=10');
+        res.status(200).json({ ...cached, cached: true, stale: true });
+        return;
+      }
+      res.status(200).json({ leaderboard: [], totalBurners: 0, updatedAt: null, building: true });
+      return;
+    }
 
-    res.setHeader('Cache-Control', 'public, s-maxage=20, stale-while-revalidate=120');
-    res.status(200).json({
-      leaderboard: sorted,
-      totalBurners: Object.keys(amounts).length,
-      lastBlock,
-      complete,
-    });
+    try {
+      const payload = await rebuildFromExplorer();
+      await saveCache(payload);
+      res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
+      res.status(200).json({ ...payload, cached: false });
+    } finally {
+      await releaseLock();
+    }
   } catch (e) {
     console.error('leaderboard.js error:', e);
+    const cached = await loadCache().catch(() => null);
+    if (cached) { res.status(200).json({ ...cached, cached: true, error: true }); return; }
     res.status(500).json({ error: 'Server error' });
   }
 }
