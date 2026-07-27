@@ -1,0 +1,8 @@
+{
+  "name": "the-silver-void",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "ethers": "^6.17.0"
+  }
+}
