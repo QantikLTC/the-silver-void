@@ -31,12 +31,13 @@ import { ethers } from 'ethers';
 // ─── CONFIG — à modifier au moment du passage au mainnet ───────────────
 const RPC = 'https://liteforge.rpc.caldera.xyz/http';
 const CONTRACT_ADDRESS = '0x0AD3f776C45FF457d2d8e211A3174A4Db201b656';
-const NETWORK_TAG = 'liteforge-testnet'; // ex: 'litecoin-mainnet' au mainnet
-// Bloc à partir duquel scanner. Sur testnet on part de 0 (le scan
-// incrémental rattrapera tout seul). Au mainnet, notez le bloc de
-// déploiement du contrat dès que vous le déployez et mettez-le ici —
-// ça évite de scanner des tranches vides avant que le contrat existe.
-const START_BLOCK = 0;
+const NETWORK_TAG = 'liteforge-testnet-v2'; // ex: 'litecoin-mainnet' au mainnet
+// Bloc à partir duquel scanner. Les premiers burns du contrat testnet
+// apparaissent vers le bloc ~31-32M ; on démarre à 30M avec une marge de
+// sécurité pour être sûr de tous les capturer, sans traverser 30M de
+// blocs vides depuis zéro. Au mainnet, mettez ici le bloc de déploiement
+// du contrat (que vous connaîtrez au moment où vous le déploierez).
+const START_BLOCK = 30000000;
 // ─────────────────────────────────────────────────────────────────────
 
 const CHUNK_SIZE = 10000;          // plage max acceptée par ce RPC
