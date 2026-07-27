@@ -5496,34 +5496,98 @@ async function loadLeaderboard(){
 
     console.log('Burner count:',burnerCount);
 
-    // ─────────────────────────────────────────────────────────────
-    // MAINTENANCE TEMPORAIRE — leaderboard désactivé.
-    // La fonction de classement du contrat (immuable) fait un tri
-    // on-chain O(n au carre) qui depasse desormais la limite de gas des
-    // appels eth_call avec ~745 burners : elle revert systematiquement.
-    // En attendant le correctif (tri deplace cote client), on n'appelle
-    // aucune fonction de tri ni aucun scan d'events — ceci evite de
-    // surcharger le RPC quand plusieurs personnes sont connectees.
-    // Les statistiques de la sidebar ci-dessus restent à jour (getStats).
-    // ─────────────────────────────────────────────────────────────
-    allBurners=[];
-    _lbTotalBurners = burnerCount;
-    const wrap=document.getElementById('lb-rows');
-    if(wrap){
-      wrap.innerHTML=
-        '<div class="lb-empty">'
-        + '<strong>Leaderboard temporarily unavailable</strong>'
-        + 'The rankings are being upgraded and will be back shortly. '
-        + 'Every burn is still recorded on-chain \u2014 your rank is safe. '
-        + 'Thank you for your patience.'
-        + '</div>';
+    // ── Classement lu depuis /api/leaderboard ──────────────────────────
+    // getTopBurners() du contrat est INUTILISABLE : son tri on-chain O(n²)
+    // dépasse la limite de gas des eth_call dès quelques centaines de
+    // burners et revert systématiquement. Le classement est donc calculé
+    // côté serveur (voir /api/leaderboard.js) à partir des events de burn
+    // indexés par l'explorateur, mis en cache, et servi trié ici. Le front
+    // ne touche plus jamais getTopBurners.
+    let lbData;
+    try {
+      const resp = await fetch('/api/leaderboard');
+      lbData = await resp.json();
+    } catch(e) {
+      console.error('Leaderboard API error:', e);
+      const wrap=document.getElementById('lb-rows');
+      if(wrap) wrap.innerHTML=`<div class="lb-empty"><strong>Leaderboard temporarily unavailable</strong>The rankings are being rebuilt and will be back shortly. Every burn is safely recorded.</div>`;
+      return;
     }
-    return;
+
+    const apiList = (lbData && Array.isArray(lbData.leaderboard)) ? lbData.leaderboard : [];
+    if(lbData && lbData.totalBurners) _lbTotalBurners = Number(lbData.totalBurners);
+
+    // Le premier cycle de construction côté serveur n'est pas encore fini.
+    if((lbData && lbData.building) || apiList.length===0){
+      allBurners=[];
+      const wrap=document.getElementById('lb-rows');
+      if(wrap) wrap.innerHTML=`<div class="lb-empty"><strong>Building the rankings…</strong>The leaderboard is being assembled from on-chain data. Check back in a moment.</div>`;
+      return;
+    }
+
+    // Rang calculé côté JS depuis le montant brûlé (mêmes seuils que le
+    // contrat d'origine), pour ne pas refaire un appel on-chain par ligne.
+    // Seuils en zkLTC : 0.5 / 5 / 20 / 100.
+    function rankNameFor(burnedEth){
+      if(burnedEth >= 100) return 'Silver Maximalist';
+      if(burnedEth >= 20)  return 'Devoted Litecoiner';
+      if(burnedEth >= 5)   return 'Apprentice Litecoiner';
+      if(burnedEth >= 0.5) return 'Simple Holder';
+      return 'The Void';
+    }
+
+    const addresses = apiList.map(e => e.address);
+    if (typeof profilesBatchPrefetch === 'function') await profilesBatchPrefetch(addresses);
+    const rows=await Promise.all(apiList.map(async(entry,i)=>{
+      const addr = entry.address;
+      // entry.amount est en wei (chaîne). On convertit en zkLTC.
+      let burnedEth = 0;
+      try { burnedEth = parseFloat(ethers.formatEther(entry.amount)); } catch(e) {}
+      if(burnedEth===0) return null;
+      const rankName = rankNameFor(burnedEth);
+      const initials=addr.slice(2,4).toUpperCase();
+      const shortAddr = addr.slice(0,6)+'...'+addr.slice(-4);
+      let displayName = shortAddr;
+      let avatarHTML = null;
+      try {
+        const uname = typeof usernameFetch === 'function' ? await usernameFetch(addr) : null;
+        if (uname) displayName = uname;
+      } catch(e) {}
+      try {
+        // Pour SA PROPRE ligne, on connaît déjà la valeur à jour (_myAvatarId) :
+        // le cache de profils peut être périmé et affichait l'ancien portrait.
+        const _isMe = connectedAddress && addr.toLowerCase() === connectedAddress.toLowerCase();
+        const avId = _isMe
+          ? (_myAvatarId && _myAvatarId !== 'default' ? _myAvatarId : null)
+          : (typeof avatarFetch === 'function' ? await avatarFetch(addr) : null);
+        if (avId) avatarHTML = typeof avatarHTMLFor === 'function' ? avatarHTMLFor(avId, 46) : null;
+      } catch(e) {}
+      let skinId = null;
+      try { skinId = typeof skinFetchCached === 'function' ? await skinFetchCached(addr) : null; } catch(e) {}
+      return{
+        rank:i+1,
+        init:initials,
+        name:displayName,
+        addr:shortAddr,
+        fullAddr:addr,
+        tier:rankName,
+        ltc:burnedEth,
+        avatarHTML:avatarHTML,
+        skin:skinId
+      };
+    }));
+
+    allBurners=rows.filter(Boolean);
+    // _lbTotalBurners est déjà renseigné depuis la réponse de l'API ci-dessus.
+    console.log('All burners:',allBurners);
+    // keepPage : ce rendu vient du rafraîchissement périodique (30 s).
+    // Sans lui, un lecteur en page 2 était ramené en page 1 à chaque cycle.
+    renderLB(allBurners, undefined, true);
 
   }catch(e){
     console.error('Leaderboard error:',e);
     const wrap=document.getElementById('lb-rows');
-    if(wrap) wrap.innerHTML=`<div class="lb-empty"><strong>Leaderboard temporarily unavailable</strong>The rankings are being upgraded and will be back shortly. Every burn is still recorded on-chain — your rank is safe.</div>`;
+    if(wrap) wrap.innerHTML=`<div class="lb-empty"><strong>Leaderboard temporarily unavailable</strong>The rankings are being rebuilt and will be back shortly. Every burn is safely recorded.</div>`;
   }
 }
 
