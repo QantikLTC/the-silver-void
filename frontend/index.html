@@ -2226,8 +2226,8 @@ body::after {
 .vb-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--rc,#555);opacity:0.9;z-index:3;}
 .vb-art{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;
   background:radial-gradient(circle at 40% 35%,rgba(40,54,110,0.45),rgba(6,10,30,0.9));}
-.vb-ring{position:relative;width:84px;height:84px;border-radius:50%;}
-.vb-disc{position:absolute;inset:9px;border-radius:50%;background:#0c0824;z-index:2;
+.vb-ring{position:relative;width:108px;height:108px;border-radius:50%;}
+.vb-disc{position:absolute;inset:11px;border-radius:50%;background:#0c0824;z-index:2;
   display:flex;align-items:center;justify-content:center;}
 .vb-rar{position:absolute;top:8px;left:8px;z-index:3;font-family:'Cinzel',serif;font-size:0.5rem;
   letter-spacing:0.16em;text-transform:uppercase;padding:0.2rem 0.5rem;border-radius:3px;
@@ -2255,7 +2255,7 @@ body::after {
 .vb-burn{font-size:0.54rem;color:#ff9a4d;letter-spacing:0.05em;margin-top:0.5rem;text-align:center;}
 @media(max-width:600px){
   #forge-store-grid{grid-template-columns:repeat(2,1fr) !important;gap:0.6rem !important;}
-  .vb-ring{width:72px;height:72px;}
+  .vb-ring{width:92px;height:92px;}
   .vb-cta{padding:0.4rem 0.6rem;}
 }
 </style>
@@ -10726,7 +10726,7 @@ async function forgeStoreRender() {
 
     return '<div class="vb-card" style="--rc:' + col + ';">'
       + '<div class="vb-art">'
-      +   '<div class="vb-ring">' + SKIN_FX(s.id, 84, false)
+      +   '<div class="vb-ring">' + SKIN_FX(s.id, 108, false)
       +     '<span class="vb-disc">' + avatarInner + '</span>'
       +   '</div>'
       +   '<span class="vb-rar" style="--rc:' + col + ';">' + s.rarity + '</span>'
