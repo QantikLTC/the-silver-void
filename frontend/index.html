@@ -1619,13 +1619,20 @@ body::after {
   .lb-row-duel .lb-avatar { width:38px; height:38px; font-size:0.65rem; }
   .lb-row-duel .lb-addr { font-size:0.82rem; }
   .lb-stat-col { font-size:0.66rem; }
+  /* Le nom doit toujours rester visible : on garde une largeur minimale
+     pour la cellule user et on empêche l'anneau du skin de déborder sur
+     la colonne W (overflow visible -> caché sur mobile). */
+  .lb-row-duel .lb-user { min-width:0; }
+  .lb-row-duel .lb-addr { min-width:2.5rem; }
+  /* anneau du skin plus compact sur mobile : évite qu'il chevauche W */
+  .lb-row-duel .lb-ringwrap { padding:4px; margin:0; }
 }
 @media(max-width:400px){
   .lb-row-duel { grid-template-columns:0 minmax(0,1fr) 26px 26px 26px 42px; padding:0.65rem 0.4rem; gap:1px; }
   .lb-row-duel .lb-rank-num { display:none; } /* drop the rank number on very narrow screens to save width */
   .lb-row-duel .lb-user { gap:0.4rem; }
   .lb-row-duel .lb-avatar { width:34px; height:34px; }
-  .lb-row-duel .lb-addr { font-size:0.75rem; }
+  .lb-row-duel .lb-addr { font-size:0.75rem; min-width:2rem; }
   .lb-stat-col { font-size:0.62rem; }
 }
 .lb-row-duel:last-child { border-bottom:none; }
@@ -6343,7 +6350,7 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
       ? '<span class="fgl" style="background:conic-gradient(rgba(0,229,204,0.55) 0 100%);opacity:0.75;"></span>'
       : ((r.skin && typeof SKIN_FX === 'function') ? SKIN_FX(r.skin, 52, true) : null);
     const avatarCell = (_ringFXd && typeof SKIN_FX === 'function')
-      ? `<div style="position:relative;flex-shrink:0;padding:7px;margin:-2px;border-radius:50%;display:flex;align-items:center;justify-content:center;overflow:visible;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${_ringFXd}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
+      ? `<div class="lb-ringwrap" style="position:relative;flex-shrink:0;padding:7px;margin:-2px;border-radius:50%;display:flex;align-items:center;justify-content:center;overflow:visible;"><span style="position:absolute;inset:0;border-radius:50%;pointer-events:none;">${_ringFXd}</span><div style="position:relative;z-index:2;">${avatarBlock}</div></div>`
       : avatarBlock;
     return `<div class="lb-row-duel ${numClass}" data-lb-wallet="${r.wallet || ''}">
       <div class="lb-rank-num ${numClass}">${numSymbol}</div>
