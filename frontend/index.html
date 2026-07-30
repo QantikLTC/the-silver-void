@@ -1726,20 +1726,22 @@ body::after {
 .dc-rank3 .dc-rank{ color:#d08a54; }
 
 .dc-avatar{
-  position:relative; width:60px; height:60px; flex-shrink:0;
+  position:relative; width:64px; height:64px; flex-shrink:0;
   display:flex; align-items:center; justify-content:center;
 }
 /* L'anneau (fgl/fgo/fgp) se positionne en absolute:inset:0 sur SON parent.
-   On lui donne un parent légèrement plus grand que l'avatar pour qu'il
-   l'entoure au lieu de le recouvrir. */
+   On reproduit l'espacement du classement des sacrifiants : avatar 50px +
+   ~7px de marge de chaque côté = anneau à 64px. Cet écart laisse les
+   glyphes orbitants (Ł) tourner AUTOUR de l'avatar au lieu de passer
+   derrière lui. */
 .dc-ringfx{
   position:absolute; top:50%; left:50%;
-  width:58px; height:58px; transform:translate(-50%,-50%);
+  width:64px; height:64px; transform:translate(-50%,-50%);
   border-radius:50%; pointer-events:none;
 }
 .dc-avatar-ring{
   position:absolute; top:50%; left:50%;
-  width:56px; height:56px; transform:translate(-50%,-50%);
+  width:64px; height:64px; transform:translate(-50%,-50%);
   border-radius:50%;
   border:2.5px solid rgba(0,229,204,0.35);
 }
@@ -1777,10 +1779,10 @@ body::after {
 @media(max-width:440px){
   .duel-card{ gap:10px; padding:10px 12px 10px 10px; grid-template-columns:20px auto 1fr auto; }
   .dc-rank{ width:20px; font-size:0.9rem; }
-  .dc-avatar{ width:54px; height:54px; }
+  .dc-avatar{ width:58px; height:58px; }
   .dc-avatar-inner, .dc-avatar-img{ width:44px; height:44px; }
-  .dc-ringfx{ width:52px; height:52px; }
-  .dc-avatar-ring{ width:50px; height:50px; }
+  .dc-ringfx{ width:58px; height:58px; }
+  .dc-avatar-ring{ width:58px; height:58px; }
   .dc-name{ font-size:0.88rem; }
   .dc-record{ font-size:0.74rem; }
   .dc-score-val{ font-size:1.2rem; }
@@ -6439,7 +6441,7 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
     // Anneau du skin équipé (version légère, comme avant).
     const _ringFXd = (r.skin === 'ring_default')
       ? '<span class="fgl" style="background:conic-gradient(rgba(0,229,204,0.55) 0 100%);opacity:0.75;"></span>'
-      : ((r.skin && typeof SKIN_FX === 'function') ? SKIN_FX(r.skin, 56, true) : null);
+      : ((r.skin && typeof SKIN_FX === 'function') ? SKIN_FX(r.skin, 52, true) : null);
     const avatarCell = (_ringFXd && typeof SKIN_FX === 'function')
       ? `<div class="dc-avatar"><span class="dc-ringfx">${_ringFXd}</span><div class="dc-avatar-inner">${avatarBlock}</div></div>`
       : `<div class="dc-avatar"><span class="dc-avatar-ring"></span><div class="dc-avatar-inner">${avatarBlock}</div></div>`;
