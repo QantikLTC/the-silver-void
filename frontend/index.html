@@ -1616,12 +1616,7 @@ body::after {
 @media(max-width:768px){
   .lb-row-duel { grid-template-columns:22px minmax(0,1fr) 28px 28px 28px 52px; padding:0.7rem 0.6rem; gap:4px; }
   .lb-row-duel .lb-user { gap:0.45rem; min-width:0; overflow:hidden; }
-  .lb-row-duel .lb-avatar { width:36px; height:36px; font-size:0.65rem; }
-  /* L'anneau du skin est dimensionné en dur pour ne PAS déborder sur la
-     colonne W : le wrapper + le SVG absolu sont bornés à 44px. */
-  .lb-row-duel .lb-ringwrap { width:44px; height:44px; padding:0; margin:0; flex-shrink:0; overflow:hidden; }
-  .lb-row-duel .lb-ringwrap > span { inset:0 !important; }
-  .lb-row-duel .lb-ringwrap > span svg { width:100% !important; height:100% !important; }
+  .lb-row-duel .lb-avatar { width:38px; height:38px; font-size:0.65rem; }
   .lb-row-duel .lb-addr { font-size:0.8rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .lb-stat-col { font-size:0.72rem; }
   .lb-row-duel .lb-amount { font-size:0.9rem; }
@@ -1630,8 +1625,7 @@ body::after {
   .lb-row-duel { grid-template-columns:0 minmax(0,1fr) 24px 24px 24px 46px; padding:0.65rem 0.45rem; gap:3px; }
   .lb-row-duel .lb-rank-num { display:none; }
   .lb-row-duel .lb-user { gap:0.4rem; }
-  .lb-row-duel .lb-avatar { width:32px; height:32px; }
-  .lb-row-duel .lb-ringwrap { width:40px; height:40px; }
+  .lb-row-duel .lb-avatar { width:34px; height:34px; }
   .lb-row-duel .lb-addr { font-size:0.74rem; }
   .lb-stat-col { font-size:0.66rem; }
   .lb-row-duel .lb-amount { font-size:0.82rem; }
