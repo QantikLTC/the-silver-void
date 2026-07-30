@@ -1726,34 +1726,26 @@ body::after {
 .dc-rank3 .dc-rank{ color:#d08a54; }
 
 .dc-avatar{
-  position:relative; width:64px; height:64px; flex-shrink:0;
+  position:relative; flex-shrink:0;
+  padding:7px; margin:-2px; border-radius:50%;
   display:flex; align-items:center; justify-content:center;
+  overflow:visible;
 }
-/* L'anneau (fgl/fgo/fgp) se positionne en absolute:inset:0 sur SON parent.
-   On reproduit l'espacement du classement des sacrifiants : avatar 50px +
-   ~7px de marge de chaque côté = anneau à 64px. Cet écart laisse les
-   glyphes orbitants (Ł) tourner AUTOUR de l'avatar au lieu de passer
-   derrière lui. */
+/* Même méthode que le classement des sacrifiants : l'anneau est un span
+   en position:absolute; inset:0 (SANS transform, qui créerait un contexte
+   d'empilement isolant les glyphes). Le padding:7px du parent crée l'écart
+   avatar↔anneau, et laisse les glyphes orbitants (Ł) passer DEVANT l'avatar. */
 .dc-ringfx{
-  position:absolute; top:50%; left:50%;
-  width:64px; height:64px; transform:translate(-50%,-50%);
-  border-radius:50%; pointer-events:none;
+  position:absolute; inset:0; border-radius:50%; pointer-events:none;
 }
 .dc-avatar-ring{
-  position:absolute; top:50%; left:50%;
-  width:64px; height:64px; transform:translate(-50%,-50%);
-  border-radius:50%;
+  position:absolute; inset:0; border-radius:50%;
   border:2.5px solid rgba(0,229,204,0.35);
 }
 .dc-rank1 .dc-avatar-ring{ border-color:#e8c15a; box-shadow:0 0 12px rgba(232,193,90,0.4); }
 .dc-rank2 .dc-avatar-ring{ border-color:#c8d2e0; box-shadow:0 0 12px rgba(200,210,224,0.35); }
 .dc-rank3 .dc-avatar-ring{ border-color:#d08a54; box-shadow:0 0 12px rgba(208,138,84,0.35); }
 .dc-avatar-inner{ position:relative; z-index:2; width:50px; height:50px; }
-/* Les glyphes orbitants de l'anneau (Ł de Silver Moon, Lunar Trinity…)
-   doivent tourner DEVANT l'avatar, pas derrière. On force leur couche
-   au-dessus de l'avatar interne (z-index:2). Le fond de l'anneau (.fgl)
-   reste, lui, derrière l'avatar. */
-.dc-avatar .dc-ringfx .fgo{ z-index:5; }
 .dc-avatar-img{
   width:50px; height:50px; border-radius:50%;
   background:radial-gradient(circle at 38% 30%, #101a3a 0%, #0a1228 55%, #050a18 100%);
@@ -1784,10 +1776,8 @@ body::after {
 @media(max-width:440px){
   .duel-card{ gap:10px; padding:10px 12px 10px 10px; grid-template-columns:20px auto 1fr auto; }
   .dc-rank{ width:20px; font-size:0.9rem; }
-  .dc-avatar{ width:58px; height:58px; }
+  .dc-avatar{ padding:6px; }
   .dc-avatar-inner, .dc-avatar-img{ width:44px; height:44px; }
-  .dc-ringfx{ width:58px; height:58px; }
-  .dc-avatar-ring{ width:58px; height:58px; }
   .dc-name{ font-size:0.88rem; }
   .dc-record{ font-size:0.74rem; }
   .dc-score-val{ font-size:1.2rem; }
@@ -6449,7 +6439,7 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
       : ((r.skin && typeof SKIN_FX === 'function') ? SKIN_FX(r.skin, 52, true) : null);
     const avatarCell = (_ringFXd && typeof SKIN_FX === 'function')
       ? `<div class="dc-avatar"><span class="dc-ringfx">${_ringFXd}</span><div class="dc-avatar-inner">${avatarBlock}</div></div>`
-      : `<div class="dc-avatar"><span class="dc-avatar-ring"></span><div class="dc-avatar-inner">${avatarBlock}</div></div>`;
+      : `<div class="dc-avatar dc-avatar-plain"><span class="dc-avatar-ring"></span><div class="dc-avatar-inner">${avatarBlock}</div></div>`;
     return `<div class="duel-card ${rankClass}" data-lb-wallet="${r.wallet || ''}">
       <div class="dc-rank">${rankLabel}</div>
       ${avatarCell}
