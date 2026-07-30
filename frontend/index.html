@@ -1729,10 +1729,18 @@ body::after {
   position:relative; width:52px; height:52px; flex-shrink:0;
   display:flex; align-items:center; justify-content:center;
 }
-.dc-ringfx{ position:absolute; inset:0; border-radius:50%; pointer-events:none; }
-.dc-ringfx svg, .dc-ringfx > *{ width:100% !important; height:100% !important; }
+/* L'anneau (fgl/fgo/fgp) se positionne en absolute:inset:0 sur SON parent.
+   On lui donne un parent légèrement plus grand que l'avatar (48px vs 42px)
+   pour qu'il l'entoure au lieu de le recouvrir. */
+.dc-ringfx{
+  position:absolute; top:50%; left:50%;
+  width:50px; height:50px; transform:translate(-50%,-50%);
+  border-radius:50%; pointer-events:none;
+}
 .dc-avatar-ring{
-  position:absolute; inset:0; border-radius:50%;
+  position:absolute; top:50%; left:50%;
+  width:48px; height:48px; transform:translate(-50%,-50%);
+  border-radius:50%;
   border:2.5px solid rgba(0,229,204,0.35);
 }
 .dc-rank1 .dc-avatar-ring{ border-color:#e8c15a; box-shadow:0 0 12px rgba(232,193,90,0.4); }
