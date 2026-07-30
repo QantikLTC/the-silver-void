@@ -1614,26 +1614,27 @@ body::after {
    ~380px phone screen and shove the Score column off-grid. Tighter columns
    + padding fit. Score column stays wide enough for the number + PTS. */
 @media(max-width:768px){
-  .lb-row-duel { grid-template-columns:20px minmax(0,1fr) 30px 30px 30px 46px; padding:0.7rem 0.5rem; gap:2px; }
-  .lb-row-duel .lb-user { gap:0.5rem; }
-  .lb-row-duel .lb-avatar { width:38px; height:38px; font-size:0.65rem; }
-  .lb-row-duel .lb-addr { font-size:0.82rem; }
-  .lb-stat-col { font-size:0.66rem; }
-  /* Le nom doit toujours rester visible : on garde une largeur minimale
-     pour la cellule user et on empêche l'anneau du skin de déborder sur
-     la colonne W (overflow visible -> caché sur mobile). */
-  .lb-row-duel .lb-user { min-width:0; }
-  .lb-row-duel .lb-addr { min-width:2.5rem; }
-  /* anneau du skin plus compact sur mobile : évite qu'il chevauche W */
-  .lb-row-duel .lb-ringwrap { padding:4px; margin:0; }
+  .lb-row-duel { grid-template-columns:22px minmax(0,1fr) 28px 28px 28px 52px; padding:0.7rem 0.6rem; gap:4px; }
+  .lb-row-duel .lb-user { gap:0.45rem; min-width:0; overflow:hidden; }
+  .lb-row-duel .lb-avatar { width:36px; height:36px; font-size:0.65rem; }
+  /* L'anneau du skin est dimensionné en dur pour ne PAS déborder sur la
+     colonne W : le wrapper + le SVG absolu sont bornés à 44px. */
+  .lb-row-duel .lb-ringwrap { width:44px; height:44px; padding:0; margin:0; flex-shrink:0; overflow:hidden; }
+  .lb-row-duel .lb-ringwrap > span { inset:0 !important; }
+  .lb-row-duel .lb-ringwrap > span svg { width:100% !important; height:100% !important; }
+  .lb-row-duel .lb-addr { font-size:0.8rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lb-stat-col { font-size:0.72rem; }
+  .lb-row-duel .lb-amount { font-size:0.9rem; }
 }
 @media(max-width:400px){
-  .lb-row-duel { grid-template-columns:0 minmax(0,1fr) 26px 26px 26px 42px; padding:0.65rem 0.4rem; gap:1px; }
-  .lb-row-duel .lb-rank-num { display:none; } /* drop the rank number on very narrow screens to save width */
+  .lb-row-duel { grid-template-columns:0 minmax(0,1fr) 24px 24px 24px 46px; padding:0.65rem 0.45rem; gap:3px; }
+  .lb-row-duel .lb-rank-num { display:none; }
   .lb-row-duel .lb-user { gap:0.4rem; }
-  .lb-row-duel .lb-avatar { width:34px; height:34px; }
-  .lb-row-duel .lb-addr { font-size:0.75rem; min-width:2rem; }
-  .lb-stat-col { font-size:0.62rem; }
+  .lb-row-duel .lb-avatar { width:32px; height:32px; }
+  .lb-row-duel .lb-ringwrap { width:40px; height:40px; }
+  .lb-row-duel .lb-addr { font-size:0.74rem; }
+  .lb-stat-col { font-size:0.66rem; }
+  .lb-row-duel .lb-amount { font-size:0.82rem; }
 }
 .lb-row-duel:last-child { border-bottom:none; }
 .lb-row-duel:hover { background:rgba(0,229,204,0.02); }
@@ -1684,6 +1685,9 @@ body::after {
   font-family:'Cinzel',serif; font-size:0.88rem; font-weight:600;
   color:#fff; text-align:right;
 }
+/* Dans le classement des duellistes, le score est centré pour s'aligner
+   avec son en-tête « Score » (lb-stat-col, centré comme W/T/L). */
+.lb-row-duel .lb-amount { text-align:center; }
 .lb-amount .lb-unit { font-size:0.5rem; color:rgba(255,255,255,0.35); display:block; letter-spacing:0.15em; }
 
 /* Rank tier */
