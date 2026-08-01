@@ -3303,6 +3303,14 @@ function svIntroParticles() {
         <button id="lb-find-me" onclick="lbFindMe()" style="display:none;background:rgba(0,229,204,0.1);border:1px solid rgba(0,229,204,0.4);border-radius:8px;padding:0.5rem 1rem;color:var(--teal);font-family:'Cinzel',serif;font-size:0.66rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:all 0.2s;" onmouseover="this.style.background='rgba(0,229,204,0.2)'" onmouseout="this.style.background='rgba(0,229,204,0.1)'">◎ Find me</button>
       </div>
       <div id="lb-my-position" style="display:none;margin-bottom:0.8rem;padding:0.6rem 0.9rem;background:linear-gradient(90deg,rgba(0,229,204,0.08),rgba(0,229,204,0.02));border:1px solid rgba(0,229,204,0.3);border-radius:8px;font-family:'Cinzel',serif;font-size:0.72rem;color:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:space-between;gap:0.5rem;"></div>
+      <!-- Statut de rafraîchissement : le classement vient d'un cache serveur
+           (voir /api/leaderboard.js) mis à jour périodiquement, pas en temps
+           réel. Sans ce bandeau, un burn qui n'apparaît pas tout de suite
+           ressemble à un bug plutôt qu'à un simple délai de cache. -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:0.6rem;margin-bottom:0.7rem;flex-wrap:wrap;">
+        <span id="lb-sac-updated" style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:0.78rem;color:rgba(255,255,255,0.4);"></span>
+        <button id="lb-sac-refresh-btn" onclick="lbSacManualRefresh()" style="background:rgba(0,229,204,0.08);border:1px solid rgba(0,229,204,0.3);border-radius:8px;padding:0.4rem 0.9rem;color:var(--teal);font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:all 0.2s;" onmouseover="this.style.background='rgba(0,229,204,0.18)'" onmouseout="this.style.background='rgba(0,229,204,0.08)'">↺ Refresh</button>
+      </div>
       <div id="lb-rows">
         <div class="lb-empty"><strong>Loading...</strong>Calling the blockchain...</div>
       </div>
@@ -5590,7 +5598,33 @@ async function burn(){
   const orig=btn.innerHTML;
   try{
     btn.innerHTML='⬡ &ensp; Awaiting confirmation...'; btn.style.opacity='0.7';
-    const tx=await contract.burn({value:ethers.parseEther(v.toString())});
+    // Le RPC LiteForge expose un baseFee parfois légèrement en retard sur la
+    // réalité du réseau : l'estimation par défaut de MetaMask propose alors
+    // un maxFeePerGas tout juste inférieur au baseFee réel au moment où la
+    // transaction atteint le nœud, et le burn échoue en boucle avec l'erreur
+    // "max fee per gas less than block base fee". On applique donc une marge
+    // de sécurité (+30%) au-dessus du baseFee lu juste avant l'envoi, pour
+    // absorber cette dérive. Coût réel négligeable (les frais sont de
+    // l'ordre de 0.0001 zkLTC), donc aucun impact perceptible pour la
+    // personne — seulement moins d'échecs de transaction.
+    let txOpts = { value: ethers.parseEther(v.toString()) };
+    try {
+      const feeData = await (window.svReadProvider || contract.runner.provider).getFeeData();
+      if (feeData && feeData.maxFeePerGas) {
+        txOpts.maxFeePerGas = (feeData.maxFeePerGas * 130n) / 100n;
+        if (feeData.maxPriorityFeePerGas) {
+          txOpts.maxPriorityFeePerGas = (feeData.maxPriorityFeePerGas * 130n) / 100n;
+        }
+      } else if (feeData && feeData.gasPrice) {
+        // Réseau legacy (pas d'EIP-1559) : même marge sur gasPrice.
+        txOpts.gasPrice = (feeData.gasPrice * 130n) / 100n;
+      }
+    } catch(e) {
+      // Si la lecture du feeData échoue, on laisse MetaMask estimer seul
+      // (comportement d'avant ce correctif) plutôt que de bloquer le burn.
+      console.warn('burn(): feeData lookup failed, falling back to wallet estimate:', e.message);
+    }
+    const tx=await contract.burn(txOpts);
     btn.innerHTML='⬡ &ensp; Pouring...';
     showToast('Transaction sent...');
     await tx.wait();
@@ -5606,6 +5640,8 @@ async function burn(){
       friendly = '✖ Insufficient zkLTC balance';
     else if(msg.includes('rejected') || msg.includes('denied') || msg.includes('user rejected'))
       friendly = '✖ Transaction rejected';
+    else if(msg.includes('base fee') || msg.includes('max fee per gas'))
+      friendly = '✖ Network fee spiked — please try again';
     else if(msg.includes('network') || msg.includes('disconnected'))
       friendly = '✖ Network error — check your connection';
     else if(msg.length > 0)
@@ -5781,6 +5817,27 @@ function filt(el){ filtNew(el); }
 
 function renderPodiumM(){ /* no podium in new design */ }
 
+// Refresh manuel du classement des sacrifiants (bouton ↺ Refresh).
+// N'accélère pas forcément l'apparition d'un burn tout juste effectué —
+// le calcul reste mis en cache côté serveur pour quelques minutes — mais
+// donne un retour visuel immédiat, pour que la personne sache que le site
+// a bien pris sa demande en compte plutôt que de croire à un bug.
+let _lbSacRefreshing = false;
+async function lbSacManualRefresh(){
+  if (_lbSacRefreshing) return;
+  _lbSacRefreshing = true;
+  const btn = document.getElementById('lb-sac-refresh-btn');
+  const updatedEl = document.getElementById('lb-sac-updated');
+  if (btn) { btn.textContent = '↺ Refreshing…'; btn.style.opacity = '0.6'; btn.disabled = true; }
+  if (updatedEl) updatedEl.textContent = 'Checking for new burns…';
+  try {
+    await loadLeaderboard();
+  } finally {
+    _lbSacRefreshing = false;
+    if (btn) { btn.textContent = '↺ Refresh'; btn.style.opacity = '1'; btn.disabled = false; }
+  }
+}
+
 async function loadLeaderboard(){
   try{
     const fp=window.svReadProvider;
@@ -5837,6 +5894,20 @@ async function loadLeaderboard(){
 
     const apiList = (lbData && Array.isArray(lbData.leaderboard)) ? lbData.leaderboard : [];
     if(lbData && lbData.totalBurners) _lbTotalBurners = Number(lbData.totalBurners);
+
+    // Bandeau "dernière mise à jour" : évite qu'un burn tout juste effectué,
+    // qui n'apparaît pas immédiatement à cause du cache serveur, ne soit pris
+    // pour un bug par la personne qui vient de burn.
+    const updatedEl = document.getElementById('lb-sac-updated');
+    if (updatedEl) {
+      if (lbData && lbData.updatedAt) {
+        const secAgo = Math.max(0, Math.floor((Date.now() - new Date(lbData.updatedAt).getTime()) / 1000));
+        const label = secAgo < 60 ? `${secAgo}s ago` : `${Math.floor(secAgo/60)}m ago`;
+        updatedEl.textContent = `Rankings refresh every few minutes — last updated ${label}`;
+      } else {
+        updatedEl.textContent = 'Rankings refresh every few minutes.';
+      }
+    }
 
     // Le premier cycle de construction côté serveur n'est pas encore fini.
     if((lbData && lbData.building) || apiList.length===0){
