@@ -15,9 +15,18 @@
 // total). Donc on parcourt les pages de l'explorateur PETIT À PETIT, sur
 // plusieurs invocations : chaque appel reprend là où le précédent s'est
 // arrêté (curseur next_page_params sauvegardé dans Redis), accumule les
-// totaux par adresse, et sauvegarde. Quand la dernière page est atteinte,
-// on fige un classement COMPLET et on recommence un cycle à zéro pour
-// rester à jour. Le cron fait avancer tout ça en arrière-plan.
+// totaux par adresse, et sauvegarde.
+//
+// CORRECTIF IMPORTANT (v5) : la version précédente ne rafraîchissait le
+// résultat SERVI au front qu'une fois un cycle ENTIER terminé (reachedEnd).
+// Avec des centaines de pages à parcourir à 40/invocation, un cycle prend
+// des dizaines d'appels — donc un burn tout frais pouvait rester invisible
+// pendant très longtemps, alors que le scan progressait bien en coulisse.
+// Désormais, chaque réponse FUSIONNE le dernier classement figé (KEY_FINAL)
+// avec la progression du cycle en cours (KEY_PROGRESS) : un burn scanné
+// dans les dernières pages apparaît donc dès l'appel suivant, sans attendre
+// que tout le cycle boucle. KEY_FINAL n'est là que comme filet de sécurité
+// pour ne jamais servir une liste vide entre deux cycles.
 //
 // CE QUE FAIT LE CONTRAT (event réellement émis, vu via l'explorateur) :
 //   Burned(address indexed user, uint256 amount, uint256 date,
@@ -26,8 +35,8 @@
 //
 // Stockage (Upstash Redis REST API via Vercel KV) :
 //   leaderboard:<network>:progress -> { totals, cursor } accumulation en cours
-//   leaderboard:<network>:final    -> { leaderboard, totalBurners, updatedAt }
-//                                     dernier classement COMPLET (servi au front)
+//   leaderboard:<network>:final    -> { totals, updatedAt } dernier cycle COMPLET
+//                                     (filet de sécurité, plus la seule source servie)
 //   leaderboard:<network>:lock     -> verrou anti-invocations concurrentes
 //
 // Au passage mainnet : changez EXPLORER_BASE / CONTRACT_ADDRESS /
@@ -36,7 +45,7 @@
 // ─── CONFIG — à modifier au moment du passage au mainnet ───────────────
 const EXPLORER_BASE = 'https://liteforge.explorer.caldera.xyz';
 const CONTRACT_ADDRESS = '0x0AD3f776C45FF457d2d8e211A3174A4Db201b656';
-const NETWORK_TAG = 'liteforge-testnet-v4';
+const NETWORK_TAG = 'liteforge-testnet-v5';
 // ─────────────────────────────────────────────────────────────────────
 
 const BURN_TOPIC = '0xf1b8071d85a68dbc6b0a9b8ff17e44602315ec457cdf743f3eee37cf4a6dd38e';
@@ -100,7 +109,7 @@ async function releaseLock() {
   try { await redisCall(`/del/${encodeURIComponent(KEY_LOCK)}`, { method: 'POST' }); } catch {}
 }
 
-function buildFinal(totals) {
+function buildLeaderboard(totals) {
   const sorted = Object.entries(totals)
     .map(([address, total]) => ({ address, amount: String(total) }))
     .sort((a, b) => (BigInt(b.amount) > BigInt(a.amount) ? 1 : -1))
@@ -114,12 +123,12 @@ function buildFinal(totals) {
 
 // Fait avancer la construction d'un bloc de pages. Reprend le curseur
 // sauvegardé, traite jusqu'à PAGES_PER_INVOCATION pages, resauvegarde.
-// Si la fin des events est atteinte, fige le classement final et
-// réamorce un nouveau cycle propre.
+// Si la fin des events est atteinte, fige KEY_FINAL (filet de sécurité)
+// et réamorce un nouveau cycle propre à partir des mêmes totaux (on ne
+// perd jamais ce qui a déjà été compté).
 async function advance() {
   const started = Date.now();
   let progress = await redisGet(KEY_PROGRESS);
-  // progress.totals est stocké en chaînes ; on retravaille en BigInt en mémoire.
   let totals = {};
   if (progress && progress.totals) {
     for (const [a, v] of Object.entries(progress.totals)) totals[a] = BigInt(v);
@@ -173,21 +182,21 @@ async function advance() {
     if (!cursor) { reachedEnd = true; break; }
   }
 
-  // Sérialiser les totaux (BigInt -> string) pour Redis.
   const totalsStr = {};
   for (const [a, v] of Object.entries(totals)) totalsStr[a] = v.toString();
 
   if (reachedEnd) {
-    // Cycle complet : on fige le classement final et on repart de zéro.
-    const final = buildFinal(totals);
-    await redisSet(KEY_FINAL, final);
-    await redisSet(KEY_PROGRESS, { totals: {}, cursor: null }); // nouveau cycle
-    return { final, complete: true };
+    // Cycle complet : on fige KEY_FINAL comme filet de sécurité, et on
+    // relance un nouveau cycle qui repart des MÊMES totaux (pas remis à
+    // zéro) — un cycle sert à repasser sur tous les events pour capter
+    // d'éventuels events manqués, pas à "oublier" ce qu'on sait déjà.
+    await redisSet(KEY_FINAL, { totals: totalsStr, updatedAt: new Date().toISOString() });
+    await redisSet(KEY_PROGRESS, { totals: totalsStr, cursor: null });
   } else {
-    // Cycle en cours : on sauvegarde la progression pour la prochaine invocation.
     await redisSet(KEY_PROGRESS, { totals: totalsStr, cursor });
-    return { final: null, complete: false, partialCount: Object.keys(totals).length };
   }
+
+  return totals; // toujours les totaux les plus frais connus après cet appel
 }
 
 export default async function handler(req, res) {
@@ -199,11 +208,15 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
   try {
+    let totals = null;
+
     // On tente de faire avancer la construction (un seul appel à la fois).
+    // Si on obtient le verrou, advance() nous donne directement les
+    // derniers totaux connus après ce pas de scan.
     const gotLock = await tryAcquireLock();
     if (gotLock) {
       try {
-        await advance();
+        totals = await advance();
       } catch (err) {
         console.error('leaderboard advance error:', err);
       } finally {
@@ -211,22 +224,39 @@ export default async function handler(req, res) {
       }
     }
 
-    // On sert TOUJOURS le dernier classement complet connu (KEY_FINAL).
-    // Tant que le tout premier cycle n'est pas terminé, il peut être absent :
-    // dans ce cas on renvoie une liste vide avec building:true.
-    const final = await redisGet(KEY_FINAL);
-    if (final) {
-      res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
-      res.status(200).json(final);
-    } else {
+    // Si on n'a pas pu avancer nous-mêmes (verrou pris par une autre
+    // invocation simultanée), on lit la progression la plus récente
+    // disponible plutôt que d'attendre : c'est ELLE qui contient les
+    // burns les plus frais, pas KEY_FINAL qui peut dater d'un cycle entier.
+    if (!totals) {
       const progress = await redisGet(KEY_PROGRESS);
-      const partialCount = progress && progress.totals ? Object.keys(progress.totals).length : 0;
-      res.status(200).json({ leaderboard: [], totalBurners: 0, updatedAt: null, building: true, partialCount });
+      if (progress && progress.totals && Object.keys(progress.totals).length > 0) {
+        totals = {};
+        for (const [a, v] of Object.entries(progress.totals)) totals[a] = BigInt(v);
+      }
     }
+
+    // Filet de sécurité ultime : si aucune progression n'existe encore
+    // (tout premier appel de tous, avant le premier scan), on retombe sur
+    // le dernier cycle complet connu s'il existe.
+    if (!totals) {
+      const final = await redisGet(KEY_FINAL);
+      if (final && final.totals) {
+        totals = {};
+        for (const [a, v] of Object.entries(final.totals)) totals[a] = BigInt(v);
+      }
+    }
+
+    if (!totals || Object.keys(totals).length === 0) {
+      res.status(200).json({ leaderboard: [], totalBurners: 0, updatedAt: null, building: true });
+      return;
+    }
+
+    const payload = buildLeaderboard(totals);
+    res.setHeader('Cache-Control', 'public, s-maxage=15, stale-while-revalidate=60');
+    res.status(200).json(payload);
   } catch (e) {
     console.error('leaderboard.js error:', e);
-    const final = await redisGet(KEY_FINAL).catch(() => null);
-    if (final) { res.status(200).json({ ...final, error: true }); return; }
     res.status(500).json({ error: 'Server error' });
   }
 }
