@@ -5590,6 +5590,36 @@ document.addEventListener('DOMContentLoaded',function(){
     const xp=document.getElementById('live-xp'); if(xp) xp.textContent='+'+Math.round(v*1000).toLocaleString()+' XP';
   });
 });
+// Marge de sécurité sur le gas, partagée par toutes les transactions
+// (burn ET duels). Le RPC LiteForge expose un baseFee parfois légèrement
+// en retard : l'estimation par défaut de MetaMask propose alors un
+// maxFeePerGas tout juste sous le baseFee réel au moment de l'envoi, et la
+// transaction échoue en boucle ("max fee per gas less than block base
+// fee"). On lit donc le feeData juste avant l'envoi et on ajoute +30%.
+// Coût réel négligeable (frais de l'ordre de 0.0001 zkLTC).
+async function svGasOverrides(baseOpts = {}) {
+  const opts = { ...baseOpts };
+  try {
+    const provider = window.svReadProvider
+      || (typeof contract !== 'undefined' && contract.runner && contract.runner.provider)
+      || (typeof duelContract !== 'undefined' && duelContract.runner && duelContract.runner.provider);
+    if (provider) {
+      const feeData = await provider.getFeeData();
+      if (feeData && feeData.maxFeePerGas) {
+        opts.maxFeePerGas = (feeData.maxFeePerGas * 130n) / 100n;
+        if (feeData.maxPriorityFeePerGas) {
+          opts.maxPriorityFeePerGas = (feeData.maxPriorityFeePerGas * 130n) / 100n;
+        }
+      } else if (feeData && feeData.gasPrice) {
+        opts.gasPrice = (feeData.gasPrice * 130n) / 100n;
+      }
+    }
+  } catch (e) {
+    console.warn('svGasOverrides: feeData lookup failed, wallet estimate used:', e.message);
+  }
+  return opts;
+}
+
 async function burn(){
   const v=parseFloat(document.getElementById('amt').value)||0;
   if(v<=0){showToast('Enter an amount',true);return;}
@@ -5598,32 +5628,7 @@ async function burn(){
   const orig=btn.innerHTML;
   try{
     btn.innerHTML='⬡ &ensp; Awaiting confirmation...'; btn.style.opacity='0.7';
-    // Le RPC LiteForge expose un baseFee parfois légèrement en retard sur la
-    // réalité du réseau : l'estimation par défaut de MetaMask propose alors
-    // un maxFeePerGas tout juste inférieur au baseFee réel au moment où la
-    // transaction atteint le nœud, et le burn échoue en boucle avec l'erreur
-    // "max fee per gas less than block base fee". On applique donc une marge
-    // de sécurité (+30%) au-dessus du baseFee lu juste avant l'envoi, pour
-    // absorber cette dérive. Coût réel négligeable (les frais sont de
-    // l'ordre de 0.0001 zkLTC), donc aucun impact perceptible pour la
-    // personne — seulement moins d'échecs de transaction.
-    let txOpts = { value: ethers.parseEther(v.toString()) };
-    try {
-      const feeData = await (window.svReadProvider || contract.runner.provider).getFeeData();
-      if (feeData && feeData.maxFeePerGas) {
-        txOpts.maxFeePerGas = (feeData.maxFeePerGas * 130n) / 100n;
-        if (feeData.maxPriorityFeePerGas) {
-          txOpts.maxPriorityFeePerGas = (feeData.maxPriorityFeePerGas * 130n) / 100n;
-        }
-      } else if (feeData && feeData.gasPrice) {
-        // Réseau legacy (pas d'EIP-1559) : même marge sur gasPrice.
-        txOpts.gasPrice = (feeData.gasPrice * 130n) / 100n;
-      }
-    } catch(e) {
-      // Si la lecture du feeData échoue, on laisse MetaMask estimer seul
-      // (comportement d'avant ce correctif) plutôt que de bloquer le burn.
-      console.warn('burn(): feeData lookup failed, falling back to wallet estimate:', e.message);
-    }
+    const txOpts = await svGasOverrides({ value: ethers.parseEther(v.toString()) });
     const tx=await contract.burn(txOpts);
     btn.innerHTML='⬡ &ensp; Pouring...';
     showToast('Transaction sent...');
@@ -5883,7 +5888,11 @@ async function loadLeaderboard(){
     // ne touche plus jamais getTopBurners.
     let lbData;
     try {
-      const resp = await fetch('/api/leaderboard');
+      // Cache-buster : sans lui, le navigateur peut servir une réponse
+      // mise en cache localement (au-delà même du cache CDN volontaire côté
+      // API) et le bouton "Refresh" semble alors ne rien faire, alors que
+      // le serveur, lui, a bien le bon montant à jour.
+      const resp = await fetch('/api/leaderboard?_=' + Date.now(), { cache: 'no-store' });
       lbData = await resp.json();
     } catch(e) {
       console.error('Leaderboard API error:', e);
@@ -7732,7 +7741,7 @@ async function duelCreate() {
     duelMySecret = duelMakeSecret();
     const commit = duelMakeCommit(duelChoice, duelMySecret);
     showToast('Confirm in MetaMask...');
-    const tx = await duelContract.createDuel(commit, { value: ethers.parseEther(duelSelectedStake) });
+    const tx = await duelContract.createDuel(commit, await svGasOverrides({ value: ethers.parseEther(duelSelectedStake) }));
     const receipt = await tx.wait();
 
     const iface = new ethers.Interface(DUEL_ABI);
@@ -7823,7 +7832,7 @@ async function duelJoin(duelId, choiceNum) {
   try {
     showToast('Confirm in MetaMask...');
     const _duelInfo = await duelReadContract.getDuel(duelId);
-    const tx = await duelContract.joinDuel(duelId, choiceNum, { value: _duelInfo.stake });
+    const tx = await duelContract.joinDuel(duelId, choiceNum, await svGasOverrides({ value: _duelInfo.stake }));
     await tx.wait();
 
     // Save joined state for this wallet (player B) — appended to the
@@ -7921,7 +7930,7 @@ async function duelClaimTimeout() {
   const btn = document.getElementById('duel-claim-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Claiming...'; }
   try {
-    const tx = await duelContract.claimRevealTimeout(jId);
+    const tx = await duelContract.claimRevealTimeout(jId, await svGasOverrides());
     await tx.wait();
     showToast('🏆 Victory claimed — pot is yours!');
     if (_duelCountdownTimer) clearInterval(_duelCountdownTimer);
@@ -7974,7 +7983,7 @@ async function duelReveal() {
   try {
     const secretBytes = duelSecretToBytes32(duelMySecret);
     showToast('Confirm in MetaMask...');
-    const tx = await duelContract.reveal(duelMyId, duelMyChoiceNum, secretBytes);
+    const tx = await duelContract.reveal(duelMyId, duelMyChoiceNum, secretBytes, await svGasOverrides());
     const receipt = await tx.wait();
 
     const iface = new ethers.Interface(DUEL_ABI);
@@ -8026,7 +8035,7 @@ async function duelCancel() {
   if (!duelContract || !duelMyId) return;
   try {
     showToast('Confirm in MetaMask...');
-    const tx = await duelContract.cancelDuel(duelMyId);
+    const tx = await duelContract.cancelDuel(duelMyId, await svGasOverrides());
     await tx.wait();
     duelMyId=null; duelMyStatus=null;
     document.getElementById('duel-my-none').style.display = 'block';
@@ -11186,7 +11195,7 @@ async function myDuelsCancel(id) {
   if (!duelContract) { showToast('Contract not ready'); return; }
   try {
     showToast('Confirm in MetaMask...');
-    const tx = await duelContract.cancelDuel(id);
+    const tx = await duelContract.cancelDuel(id, await svGasOverrides());
     await tx.wait();
     showToast('✦ Duel cancelled — stake refunded');
     myDuelsScan();
