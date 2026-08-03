@@ -8254,18 +8254,39 @@ async function duelRenderOpen(page) {
   const start = _duelOpenPage * _duelOpenPerPage;
   const pageItems = filtered.slice(start, start + _duelOpenPerPage);
 
-  // Pre-fetch display names, avatars, and rank for the creators shown on this page
+  // Pre-fetch display names, avatars, skins, and rank for the creators shown on this page
   const _nameCache = {};
   const _rankCache = {}; // addr -> { idx, name, color }
+  const _avatarCache = {}; // addr -> avatar HTML (real profile picture)
+  const _skinFxCache = {}; // addr -> equipped skin id
   const RANK_NAMES = ['Simple Holder','Apprentice Litecoiner','Devoted Litecoiner','Silver Maximalist'];
   const RANK_STARS = ['★','★★','★★★','★★★★'];
   const RANK_MOONS = ['🌑','🌒','🌓','🌕'];
+
+  // Récupération GROUPÉE des profils (avatar + skin) en un seul appel batch,
+  // réutilisant le cache existant : on n'ajoute donc qu'une requête par page
+  // affichée, pas une par duel — négligeable pour le trafic (cf. stats Vercel).
+  const _pageAddrs = pageItems.map(d => d.playerA);
+  if (typeof profilesBatchPrefetch === 'function') {
+    try { await profilesBatchPrefetch(_pageAddrs); } catch(e) {}
+  }
+
   await Promise.all(pageItems.map(async d => {
     const addr = d.playerA;
     if (_nameCache[addr]) return;
     let uname = null;
     try { uname = typeof usernameFetch === 'function' ? await usernameFetch(addr) : null; } catch(e) {}
     _nameCache[addr] = uname || (addr.slice(0,6) + '...' + addr.slice(-4));
+    // Avatar + skin depuis le cache de profils rempli par le batch ci-dessus.
+    try {
+      const prof = (typeof _profileGet === 'function') ? _profileGet(addr) : null;
+      if (prof) {
+        if (prof.avatar && typeof avatarHTMLFor === 'function') {
+          _avatarCache[addr] = avatarHTMLFor(prof.avatar, 46);
+        }
+        if (prof.skin) _skinFxCache[addr] = prof.skin;
+      }
+    } catch (e) {}
     try {
       const r = Number(await readContract.getRank(addr));
       if (r >= 0) {
@@ -8301,9 +8322,27 @@ async function duelRenderOpen(page) {
       ? `<div style="position:absolute;top:0;right:0;background:rgba(200,168,74,0.22);color:#e8d088;font-size:0.5rem;letter-spacing:0.1em;padding:0.2rem 0.6rem;border-bottom-left-radius:4px;font-family:'Cinzel',serif;">HIGH STAKES</div>`
       : '';
 
-    const avatarHTML = rank
-      ? `<div style="width:38px;height:38px;min-width:38px;border-radius:50%;background:radial-gradient(circle,${rank.color}33,${rank.color}0a);border:1px solid ${rank.color};display:flex;align-items:center;justify-content:center;font-size:1.1rem;">${rank.moon}</div>`
-      : `<div style="width:38px;height:38px;min-width:38px;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;">👤</div>`;
+    // Avatar réel + anneau de skin (aligné sur le style .dc-avatar du
+    // classement des duellistes). Repli sur la pastille de rang si le joueur
+    // n'a ni avatar ni skin, ou si les profils n'ont pas pu être chargés.
+    const _realAvatar = _avatarCache[d.playerA];
+    const _skinId = _skinFxCache[d.playerA];
+    let avatarHTML;
+    if (_realAvatar || _skinId) {
+      const avatarBlock = _realAvatar
+        ? `<div class="dc-avatar-img" style="overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;">${_realAvatar}</div>`
+        : `<div class="dc-avatar-img" style="overflow:hidden;padding:0;display:flex;align-items:center;justify-content:center;color:#9d7fee;">${(typeof avatarHTMLFor === 'function') ? avatarHTMLFor('default', 42) : '👤'}</div>`;
+      const _ringFX = (_skinId === 'ring_default')
+        ? '<span class="fgl" style="background:conic-gradient(rgba(0,229,204,0.55) 0 100%);opacity:0.75;"></span>'
+        : ((_skinId && typeof SKIN_FX === 'function') ? SKIN_FX(_skinId, 52, true) : null);
+      avatarHTML = (_ringFX)
+        ? `<div class="dc-avatar"><span class="dc-ringfx">${_ringFX}</span><div class="dc-avatar-inner">${avatarBlock}</div></div>`
+        : `<div class="dc-avatar dc-avatar-plain"><span class="dc-avatar-ring"></span><div class="dc-avatar-inner">${avatarBlock}</div></div>`;
+    } else {
+      avatarHTML = rank
+        ? `<div style="width:38px;height:38px;min-width:38px;border-radius:50%;background:radial-gradient(circle,${rank.color}33,${rank.color}0a);border:1px solid ${rank.color};display:flex;align-items:center;justify-content:center;font-size:1.1rem;">${rank.moon}</div>`
+        : `<div style="width:38px;height:38px;min-width:38px;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;">👤</div>`;
+    }
 
     const rankBadge = rank
       ? `<span style="font-size:0.6rem;color:${rank.color};margin-left:0.4rem;">${rank.stars} ${rank.name}</span>`
