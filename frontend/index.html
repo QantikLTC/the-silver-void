@@ -2481,84 +2481,7 @@ if (document.readyState === 'loading') {
 </script>
 
 <!-- ═══════════════ INTRO OVERLAY ═══════════════ -->
-<div id="sv-intro" style="position:fixed;inset:0;z-index:100000;background:radial-gradient(ellipse at 50% 40%,#0a0628 0%,#04021a 60%,#020110 100%);display:flex;align-items:center;justify-content:center;overflow:hidden;opacity:1;transition:opacity 0.8s ease;">
-  <canvas id="sv-intro-canvas" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
-
-  <!-- Skip button -->
-  <button id="sv-intro-skip" onclick="svIntroEnd()" style="position:absolute;top:24px;right:24px;z-index:5;background:transparent;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.5);font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.2em;padding:0.5rem 1.1rem;border-radius:3px;cursor:pointer;transition:all 0.2s;text-transform:uppercase;" onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.2)';this.style.color='rgba(255,255,255,0.5)'">Skip ✕</button>
-
-  <!-- Sequential scenes -->
-  <div style="position:relative;z-index:3;text-align:center;padding:2rem;max-width:760px;width:100%;">
-
-    <!-- Scene 1: Identity -->
-    <div class="sv-scene" id="sv-scene-1" style="opacity:0;">
-      <div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.5em;color:var(--teal);text-transform:uppercase;margin-bottom:1.5rem;">The Cypherpunk Pensieve</div>
-      <div style="font-family:'Cinzel',serif;font-size:clamp(2.2rem,7vw,4rem);letter-spacing:0.3em;text-transform:uppercase;color:#fff;line-height:1.15;font-weight:600;">THE SI<span class="ltc-letter" style="display:inline-block;transform:skewX(-6deg);">Ł</span>VER VOID</div>
-      <div style="font-size:0.9rem;color:rgba(255,255,255,0.4);font-style:italic;margin-top:1.5rem;max-width:480px;margin-left:auto;margin-right:auto;line-height:1.6;">"Lost coins only make everyone else's coins worth slightly more."</div>
-    </div>
-
-    <!-- Scene 2: The Burn -->
-    <div class="sv-scene" id="sv-scene-2" style="opacity:0;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;">
-      <div style="font-size:3.5rem;margin-bottom:1rem;">🔥</div>
-      <div style="font-family:'Cinzel',serif;font-size:clamp(1.4rem,5vw,2.4rem);letter-spacing:0.25em;text-transform:uppercase;font-weight:600;color:#fff;margin-bottom:1rem;">THE GREAT WORK</div>
-      <div style="font-size:0.95rem;color:rgba(255,255,255,0.55);line-height:1.7;max-width:440px;margin:0 auto;">Burn your zkLTC into <span style="color:var(--teal);">Eternal Silver</span>. Ascend the ranks of the Order. Unlock NFTs. Engrave your address in history.</div>
-    </div>
-
-    <!-- Scene 3: The Battle -->
-    <div class="sv-scene" id="sv-scene-3" style="opacity:0;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;">
-      <div style="display:flex;justify-content:center;gap:1.2rem;margin-bottom:1.2rem;">
-        <svg width="46" height="46" viewBox="0 0 80 80"><defs><linearGradient id="svi1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7755cc"/><stop offset="1" stop-color="#00e5cc"/></linearGradient></defs><polygon points="40,8 74,32 60,72 20,72 6,32" fill="url(#svi1)"/></svg>
-        <svg width="46" height="46" viewBox="0 0 80 80"><rect x="16" y="10" width="48" height="60" fill="none" stroke="url(#svi1)" stroke-width="4"/><rect x="27" y="26" width="26" height="3.5" fill="#00e5cc"/><rect x="27" y="38" width="26" height="3.5" fill="#00e5cc"/><rect x="27" y="50" width="16" height="3.5" fill="#00e5cc"/></svg>
-        <svg width="46" height="46" viewBox="0 0 80 80"><polyline points="8,14 46,42 8,70" fill="none" stroke="url(#svi1)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><polyline points="72,14 46,42 72,70" fill="none" stroke="url(#svi1)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="46" cy="42" r="5.5" fill="#00e5cc"/></svg>
-      </div>
-      <div style="font-family:'Cinzel',serif;font-size:clamp(1.4rem,5vw,2.4rem);letter-spacing:0.25em;text-transform:uppercase;font-weight:600;color:#fff;margin-bottom:1rem;">ENTER THE DUELS</div>
-      <div style="font-size:0.95rem;color:rgba(255,255,255,0.55);line-height:1.7;max-width:440px;margin:0 auto;">Challenge fellow Sacrifiants. Stake your zkLTC. Winner takes the pot — and <span style="color:var(--teal);">20% burns forever</span> into the Void. <span style="color:var(--teal);">⚔🔥</span></div>
-    </div>
-
-    <!-- Final scene: Two doors -->
-    <div class="sv-scene" id="sv-scene-final" style="opacity:0;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;">
-      <div style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.4em;color:var(--teal);text-transform:uppercase;margin-bottom:0.6rem;">Choose Your Path</div>
-      <div style="font-family:'Cinzel',serif;font-size:clamp(1.6rem,5vw,2.6rem);letter-spacing:0.3em;text-transform:uppercase;color:#fff;margin-bottom:2rem;font-weight:600;">THE SI<span class="ltc-letter" style="display:inline-block;transform:skewX(-6deg);">Ł</span>VER VOID</div>
-      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
-        <button onclick="svIntroGoto('ritual')" style="position:relative;overflow:hidden;flex:1;min-width:200px;max-width:280px;padding:1.5rem 1rem;background:linear-gradient(135deg,rgba(0,229,204,0.1),rgba(0,229,204,0.02));border:1px solid rgba(0,229,204,0.35);border-radius:5px;cursor:pointer;transition:all 0.25s;" onmouseover="this.style.background='linear-gradient(135deg,rgba(0,229,204,0.2),rgba(0,229,204,0.05))';this.style.borderColor='var(--teal)'" onmouseout="this.style.background='linear-gradient(135deg,rgba(0,229,204,0.1),rgba(0,229,204,0.02))';this.style.borderColor='rgba(0,229,204,0.35)'">
-          <div aria-hidden="true" style="position:absolute;inset:0;border-radius:5px;overflow:hidden;background-image:url('https://arweave.net/GEjm0Tldg60X0oD6kN3aS2blmFY18DmdWU5sBreQY_Q');background-size:cover;background-position:center right;opacity:0.34;pointer-events:none;-webkit-mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%);mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%);"></div><div aria-hidden="true" style="position:absolute;inset:0;border-radius:5px;pointer-events:none;background:linear-gradient(to right, rgba(3,6,26,0.97) 0%, rgba(5,9,33,0.90) 33%, rgba(7,12,38,0.52) 63%, rgba(9,15,44,0) 100%);"></div><div style="position:relative;z-index:1;font-size:2rem;margin-bottom:0.6rem;">🔥</div>
-          <div style="position:relative;z-index:1;font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:0.15em;color:#fff;margin-bottom:0.4rem;">ENTER THE VOID</div>
-          <div style="position:relative;z-index:1;font-size:0.72rem;color:rgba(255,255,255,0.4);">Burn · Ascend · Collect</div>
-        </button>
-        <button onclick="svIntroGoto('duel')" style="position:relative;overflow:hidden;flex:1;min-width:200px;max-width:280px;padding:1.5rem 1rem;background:linear-gradient(135deg,rgba(119,85,204,0.12),rgba(119,85,204,0.02));border:1px solid rgba(119,85,204,0.4);border-radius:5px;cursor:pointer;transition:all 0.25s;" onmouseover="this.style.background='linear-gradient(135deg,rgba(119,85,204,0.25),rgba(119,85,204,0.05))';this.style.borderColor='#9d7fee'" onmouseout="this.style.background='linear-gradient(135deg,rgba(119,85,204,0.12),rgba(119,85,204,0.02))';this.style.borderColor='rgba(119,85,204,0.4)'">
-          <div aria-hidden="true" style="position:absolute;inset:0;border-radius:5px;overflow:hidden;background-image:url('https://arweave.net/frcKpgHNTArGTEEHeXIjCDrVWAWyvXpSdJTuSETIcZo');background-size:cover;background-position:center right;opacity:0.34;pointer-events:none;-webkit-mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%);mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%);"></div><div aria-hidden="true" style="position:absolute;inset:0;border-radius:5px;pointer-events:none;background:linear-gradient(to right, rgba(3,6,26,0.97) 0%, rgba(5,9,33,0.90) 33%, rgba(7,12,38,0.52) 63%, rgba(9,15,44,0) 100%);"></div><div style="position:relative;z-index:1;font-size:2rem;margin-bottom:0.6rem;">⚔️</div>
-          <div style="position:relative;z-index:1;font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:0.15em;color:#fff;margin-bottom:0.4rem;">ENTER THE ARENA</div>
-          <div style="position:relative;z-index:1;font-size:0.72rem;color:rgba(255,255,255,0.4);">Duel · Stake · Burn · Conquer</div>
-        </button>
-        <button onclick="svIntroGotoStore()" style="position:relative;overflow:hidden;flex:1;min-width:200px;max-width:280px;padding:1.5rem 1rem;background:linear-gradient(135deg,rgba(255,170,68,0.1),rgba(255,170,68,0.02));border:1px solid rgba(255,170,68,0.35);border-radius:5px;cursor:pointer;transition:all 0.25s;" onmouseover="this.style.background='linear-gradient(135deg,rgba(255,170,68,0.2),rgba(255,170,68,0.05))';this.style.borderColor='#ffaa44'" onmouseout="this.style.background='linear-gradient(135deg,rgba(255,170,68,0.1),rgba(255,170,68,0.02))';this.style.borderColor='rgba(255,170,68,0.35)'">
-          <div aria-hidden="true" style="position:absolute;inset:0;border-radius:5px;overflow:hidden;background-image:url('https://arweave.net/4x2F1xk7jjg9ITb1GxrFbhgz6oo6YpsL2wOnBJ-zLHQ');background-size:cover;background-position:center right;opacity:0.34;pointer-events:none;-webkit-mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%);mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%);"></div><div aria-hidden="true" style="position:absolute;inset:0;border-radius:5px;pointer-events:none;background:linear-gradient(to right, rgba(3,6,26,0.97) 0%, rgba(5,9,33,0.90) 33%, rgba(7,12,38,0.52) 63%, rgba(9,15,44,0) 100%);"></div><div style="position:relative;z-index:1;font-size:2rem;margin-bottom:0.6rem;">🏪</div>
-          <div style="position:relative;z-index:1;font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:0.15em;color:#fff;margin-bottom:0.4rem;">VISIT THE STORE</div>
-          <div style="position:relative;z-index:1;font-size:0.72rem;color:rgba(255,255,255,0.4);">Browse · Buy · Sell Relics</div>
-        </button>
-        <button onclick="svIntroGotoChronicles()" style="position:relative;overflow:hidden;flex:1;min-width:200px;max-width:280px;padding:1.5rem 1rem;background:linear-gradient(135deg,rgba(150,170,220,0.10),rgba(150,170,220,0.02));border:1px solid rgba(150,170,220,0.35);border-radius:5px;cursor:pointer;transition:all 0.25s;" onmouseover="this.style.background='linear-gradient(135deg,rgba(150,170,220,0.2),rgba(150,170,220,0.05))';this.style.borderColor='#96aadc'" onmouseout="this.style.background='linear-gradient(135deg,rgba(150,170,220,0.10),rgba(150,170,220,0.02))';this.style.borderColor='rgba(150,170,220,0.35)'"><div aria-hidden="true" style="position:absolute;inset:0;border-radius:5px;overflow:hidden;background-image:url('https://arweave.net/Qk_3yxq_1DH4E7MO90r2j1dgZOh4jt-nnQbiXwChHvA');background-size:cover;background-position:center right;opacity:0.34;pointer-events:none;-webkit-mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%);mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%);"></div><div aria-hidden="true" style="position:absolute;inset:0;border-radius:5px;pointer-events:none;background:linear-gradient(to right, rgba(3,6,26,0.97) 0%, rgba(5,9,33,0.90) 33%, rgba(7,12,38,0.52) 63%, rgba(9,15,44,0) 100%);"></div>
-          <div style="position:relative;z-index:1;font-size:2rem;margin-bottom:0.6rem;">📜</div>
-          <div style="position:relative;z-index:1;font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:0.15em;color:#fff;margin-bottom:0.4rem;">READ THE CHRONICLES</div>
-          <div style="position:relative;z-index:1;font-size:0.72rem;color:rgba(255,255,255,0.4);">Discover · Understand · Awaken</div>
-        </button>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-<style>
-@keyframes svFadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-.sv-scene.sv-show { animation:svFadeUp 0.9s ease forwards; }
-#sv-scene-2.sv-show, #sv-scene-3.sv-show, #sv-scene-final.sv-show {
-  animation:svFadeUpCenter 0.9s ease forwards;
-}
-@keyframes svFadeUpCenter {
-  from { opacity:0; transform:translate(-50%,-45%); }
-  to { opacity:1; transform:translate(-50%,-50%); }
-}
-.sv-scene.sv-hide { animation:svFadeOut 0.6s ease forwards; }
-@keyframes svFadeOut { to { opacity:0; } }
-</style>
+<!-- (intro supprimée) -->
 
 <!-- MAINNET MIGRATION NOTICE — shown on every visit until dismissed -->
 <div id="sv-duel-notice" style="display:none;position:fixed;inset:0;z-index:99500;background:rgba(4,2,26,0.8);align-items:center;justify-content:center;padding:1.5rem;">
@@ -2609,17 +2532,10 @@ function svShowDuelNoticeIfNeeded() {
   // visits, just hide the (otherwise full-screen, display:flex by default)
   // #sv-intro overlay immediately so it doesn't block the page.
   window.addEventListener('DOMContentLoaded', function() {
-    let seen = false;
-    try { seen = localStorage.getItem('sv_intro_seen') === '1'; } catch {}
-    if (seen) {
-      const el = document.getElementById('sv-intro');
-      if (el) el.style.display = 'none';
-      svShowDuelNoticeIfNeeded();
-    } else {
-      svIntroPlay();
-      // First-time visitor: wait until the intro overlay actually closes
-      // (svIntroEnd) before showing the notice, so they don't overlap.
-    }
+    // Intro retirée : on n'affiche plus jamais l'animation d'introduction.
+    var el = document.getElementById('sv-intro');
+    if (el) el.style.display = 'none';
+    svShowDuelNoticeIfNeeded();
   });
 })();
 
@@ -2675,7 +2591,7 @@ function svIntroEnd(cb) {
 }
 
 // Replay function (called from a button in nav/footer)
-function svIntroReplay() {
+function svIntroReplay() { return; /* intro retirée */
   const el = document.getElementById('sv-intro');
   if (!el) return;
   // reset scenes
@@ -2732,7 +2648,7 @@ function svIntroParticles() {
 <nav>
   <div style="display:flex;align-items:center;gap:1.2rem;">
     <div class="nav-brand" onclick="goHome()" style="cursor:pointer;" title="Back to the Void">The <em>Si<span class="ltc-letter">Ł</span>ver</em> Void</div>
-    <a href="#" onclick="if(typeof storeClose==='function')storeClose();svIntroReplay();return false;" style="font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.3em;text-transform:uppercase;color:rgba(255,255,255,0.45);text-decoration:none;transition:color 0.3s;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'" title="Replay intro">✶ Intro</a>
+    <a href="#" onclick="if(typeof storeClose==='function')storeClose();window.scrollTo({top:0,behavior:'smooth'});return false;" style="font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.3em;text-transform:uppercase;color:rgba(255,255,255,0.45);text-decoration:none;transition:color 0.3s;" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'" title="The Silver Void">✶ Home</a>
   </div>
   <div style="display:flex;align-items:center;gap:0.6rem;">
     <ul id="nav-links-desktop" style="display:none;list-style:none;gap:2.5rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.3em;text-transform:uppercase;">
@@ -2745,7 +2661,7 @@ function svIntroParticles() {
           <a href="#" class="nav-spy" data-sec="chronicles-page" onclick="chroniclesOpen(true);return false;">◈ Chronicles</a>
         </div>
       </li>
-      <li><a href="#" onclick="svIntroReplay();return false;" style="color:rgba(255,255,255,0.45);text-decoration:none;transition:color 0.3s" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='rgba(255,255,255,0.45)'" title="Replay intro">✶ Intro</a></li>
+      
     </ul>
     <button class="nav-btn" id="wallet-btn">Connect Wallet</button>
     <button id="profile-btn" onclick="profileToggle()" title="Your profile" style="display:none;position:relative;background:conic-gradient(rgba(0,229,204,0.55) 0 0%, rgba(255,255,255,0.08) 0 100%);border:none;width:52px;height:52px;border-radius:50%;cursor:pointer;margin-left:0.6rem;padding:0;vertical-align:middle;align-items:center;justify-content:center;transition:box-shadow 0.25s, transform 0.2s;overflow:visible;" onmouseover="this.style.boxShadow='0 0 14px '+(window._pbRingColor||'#00e5cc')+'66';this.style.transform='scale(1.05)'" onmouseout="this.style.boxShadow='none';this.style.transform='scale(1)'"><span id="pb-inner" style="position:relative;z-index:2;width:42px;height:42px;border-radius:50%;background:#0c0824;display:flex;align-items:center;justify-content:center;overflow:hidden;pointer-events:none;font-size:0.95rem;">🌑</span><span id="pb-badge" style="position:absolute;z-index:5;bottom:-3px;right:-4px;min-width:20px;height:20px;padding:0 2px;border-radius:10px;background:#00e5cc;color:#04021a;font-size:0.66rem;font-weight:700;display:none;align-items:center;justify-content:center;border:2px solid #04021a;pointer-events:none;font-family:'Cinzel',serif;letter-spacing:0.02em;"></span></button>
@@ -2782,7 +2698,7 @@ function svIntroParticles() {
   <a class="menu-item" href="#" onclick="closeMenu();chroniclesOpen(true);return false;" style="color:var(--teal);"><span class="mi-icon">◈</span>Chronicles</a>
   <a class="menu-item" href="#leaderboard" onclick="closeMenu();if(typeof storeClose==='function')storeClose();"><span class="mi-icon">✦</span>Sacrifiants</a>
   <a class="menu-item" href="https://liteforge.explorer.caldera.xyz/address/0x0AD3f776C45FF457d2d8e211A3174A4Db201b656" target="_blank" onclick="closeMenu()"><span class="mi-icon">⛓</span>Contract</a>
-  <a class="menu-item" href="#" onclick="closeMenu();if(typeof storeClose==='function')storeClose();svIntroReplay();return false;"><span class="mi-icon">✶</span>Replay Intro</a>
+  
   <div class="menu-bottom">LiteForge Testnet · Chain ID 4441</div>
 </div>
 
@@ -2892,7 +2808,51 @@ function svIntroParticles() {
      THE VOID HUB — central dashboard (essai réversible)
      Se révèle sous le hero qui fond au scroll.
      ═══════════════════════════════════════════════════════════════ -->
-<section id="void-hub" style="max-width:1080px;margin:0 auto;padding:2rem 1.5rem 4rem;">
+<!-- ═══ CHOOSE YOUR PATH (section permanente sous le hero) ═══ -->
+<section id="choose-path" style="max-width:1080px;margin:0 auto;padding:3.5rem 1.5rem 3.5rem;">
+  <div style="font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.45em;color:var(--teal);text-transform:uppercase;text-align:center;margin-bottom:0.8rem;">Choose Your Path</div>
+  <div style="font-family:'Cinzel',serif;font-size:clamp(1.3rem,3.5vw,1.8rem);letter-spacing:0.06em;text-transform:uppercase;color:#fff;text-align:center;font-weight:600;margin-bottom:0.5rem;">Four Ways into the Void</div>
+  <p style="text-align:center;color:var(--silver-dim);font-style:italic;font-size:1rem;margin:0 auto 2.4rem;max-width:440px;">Every seeker enters differently. Where will you begin?</p>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1.3rem;">
+    <div onclick="document.getElementById('ritual').scrollIntoView({behavior:'smooth'})" class="cp-card" style="--accent:#ff6655;position:relative;display:flex;flex-direction:column;min-height:180px;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:6px;padding:1.7rem;cursor:pointer;transition:transform 0.25s,box-shadow 0.25s,background 0.25s,border-color 0.25s;overflow:hidden;" onmouseover="this.style.transform='translateY(-5px)';this.style.background='rgba(255,255,255,0.05)';this.style.boxShadow='0 14px 34px rgba(0,0,0,0.4)';this.style.borderColor='#ff6655';this.querySelector('.cp-desc').style.maxHeight='90px';this.querySelector('.cp-desc').style.opacity='1'" onmouseout="this.style.transform='';this.style.background='rgba(255,255,255,0.03)';this.style.boxShadow='';this.style.borderColor='rgba(0,229,204,0.18)';this.querySelector('.cp-desc').style.maxHeight='0';this.querySelector('.cp-desc').style.opacity='0'">
+      <div aria-hidden="true" style="position:absolute;inset:0;background-image:url('https://arweave.net/GEjm0Tldg60X0oD6kN3aS2blmFY18DmdWU5sBreQY_Q');background-size:cover;background-position:center right;opacity:0.4;pointer-events:none;-webkit-mask-image:linear-gradient(to right, transparent 25%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,1) 100%);mask-image:linear-gradient(to right, transparent 25%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,1) 100%);"></div>
+      <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;z-index:0;background:linear-gradient(to right, rgba(3,6,26,0.97) 0%, rgba(5,9,33,0.90) 33%, rgba(7,12,38,0.52) 63%, rgba(9,15,44,0) 100%);"></div>
+      <div style="position:relative;z-index:1;display:flex;align-items:center;gap:0.9rem;margin-bottom:0.9rem;"><div style="width:30px;height:30px;color:#ff6655;flex-shrink:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c0 3-4 5-4 9a4 4 0 008 0c0-1.5-1-3-1-3s2 1 2 4a5 5 0 01-10 0c0-5 5-7 5-11z"/></svg></div><div style="font-family:'Cinzel',serif;font-size:1rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--silver);">Enter the Void</div></div>
+      <div style="position:relative;z-index:1;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--silver-dim);">Burn · Ascend · Collect</div>
+      <div class="cp-desc" style="position:relative;z-index:1;max-height:0;opacity:0;overflow:hidden;transition:max-height 0.35s ease,opacity 0.35s ease;font-family:'Cormorant Garamond','EB Garamond',serif;font-size:0.95rem;font-style:italic;color:rgba(255,255,255,0.7);line-height:1.5;">Dissolve your zkLTC into the deflationary abyss. Each burn is etched on-chain forever, and lifts your rank in the Order of the Void.</div>
+      <div style="position:relative;z-index:1;margin-top:auto;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.06);text-align:right;"><span style="font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.18em;text-transform:uppercase;color:#ff6655;display:inline-flex;align-items:center;gap:0.45rem;">Enter the Void <span style="font-size:0.8rem;">&rarr;</span></span></div>
+    </div>
+    <div onclick="document.getElementById('duel').scrollIntoView({behavior:'smooth'})" class="cp-card" style="--accent:var(--violet);position:relative;display:flex;flex-direction:column;min-height:180px;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:6px;padding:1.7rem;cursor:pointer;transition:transform 0.25s,box-shadow 0.25s,background 0.25s,border-color 0.25s;overflow:hidden;" onmouseover="this.style.transform='translateY(-5px)';this.style.background='rgba(255,255,255,0.05)';this.style.boxShadow='0 14px 34px rgba(0,0,0,0.4)';this.style.borderColor='var(--violet)';this.querySelector('.cp-desc').style.maxHeight='90px';this.querySelector('.cp-desc').style.opacity='1'" onmouseout="this.style.transform='';this.style.background='rgba(255,255,255,0.03)';this.style.boxShadow='';this.style.borderColor='rgba(0,229,204,0.18)';this.querySelector('.cp-desc').style.maxHeight='0';this.querySelector('.cp-desc').style.opacity='0'">
+      <div aria-hidden="true" style="position:absolute;inset:0;background-image:url('https://arweave.net/frcKpgHNTArGTEEHeXIjCDrVWAWyvXpSdJTuSETIcZo');background-size:cover;background-position:center right;opacity:0.4;pointer-events:none;-webkit-mask-image:linear-gradient(to right, transparent 25%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,1) 100%);mask-image:linear-gradient(to right, transparent 25%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,1) 100%);"></div>
+      <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;z-index:0;background:linear-gradient(to right, rgba(3,6,26,0.97) 0%, rgba(5,9,33,0.90) 33%, rgba(7,12,38,0.52) 63%, rgba(9,15,44,0) 100%);"></div>
+      <div style="position:relative;z-index:1;display:flex;align-items:center;gap:0.9rem;margin-bottom:0.9rem;"><div style="width:30px;height:30px;color:var(--violet);flex-shrink:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5L20 3l-1.5 5.5M9.5 4.5L4 3l1.5 5.5"/><path d="M18.5 8.5L9 18l-2 3-1-1 3-2 9.5-9.5M5.5 8.5L15 18"/></svg></div><div style="font-family:'Cinzel',serif;font-size:1rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--silver);">Enter the Arena</div></div>
+      <div style="position:relative;z-index:1;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--silver-dim);">Duel · Stake · Conquer</div>
+      <div class="cp-desc" style="position:relative;z-index:1;max-height:0;opacity:0;overflow:hidden;transition:max-height 0.35s ease,opacity 0.35s ease;font-family:'Cormorant Garamond','EB Garamond',serif;font-size:0.95rem;font-style:italic;color:rgba(255,255,255,0.7);line-height:1.5;">Challenge other seekers in staked duels. Win the pot, climb the ranks — and a share of every wager burns forever into the Void.</div>
+      <div style="position:relative;z-index:1;margin-top:auto;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.06);text-align:right;"><span style="font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--violet);display:inline-flex;align-items:center;gap:0.45rem;">Enter the Arena <span style="font-size:0.8rem;">&rarr;</span></span></div>
+    </div>
+    <div onclick="if(typeof storeOpen==='function')storeOpen()" class="cp-card" style="--accent:var(--teal);position:relative;display:flex;flex-direction:column;min-height:180px;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:6px;padding:1.7rem;cursor:pointer;transition:transform 0.25s,box-shadow 0.25s,background 0.25s,border-color 0.25s;overflow:hidden;" onmouseover="this.style.transform='translateY(-5px)';this.style.background='rgba(255,255,255,0.05)';this.style.boxShadow='0 14px 34px rgba(0,0,0,0.4)';this.style.borderColor='var(--teal)';this.querySelector('.cp-desc').style.maxHeight='90px';this.querySelector('.cp-desc').style.opacity='1'" onmouseout="this.style.transform='';this.style.background='rgba(255,255,255,0.03)';this.style.boxShadow='';this.style.borderColor='rgba(0,229,204,0.18)';this.querySelector('.cp-desc').style.maxHeight='0';this.querySelector('.cp-desc').style.opacity='0'">
+      <div aria-hidden="true" style="position:absolute;inset:0;background-image:url('https://arweave.net/4x2F1xk7jjg9ITb1GxrFbhgz6oo6YpsL2wOnBJ-zLHQ');background-size:cover;background-position:right bottom;opacity:0.4;pointer-events:none;-webkit-mask-image:linear-gradient(to right, transparent 25%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,1) 100%);mask-image:linear-gradient(to right, transparent 25%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,1) 100%);"></div>
+      <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;z-index:0;background:linear-gradient(to right, rgba(3,6,26,0.97) 0%, rgba(5,9,33,0.90) 33%, rgba(7,12,38,0.52) 63%, rgba(9,15,44,0) 100%);"></div>
+      <div style="position:relative;z-index:1;display:flex;align-items:center;gap:0.9rem;margin-bottom:0.9rem;"><div style="width:30px;height:30px;color:var(--teal);flex-shrink:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M3 9h18M9 3L6 9l6 12 6-12-3-6"/></svg></div><div style="font-family:'Cinzel',serif;font-size:1rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--silver);">Visit the Store</div></div>
+      <div style="position:relative;z-index:1;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--silver-dim);">Browse · Buy · Trade</div>
+      <div class="cp-desc" style="position:relative;z-index:1;max-height:0;opacity:0;overflow:hidden;transition:max-height 0.35s ease,opacity 0.35s ease;font-family:'Cormorant Garamond','EB Garamond',serif;font-size:0.95rem;font-style:italic;color:rgba(255,255,255,0.7);line-height:1.5;">Acquire and trade relics and skins forged for the Order. Adorn your name and carry your legend into every duel.</div>
+      <div style="position:relative;z-index:1;margin-top:auto;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.06);text-align:right;"><span style="font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--teal);display:inline-flex;align-items:center;gap:0.45rem;">Visit the Store <span style="font-size:0.8rem;">&rarr;</span></span></div>
+    </div>
+    <div onclick="if(typeof chroniclesOpen==='function')chroniclesOpen(true)" class="cp-card" style="--accent:var(--glow);position:relative;display:flex;flex-direction:column;min-height:180px;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:6px;padding:1.7rem;cursor:pointer;transition:transform 0.25s,box-shadow 0.25s,background 0.25s,border-color 0.25s;overflow:hidden;" onmouseover="this.style.transform='translateY(-5px)';this.style.background='rgba(255,255,255,0.05)';this.style.boxShadow='0 14px 34px rgba(0,0,0,0.4)';this.style.borderColor='var(--glow)';this.querySelector('.cp-desc').style.maxHeight='90px';this.querySelector('.cp-desc').style.opacity='1'" onmouseout="this.style.transform='';this.style.background='rgba(255,255,255,0.03)';this.style.boxShadow='';this.style.borderColor='rgba(0,229,204,0.18)';this.querySelector('.cp-desc').style.maxHeight='0';this.querySelector('.cp-desc').style.opacity='0'">
+      <div aria-hidden="true" style="position:absolute;inset:0;background-image:url('https://arweave.net/9_ntJXZJKRRb_fJZh1t_TCdEeS8pxJhO2-XSQKjQwLk');background-size:cover;background-position:center 35%;opacity:0.4;pointer-events:none;-webkit-mask-image:linear-gradient(to right, transparent 25%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,1) 100%);mask-image:linear-gradient(to right, transparent 25%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,1) 100%);"></div>
+      <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;z-index:0;background:linear-gradient(to right, rgba(3,6,26,0.97) 0%, rgba(5,9,33,0.90) 33%, rgba(7,12,38,0.52) 63%, rgba(9,15,44,0) 100%);"></div>
+      <div style="position:relative;z-index:1;display:flex;align-items:center;gap:0.9rem;margin-bottom:0.9rem;"><div style="width:30px;height:30px;color:var(--glow);flex-shrink:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5a2 2 0 012-2h9l5 5v11a2 2 0 01-2 2H6a2 2 0 01-2-2z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></div><div style="font-family:'Cinzel',serif;font-size:1rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--silver);">Read the Chronicles</div></div>
+      <div style="position:relative;z-index:1;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--silver-dim);">Discover · Understand · Awaken</div>
+      <div class="cp-desc" style="position:relative;z-index:1;max-height:0;opacity:0;overflow:hidden;transition:max-height 0.35s ease,opacity 0.35s ease;font-family:'Cormorant Garamond','EB Garamond',serif;font-size:0.95rem;font-style:italic;color:rgba(255,255,255,0.7);line-height:1.5;">A fable of a kingdom, a coin, and a truth no one is allowed to verify. Follow the apprentice, fragment by fragment, toward what the Void conceals.</div>
+      <div style="position:relative;z-index:1;margin-top:auto;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.06);text-align:right;"><span style="font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--glow);display:inline-flex;align-items:center;gap:0.45rem;">Read the Chronicles <span style="font-size:0.8rem;">&rarr;</span></span></div>
+    </div>
+  </div>
+</section>
+
+<section id="void-hub" style="max-width:1080px;margin:0 auto;padding:3.5rem 1.5rem 4rem;">
+  <div style="font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.45em;color:var(--teal);text-transform:uppercase;text-align:center;margin-bottom:0.8rem;">The Ledger of the Void</div>
+  <div style="font-family:'Cinzel',serif;font-size:clamp(1.3rem,3.5vw,1.8rem);letter-spacing:0.06em;text-transform:uppercase;color:#fff;text-align:center;font-weight:600;margin-bottom:2.4rem;">Everything the Void Remembers</div>
+
   <div style="text-align:center;margin-bottom:2rem;">
     <div><span id="vh-total" style="font-family:'Cinzel',serif;font-size:clamp(3rem,10vw,5rem);font-weight:700;line-height:1;color:#ff6655;text-shadow:0 0 45px rgba(255,102,85,0.35);">—</span><span style="font-family:'Cinzel',serif;font-size:clamp(1rem,3vw,1.4rem);color:var(--silver-mid);letter-spacing:0.2em;margin-left:0.4rem;">zkLTC</span></div>
     <div style="font-family:'Cinzel',serif;font-size:0.66rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--silver-dim);margin-top:0.9rem;">Consumed by the Void</div>
@@ -2920,7 +2880,7 @@ function svIntroParticles() {
   <div style="font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.28em;text-transform:uppercase;color:var(--silver-dim);text-align:center;margin-bottom:1.6rem;">— Enter the Halls —</div>
   <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1.3rem;" id="vh-modules">
 
-    <div onclick="document.getElementById('ritual').scrollIntoView({behavior:'smooth'})" style="--accent:#ff6655;position:relative;display:flex;flex-direction:column;min-height:200px;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1.7rem;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s,background 0.2s;overflow:hidden;" onmouseover="this.style.transform='translateY(-4px)';this.style.background='rgba(255,255,255,0.05)';this.style.boxShadow='0 14px 34px rgba(0,0,0,0.4)'" onmouseout="this.style.transform='';this.style.background='rgba(255,255,255,0.03)';this.style.boxShadow=''">
+    <div onclick="document.getElementById('ritual').scrollIntoView({behavior:'smooth'})" style="--accent:#ff6655;position:relative;display:flex;flex-direction:column;min-height:200px;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1.7rem;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s,background 0.2s;overflow:hidden;" onmouseover="this.style.transform='translateY(-5px)';this.style.background='rgba(255,255,255,0.05)';this.style.boxShadow='0 14px 34px rgba(0,0,0,0.4)';this.style.borderColor=getComputedStyle(this).getPropertyValue('--accent')" onmouseout="this.style.transform='';this.style.background='rgba(255,255,255,0.03)';this.style.boxShadow='';this.style.borderColor='rgba(0,229,204,0.18)'">
       <div aria-hidden="true" style="position:absolute;inset:0;background-image:url('https://arweave.net/GEjm0Tldg60X0oD6kN3aS2blmFY18DmdWU5sBreQY_Q');background-size:cover;background-position:center right;opacity:0.34;pointer-events:none;-webkit-mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%);mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%);"></div>
       <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;z-index:0;background:linear-gradient(to right, rgba(3,6,26,0.97) 0%, rgba(5,9,33,0.90) 33%, rgba(7,12,38,0.52) 63%, rgba(9,15,44,0) 100%);"></div>
       <div style="position:relative;z-index:1;display:flex;align-items:center;gap:0.9rem;margin-bottom:1.2rem;"><div style="width:28px;height:28px;color:#ff6655;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c0 3-4 5-4 9a4 4 0 008 0c0-1.5-1-3-1-3s2 1 2 4a5 5 0 01-10 0c0-5 5-7 5-11z"/></svg></div><div style="font-family:'Cinzel',serif;font-size:1rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--silver);">The Ritual</div></div>
@@ -2928,7 +2888,7 @@ function svIntroParticles() {
       </div><div style="position:relative;z-index:1;margin-top:auto;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.06);text-align:right;"><span style="font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.18em;text-transform:uppercase;color:#ff6655;display:inline-flex;align-items:center;gap:0.45rem;">Enter the Ritual <span style="font-size:0.8rem;">&rarr;</span></span></div>
     </div>
 
-    <div onclick="document.getElementById('duel').scrollIntoView({behavior:'smooth'})" style="--accent:var(--violet);position:relative;display:flex;flex-direction:column;min-height:200px;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1.7rem;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s,background 0.2s;overflow:hidden;" onmouseover="this.style.transform='translateY(-4px)';this.style.background='rgba(255,255,255,0.05)';this.style.boxShadow='0 14px 34px rgba(0,0,0,0.4)'" onmouseout="this.style.transform='';this.style.background='rgba(255,255,255,0.03)';this.style.boxShadow=''">
+    <div onclick="document.getElementById('duel').scrollIntoView({behavior:'smooth'})" style="--accent:var(--violet);position:relative;display:flex;flex-direction:column;min-height:200px;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1.7rem;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s,background 0.2s;overflow:hidden;" onmouseover="this.style.transform='translateY(-5px)';this.style.background='rgba(255,255,255,0.05)';this.style.boxShadow='0 14px 34px rgba(0,0,0,0.4)';this.style.borderColor=getComputedStyle(this).getPropertyValue('--accent')" onmouseout="this.style.transform='';this.style.background='rgba(255,255,255,0.03)';this.style.boxShadow='';this.style.borderColor='rgba(0,229,204,0.18)'">
       <div aria-hidden="true" style="position:absolute;inset:0;background-image:url('https://arweave.net/frcKpgHNTArGTEEHeXIjCDrVWAWyvXpSdJTuSETIcZo');background-size:cover;background-position:center right;opacity:0.34;pointer-events:none;-webkit-mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%);mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%);"></div>
       <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;z-index:0;background:linear-gradient(to right, rgba(3,6,26,0.97) 0%, rgba(5,9,33,0.90) 33%, rgba(7,12,38,0.52) 63%, rgba(9,15,44,0) 100%);"></div>
       <div style="position:relative;z-index:1;display:flex;align-items:center;gap:0.9rem;margin-bottom:1.2rem;"><div style="width:28px;height:28px;color:var(--violet);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5L20 3l-1.5 5.5M9.5 4.5L4 3l1.5 5.5"/><path d="M18.5 8.5L9 18l-2 3-1-1 3-2 9.5-9.5M5.5 8.5L15 18"/></svg></div><div style="font-family:'Cinzel',serif;font-size:1rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--silver);">Duels</div></div>
@@ -2936,7 +2896,7 @@ function svIntroParticles() {
       </div><div style="position:relative;z-index:1;margin-top:auto;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.06);text-align:right;"><span style="font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--violet);display:inline-flex;align-items:center;gap:0.45rem;">Enter the Arena <span style="font-size:0.8rem;">&rarr;</span></span></div>
     </div>
 
-    <div onclick="storeOpen()" style="--accent:var(--teal);position:relative;display:flex;flex-direction:column;min-height:200px;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1.7rem;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s,background 0.2s;overflow:hidden;" onmouseover="this.style.transform='translateY(-4px)';this.style.background='rgba(255,255,255,0.05)';this.style.boxShadow='0 14px 34px rgba(0,0,0,0.4)'" onmouseout="this.style.transform='';this.style.background='rgba(255,255,255,0.03)';this.style.boxShadow=''">
+    <div onclick="storeOpen()" style="--accent:var(--teal);position:relative;display:flex;flex-direction:column;min-height:200px;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1.7rem;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s,background 0.2s;overflow:hidden;" onmouseover="this.style.transform='translateY(-5px)';this.style.background='rgba(255,255,255,0.05)';this.style.boxShadow='0 14px 34px rgba(0,0,0,0.4)';this.style.borderColor=getComputedStyle(this).getPropertyValue('--accent')" onmouseout="this.style.transform='';this.style.background='rgba(255,255,255,0.03)';this.style.boxShadow='';this.style.borderColor='rgba(0,229,204,0.18)'">
       <div aria-hidden="true" style="position:absolute;inset:0;background-image:url('https://arweave.net/4x2F1xk7jjg9ITb1GxrFbhgz6oo6YpsL2wOnBJ-zLHQ');background-size:cover;background-position:right bottom;opacity:0.34;pointer-events:none;-webkit-mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%);mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%);"></div>
       <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;z-index:0;background:linear-gradient(to right, rgba(3,6,26,0.97) 0%, rgba(5,9,33,0.90) 33%, rgba(7,12,38,0.52) 63%, rgba(9,15,44,0) 100%);"></div>
       <div style="position:relative;z-index:1;display:flex;align-items:center;gap:0.9rem;margin-bottom:1.2rem;"><div style="width:28px;height:28px;color:var(--teal);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M3 9h18M9 3L6 9l6 12 6-12-3-6"/></svg></div><div style="font-family:'Cinzel',serif;font-size:1rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--silver);">The Store</div></div>
@@ -2944,7 +2904,7 @@ function svIntroParticles() {
       </div><div style="position:relative;z-index:1;margin-top:auto;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.06);text-align:right;"><span style="font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--teal);display:inline-flex;align-items:center;gap:0.45rem;">Enter the Shop <span style="font-size:0.8rem;">&rarr;</span></span></div>
     </div>
 
-    <div onclick="chroniclesOpen(true)" style="--accent:var(--glow);position:relative;display:flex;flex-direction:column;min-height:200px;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1.7rem;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s,background 0.2s;overflow:hidden;" onmouseover="this.style.transform='translateY(-4px)';this.style.background='rgba(255,255,255,0.05)';this.style.boxShadow='0 14px 34px rgba(0,0,0,0.4)'" onmouseout="this.style.transform='';this.style.background='rgba(255,255,255,0.03)';this.style.boxShadow=''">
+    <div onclick="chroniclesOpen(true)" style="--accent:var(--glow);position:relative;display:flex;flex-direction:column;min-height:200px;background:rgba(255,255,255,0.03);border:1px solid rgba(0,229,204,0.18);border-radius:4px;padding:1.7rem;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s,background 0.2s;overflow:hidden;" onmouseover="this.style.transform='translateY(-5px)';this.style.background='rgba(255,255,255,0.05)';this.style.boxShadow='0 14px 34px rgba(0,0,0,0.4)';this.style.borderColor=getComputedStyle(this).getPropertyValue('--accent')" onmouseout="this.style.transform='';this.style.background='rgba(255,255,255,0.03)';this.style.boxShadow='';this.style.borderColor='rgba(0,229,204,0.18)'">
       <div aria-hidden="true" style="position:absolute;inset:0;background-image:url('https://arweave.net/Z2Z2lHJMFhq96E_MWYOvgSGLyN6HlohoArpUSVtHngM');background-size:cover;background-position:center right;opacity:0.34;pointer-events:none;-webkit-mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%);mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%);"></div>
       <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;z-index:0;background:linear-gradient(to right, rgba(3,6,26,0.97) 0%, rgba(5,9,33,0.90) 33%, rgba(7,12,38,0.52) 63%, rgba(9,15,44,0) 100%);"></div>
       <div style="position:relative;z-index:1;display:flex;align-items:center;gap:0.9rem;margin-bottom:1.2rem;"><div style="width:28px;height:28px;color:var(--glow);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5a2 2 0 012-2h9l5 5v11a2 2 0 01-2 2H6a2 2 0 01-2-2z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></div><div style="font-family:'Cinzel',serif;font-size:1rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--silver);">Chronicles</div></div>
@@ -9582,7 +9542,7 @@ async function sagaMint(sagaId) {
 // ═══ THE VOID STORE ═══
 let _storeListingsCache = [];
 
-const STORE_MAIN_SECTIONS = ['hero', 'void-hub', 'ritual', 'ranks', 'leaderboard', 'duel'];
+const STORE_MAIN_SECTIONS = ['hero', 'choose-path', 'void-hub', 'ritual', 'ranks', 'leaderboard', 'duel'];
 
 function storeOpen(prefillContract, prefillTokenId) {
   STORE_MAIN_SECTIONS.forEach(id => {
