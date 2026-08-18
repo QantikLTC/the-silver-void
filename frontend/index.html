@@ -5637,6 +5637,12 @@ function disconnectWallet(){
   const loreEl=document.getElementById('rcc-lore'); if(loreEl) loreEl.textContent='Connect wallet to reveal your rank in the Order.';
   const starsEl=document.getElementById('rcc-stars'); if(starsEl) starsEl.innerHTML='<span style="color:rgba(255,255,255,0.08)">★</span><span style="color:rgba(255,255,255,0.08)">★</span><span style="color:rgba(255,255,255,0.08)">★</span><span style="color:rgba(255,255,255,0.08)">★</span>';
   const xfEl=document.getElementById('rcc-xp-fill'); if(xfEl) xfEl.style.width='0%';
+  // Reset mobile rank showcase (rs-*) to disconnected state
+  const rsIcon=document.getElementById('rs-icon-m'); if(rsIcon){rsIcon.innerHTML='';rsIcon.textContent='— Not connected —';rsIcon.style.color='rgba(255,255,255,0.2)';}
+  const rsName=document.getElementById('rs-name-m'); if(rsName){rsName.textContent='Connect wallet';rsName.style.color='rgba(255,255,255,0.2)';}
+  const rsStars=document.getElementById('rs-stars-m'); if(rsStars) rsStars.innerHTML='<span style="color:rgba(255,255,255,0.08)">★</span><span style="color:rgba(255,255,255,0.08)">★</span><span style="color:rgba(255,255,255,0.08)">★</span><span style="color:rgba(255,255,255,0.08)">★</span>';
+  const rsLore=document.getElementById('rs-lore-m'); if(rsLore){rsLore.textContent='Connect your wallet to reveal your rank.';rsLore.style.color='rgba(255,255,255,0.2)';}
+  const rsNft=document.getElementById('rs-nft-m'); if(rsNft){rsNft.textContent='NFT · Burn to unlock';rsNft.style.color='';}
   // Reset duel panels
   const _dmNone = document.getElementById('duel-my-none');
   const _dmOpen = document.getElementById('duel-my-open');
