@@ -5842,6 +5842,21 @@ function updateRankShowcase(rankNum,rankName,burnedEth){
   const stars=document.getElementById('rs-stars-m');
   const lore=document.getElementById('rs-lore-m');
   const nft=document.getElementById('rs-nft-m');
+  const icon=document.getElementById('rs-icon-m');
+  // Fill the central circle with the rank's artwork once ranked. displayRank
+  // is 1-based (1=Simple Holder … 4=Silver Max); RANKS_DATA is 0-based, so the
+  // matching entry is RANKS_DATA[displayRank-1]. Falls back to the symbolic
+  // icon if the artwork fails to load, and stays "not connected" when unranked.
+  if(icon){
+    const rd=(typeof RANKS_DATA!=='undefined'&&displayRank>=1)?RANKS_DATA[displayRank-1]:null;
+    if(rd&&rd.artUrl){
+      icon.innerHTML=`<img src="${rd.artUrl}" alt="${rd.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.outerHTML='<span style=&quot;font-size:2.2rem;color:${c}&quot;>${rd.icon||'✦'}</span>';" />`;
+    } else if(rd){
+      icon.innerHTML=`<span style="font-size:2.2rem;color:${c}">${rd.icon||'✦'}</span>`;
+    } else {
+      icon.textContent='— Not connected —';
+    }
+  }
   if(name){name.textContent=rankName;name.style.color=c;}
   if(stars){stars.innerHTML=[0,1,2,3,4].map(i=>`<span style="color:${i<displayRank?c:'rgba(255,255,255,0.08)'};${i<displayRank?'filter:drop-shadow(0 0 4px '+c+')':''}">\u2605</span>`).join('');}
   if(lore){lore.textContent=burnedEth>0?r.lore:(displayRank===0?'Connect your wallet to reveal your rank.':r.lore);}
