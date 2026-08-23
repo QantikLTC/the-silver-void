@@ -6684,12 +6684,10 @@ async function duelistLeaderboardScan() {
   // feat's progress with it, since feats read their counters from this scan.
   // So we tally BOTH contracts and sum. Add the retired address to
   // LEGACY_DUEL_CONTRACTS on every redeploy; the list is read-only history.
-  const _legacy = (typeof LEGACY_DUEL_CONTRACTS !== 'undefined' ? LEGACY_DUEL_CONTRACTS : [])
-    .filter(a => a && a.toLowerCase() !== DUEL_CONTRACT.toLowerCase())
-    .map(a => { try { return new ethers.Contract(a, DUEL_ABI, window.svReadProvider); } catch(e) { return null; } })
-    .filter(Boolean);
-
-  const sources = [duelReadContract, ..._legacy];
+  // duelLegacyContracts() is declared in a later <script> block, so guard the
+  // call: at runtime the scan always fires after parsing, but the guard keeps
+  // a partially-loaded page from throwing instead of just skipping history.
+  const sources = [duelReadContract, ...(typeof duelLegacyContracts === 'function' ? duelLegacyContracts() : [])];
   const batchStarts = [];   // [contract, fromId] pairs
   const BATCH = 100;
   for (const c of sources) {
@@ -6763,11 +6761,19 @@ async function duelistLeaderboardScan() {
   // (totalDuels) + ties (totalTies) — the contract counts them separately,
   // and the two panels showing different numbers for "duels played"
   // confused testers.
-  try {
-    const [tdRaw, ttRaw] = await Promise.all([duelReadContract.totalDuels(), duelReadContract.totalTies()]);
-    totalPlayed = Number(tdRaw) + Number(ttRaw);
-  } catch(e) {}
-  try { totalBurnedZkltc = parseFloat(ethers.formatEther(await duelReadContract.totalBurned())); } catch(e) {}
+  // Summed across every contract the arena has run on — see duelLoadStats().
+  {
+    const _srcs = [duelReadContract, ...(typeof duelLegacyContracts === 'function' ? duelLegacyContracts() : [])];
+    let _burnWei = 0n;
+    for (const c of _srcs) {
+      try {
+        const [tdRaw, ttRaw] = await Promise.all([c.totalDuels(), c.totalTies()]);
+        totalPlayed += Number(tdRaw) + Number(ttRaw);
+      } catch(e) {}
+      try { _burnWei += BigInt(await c.totalBurned()); } catch(e) {}
+    }
+    totalBurnedZkltc = parseFloat(ethers.formatEther(_burnWei));
+  }
 
   return { rows, totalPlayed, totalBurnedZkltc, totalPlayers: wallets.length };
 }
@@ -7624,6 +7630,19 @@ const DUEL_CONTRACT = '0xEA3ac301Fef474c8799924EC58c48f2c4114684B';
 // The leaderboard scan tallies these alongside the live contract, which is
 // what keeps duel feats and Saga progress intact when the contract changes.
 // On each redeploy: move the old DUEL_CONTRACT address into this list.
+/// Read-only contract instances for every retired duel contract. Built lazily
+/// and memoised: several panels (leaderboard scan, lifetime stats) need the
+/// same set, and each one used to construct its own.
+let _duelLegacyCache = null;
+function duelLegacyContracts(){
+  if (_duelLegacyCache) return _duelLegacyCache;
+  _duelLegacyCache = (typeof LEGACY_DUEL_CONTRACTS !== 'undefined' ? LEGACY_DUEL_CONTRACTS : [])
+    .filter(a => a && a.toLowerCase() !== DUEL_CONTRACT.toLowerCase())
+    .map(a => { try { return new ethers.Contract(a, DUEL_ABI, window.svReadProvider); } catch(e) { console.warn('legacy duel contract skipped:', a, e.message); return null; } })
+    .filter(Boolean);
+  return _duelLegacyCache;
+}
+
 const LEGACY_DUEL_CONTRACTS = [
   '0x25fC7C0cC6B57Af003cd873A37B764F07c4A1187',  // retired 2026-08-23 — REVEAL_DELAY 6h; read-only, keeps history
 ];
@@ -8743,12 +8762,21 @@ async function duelRenderOpen(page) {
 // LOAD STATS
 async function duelLoadStats() {
   try {
-    const [td,tt,tb,oc] = await Promise.all([
-      duelReadContract.totalDuels(),
-      duelReadContract.totalTies(),
-      duelReadContract.totalBurned(),
-      duelReadContract.openDuelCount(),
-    ]);
+    // Lifetime totals span every contract the game has ever run on: these are
+    // internal counters that reset to zero on each deploy, so reading only the
+    // live contract would wipe the arena's history from the stats panel.
+    // openDuelCount is the exception — only the live contract can be joined.
+    const _all = [duelReadContract, ...duelLegacyContracts()];
+    const per = await Promise.all(_all.map(async c => {
+      try {
+        const [d, t, b] = await Promise.all([c.totalDuels(), c.totalTies(), c.totalBurned()]);
+        return [BigInt(d), BigInt(t), BigInt(b)];
+      } catch (e) { return [0n, 0n, 0n]; }
+    }));
+    const td = per.reduce((n, p) => n + p[0], 0n);
+    const tt = per.reduce((n, p) => n + p[1], 0n);
+    const tb = per.reduce((n, p) => n + p[2], 0n);
+    const oc = await duelReadContract.openDuelCount();
     const s = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
     // The contract counts decisive duels (totalDuels) and ties (totalTies)
     // separately — "Duels Played: 0" right after playing a tie confused
