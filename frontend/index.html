@@ -9492,6 +9492,24 @@ async function featsOpen() {
   }
   #codex-modal .cx-stat{ text-align:center; }
   #codex-modal .cx-stat b{ display:block;font-family:'Cinzel',serif;font-size:1.32rem;color:#c9d6ff; }
+  /* Ring-effect primitives. These were defined alongside the old Forge tab in
+     the profile panel; that block is gone, but SKIN_FX still emits .fgl/.fgp
+     spans, so the classes and their keyframes have to live here now. */
+  @keyframes fgspin{to{transform:rotate(360deg)}}
+  @keyframes fgspinr{to{transform:rotate(-360deg)}}
+  @keyframes fgflick{0%,100%{filter:brightness(1)}30%{filter:brightness(1.35)}50%{filter:brightness(0.9)}72%{filter:brightness(1.25)}}
+  @keyframes fgrise{0%{transform:translateY(0) scale(1);opacity:0}15%{opacity:0.9}100%{transform:translateY(-22px) scale(0.3);opacity:0}}
+  @keyframes fgfall{0%{transform:translateY(-20px) scale(0.4);opacity:0}20%{opacity:0.9}100%{transform:translateY(0) scale(1);opacity:0}}
+  @keyframes fgbreathe{0%,100%{box-shadow:0 0 6px rgba(120,60,220,0.25)}50%{box-shadow:0 0 16px rgba(120,60,220,0.6)}}
+  @keyframes fgglint{0%,88%,100%{opacity:0}92%{opacity:1}}
+  @keyframes svHollow{0%,100%{transform:scale(0.42);opacity:0.9}50%{transform:scale(0.78);opacity:1}}
+  @keyframes svBolt{0%,100%{opacity:0}6%{opacity:1}11%{opacity:0.15}16%{opacity:0.95}22%{opacity:0}}
+  @keyframes svFade{0%,100%{opacity:0.85}50%{opacity:0.18}}
+  .fgl{position:absolute;inset:0;border-radius:50%;pointer-events:none}
+  .fgp{position:absolute;border-radius:50%;pointer-events:none;z-index:1}
+  .fgo{position:absolute;inset:0;pointer-events:none;z-index:4}
+  .fgo .fgg{position:absolute;top:-4px;left:50%;font-family:'Cinzel',serif;font-weight:600;display:flex;align-items:center;justify-content:center;pointer-events:none}
+
   #codex-modal .cx-skin{
     border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:1rem 0.5rem 0.9rem;
     text-align:center; background:rgba(255,255,255,0.02); transition:all 0.25s;
@@ -9583,6 +9601,9 @@ function codexSkinsRender(){
       }
     }
 
+    // Show your own avatar inside the ring, exactly as it appears in the arena.
+    const avatarInner = (typeof avatarHTMLFor === 'function' && typeof _myAvatarId !== 'undefined')
+      ? avatarHTMLFor(_myAvatarId, 74) : '';
     const ring = s.id === 'ring_default'
       ? '<span class="fgl" style="background:conic-gradient(' + (window._pbRingColor||'rgba(0,229,204,0.55)') + ' 0 ' + (window._pbRingPct||35) + '%, rgba(255,255,255,0.08) ' + (window._pbRingPct||35) + '% 100%);"></span>'
       : (typeof SKIN_FX === 'function' ? SKIN_FX(s.id, 92, false) : '');
@@ -9590,9 +9611,9 @@ function codexSkinsRender(){
     return '<div class="cx-skin ' + (has ? 'owned' : 'sealed') + ' r-' + s.rarity + '"'
       + ' style="border-color:' + (has ? col + '55' : 'rgba(255,255,255,0.07)') + ';'
       + (equipped ? 'background:rgba(0,229,204,0.05);' : '') + '">'
-      + '<div style="position:relative;width:92px;height:92px;margin:0 auto 0.7rem;">'
+      + '<div style="position:relative;width:96px;height:96px;border-radius:50%;margin:0 auto 0.7rem;">'
       +   ring
-      +   '<span style="position:absolute;inset:14px;border-radius:50%;background:#0c0824;z-index:2;"></span>'
+      +   '<span style="position:absolute;inset:10px;border-radius:50%;background:#0c0824;z-index:2;display:flex;align-items:center;justify-content:center;">' + avatarInner + '</span>'
       + '</div>'
       + '<div style="font-family:\'Cinzel\',serif;font-size:0.9rem;color:' + (has ? '#fff' : 'rgba(255,255,255,0.4)') + ';">' + s.name + '</div>'
       + '<div style="font-size:0.66rem;letter-spacing:0.14em;text-transform:uppercase;color:' + col + ';opacity:' + (has ? 0.95 : 0.45) + ';margin-top:0.3rem;font-family:\'Cinzel\',serif;">' + s.rarity + '</div>'
