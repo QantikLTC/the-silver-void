@@ -5598,10 +5598,17 @@ async function connectWallet(){
       // le grand total n'affichait que le rituel (446 au lieu de 451).
       // On relance le calcul maintenant que les trois contrats répondent.
       if (typeof loadChainData === 'function') { try { await loadChainData(); } catch(e) {} }
-      // If the player has a username, show it on the wallet button instead of the address
+      // Load the username for this wallet, then show it on the wallet button
+      // instead of the address. This fetch was missing: _myUsername was only
+      // ever set when the player *changed* their name in this session, so a
+      // simple page reload fell back to showing the raw address.
+      try {
+        if (typeof refreshDisplayedUsername === 'function') await refreshDisplayedUsername();
+      } catch(e) { console.warn('username load failed:', e); }
       if (_myUsername) {
         const _wbtn = document.getElementById('wallet-btn');
         if (_wbtn) _wbtn.textContent = _myUsername;
+        if (typeof profilePanelRender === 'function') profilePanelRender();
       }
       if (typeof myDuelsStartAuto === 'function') myDuelsStartAuto();
       // If the Store's "Sell" tab is open right now, refresh it — otherwise
