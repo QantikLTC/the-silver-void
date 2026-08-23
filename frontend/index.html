@@ -1921,13 +1921,11 @@ body::after {
   /* Cartes des Chroniques : 1 par ligne, plus lisible qu'un 3-colonnes écrasé */
   #chron-grid{ grid-template-columns:1fr !important; gap:1rem !important; }
   /* Sélecteur d'avatars : 6 colonnes étaient inutilisables au doigt */
-  #profile-panel-avatars{ grid-template-columns:repeat(4,1fr) !important; }
   /* Montants prédéfinis du burn */
   .burn-presets-row{ gap:0.35rem !important; }
   .burn-presets-row > *{ min-width:0; font-size:0.72rem !important; padding-left:0.2rem !important; padding-right:0.2rem !important; }
 }
 @media(max-width:380px){
-  #profile-panel-avatars{ grid-template-columns:repeat(3,1fr) !important; }
 }
 /* ═══ MOBILE — tuiles de statistiques du Void Hub ═══
    grid-template-columns:repeat(4,1fr) en dur débordait sur téléphone :
@@ -3509,7 +3507,7 @@ function svIntroParticles() {
             <div style="font-size:0.78rem;color:rgba(255,255,255,0.6);line-height:1.6;">
               <div style="margin-bottom:0.5rem;">⚔️ <strong style="color:var(--teal);">You've joined!</strong> Your opponent now has to reveal their hidden move.</div>
               <div style="margin-bottom:0.5rem;">⏱️ This usually takes <strong style="color:#fff;">a few seconds</strong>. The result appears here and in your history automatically.</div>
-              <div style="color:rgba(255,255,255,0.4);font-size:0.72rem;">🛡️ If they don't reveal within <strong style="color:#c8a84a;">6 hours</strong>, you can claim the entire pot — no move means you win by default.</div>
+              <div style="color:rgba(255,255,255,0.4);font-size:0.72rem;">🛡️ If they don't unseal within <strong style="color:#c8a84a;">24 hours</strong>, you can claim the entire pot.</div>
             </div>
             <div id="duel-claim-zone" style="display:none;margin-top:0.8rem;">
               <button id="duel-claim-btn" onclick="duelClaimTimeout()" style="width:100%;padding:0.7rem;font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.15em;cursor:pointer;background:linear-gradient(135deg,#c8a84a,#e8d088);color:#04021a;border:none;border-radius:3px;text-transform:uppercase;font-weight:600;">🏆 Claim Your Victory</button>
@@ -3527,7 +3525,7 @@ function svIntroParticles() {
             <p style="font-size:0.75rem;color:rgba(255,255,255,0.3);margin-bottom:0.8rem;font-style:italic;">Your secret was auto-saved. Click Reveal to resolve.</p>
             <button data-duel-action="reveal" style="width:100%;padding:0.7rem;font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;cursor:pointer;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);background:linear-gradient(135deg,var(--teal),#5a9fff);color:#04021a;border:none;transition:filter 0.2s;" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter=''">⬡ &nbsp; Reveal & Resolve</button>
           </div>
-          <p style="font-size:0.7rem;color:#ff4466;margin-top:0.8rem;font-style:italic;">⚠️ Reveal within 6h or opponent claims your stake!</p>
+          <p style="font-size:0.7rem;color:#ff4466;margin-top:0.8rem;font-style:italic;">⚠️ Come back within 24h to unseal your move — otherwise your opponent claims the pot.</p>
         </div>
       </div>
 
@@ -6673,10 +6671,26 @@ async function duelistLeaderboardScan() {
   // unlike totalDuels which only counts resolved duels) and
   // getDuelsBatch(fromId, count) which returns up to 100 full duel structs
   // in ONE call. A 500-duel history is now ~5 RPC calls instead of 500.
-  const maxId = Number(await duelReadContract.lastDuelId());
+  // ── Legacy contract support ────────────────────────────────────────────
+  // When the duel contract is redeployed (e.g. to change REVEAL_DELAY), duel
+  // ids restart at 1 and the old history would vanish — taking every duel
+  // feat's progress with it, since feats read their counters from this scan.
+  // So we tally BOTH contracts and sum. Add the retired address to
+  // LEGACY_DUEL_CONTRACTS on every redeploy; the list is read-only history.
+  const _legacy = (typeof LEGACY_DUEL_CONTRACTS !== 'undefined' ? LEGACY_DUEL_CONTRACTS : [])
+    .filter(a => a && a.toLowerCase() !== DUEL_CONTRACT.toLowerCase())
+    .map(a => { try { return new ethers.Contract(a, DUEL_ABI, window.svReadProvider); } catch(e) { return null; } })
+    .filter(Boolean);
+
+  const sources = [duelReadContract, ..._legacy];
+  const batchStarts = [];   // [contract, fromId] pairs
   const BATCH = 100;
-  const batchStarts = [];
-  for (let from = 1; from <= maxId; from += BATCH) batchStarts.push(from);
+  for (const c of sources) {
+    let maxId = 0;
+    try { maxId = Number(await c.lastDuelId()); }
+    catch(e) { console.warn('leaderboard: lastDuelId failed on a source, skipping', e.message); continue; }
+    for (let from = 1; from <= maxId; from += BATCH) batchStarts.push([c, from]);
+  }
 
   function tally(d) {
     if (!d || d.playerA === ZERO) return;
@@ -6701,9 +6715,9 @@ async function duelistLeaderboardScan() {
   let bCursor = 0;
   async function worker() {
     while (bCursor < batchStarts.length) {
-      const from = batchStarts[bCursor++];
+      const [srcContract, from] = batchStarts[bCursor++];
       try {
-        const batch = await duelReadContract.getDuelsBatch(from, BATCH);
+        const batch = await srcContract.getDuelsBatch(from, BATCH);
         batch.forEach(tally);
       } catch (e) { console.warn('leaderboard batch', from, 'failed:', e.message); }
     }
@@ -6847,7 +6861,7 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
     const avatarCell = (_ringFXd && typeof SKIN_FX === 'function')
       ? `<div class="dc-avatar"><span class="dc-ringfx">${_ringFXd}</span><div class="dc-avatar-inner">${avatarBlock}</div></div>`
       : `<div class="dc-avatar dc-avatar-plain"><span class="dc-avatar-ring"></span><div class="dc-avatar-inner">${avatarBlock}</div></div>`;
-    return `<div class="duel-card ${rankClass}" data-lb-wallet="${r.wallet || ''}">
+    return `<div class="duel-card ${rankClass}" data-lb-wallet="${r.wallet || ''}" onclick="if(typeof codexOpen==='function')codexOpen('${r.wallet || ''}')" style="cursor:pointer" title="Inspect this Seeker's Codex">
       <div class="dc-rank">${rankLabel}</div>
       ${avatarCell}
       <div class="dc-info">
@@ -7597,7 +7611,15 @@ document.addEventListener('DOMContentLoaded', function() {
 // DUEL CHAMBER — Rock Paper Scissors
 // ══════════════════════════════════════
 
-const DUEL_CONTRACT = '0x25fC7C0cC6B57Af003cd873A37B764F07c4A1187';
+const DUEL_CONTRACT = '0xEA3ac301Fef474c8799924EC58c48f2c4114684B';
+
+// Retired duel contracts, kept read-only so history survives redeploys.
+// The leaderboard scan tallies these alongside the live contract, which is
+// what keeps duel feats and Saga progress intact when the contract changes.
+// On each redeploy: move the old DUEL_CONTRACT address into this list.
+const LEGACY_DUEL_CONTRACTS = [
+  '0x25fC7C0cC6B57Af003cd873A37B764F07c4A1187',  // retired 2026-08-23 — REVEAL_DELAY 6h; read-only, keeps history
+];
 
 // ── Duelist Saga NFT contract (separate from the duel and rank-NFT contracts) ──
 const SAGA_CONTRACT_ADDRESS = '0xB715bc47A5a2Ab31f3F6a09211E53c8eb9CCDe76';
@@ -8209,7 +8231,7 @@ function duelShowJoinedPanel(duelId, choiceNum) {
 let _duelCountdownTimer = null;
 function duelStartJoinedCountdown(duelId) {
   if (_duelCountdownTimer) clearInterval(_duelCountdownTimer);
-  const REVEAL_WINDOW = 21600; // 6 hours in seconds (matches contract REVEAL_DELAY)
+  const REVEAL_WINDOW = 86400; // 24 hours in seconds (matches contract REVEAL_DELAY)
   const cdEl = document.getElementById('duel-countdown');
   const claimZone = document.getElementById('duel-claim-zone');
 
@@ -8458,7 +8480,7 @@ async function duelCheckMyStatus() {
 // duelMyStatus) rather than doing its own chain scan. duelMyStatus becomes
 // 'joined' the moment the opponent has played and this wallet (the duel's
 // creator) needs to reveal — that's exactly the state we want to surface.
-const REVEAL_WINDOW_SECONDS = 21600; // 6 hours — matches contract REVEAL_DELAY
+const REVEAL_WINDOW_SECONDS = 86400; // 24 hours — matches contract REVEAL_DELAY
 function _revealAlertHide() {
   const banner = document.getElementById('reveal-alert-banner');
   if (banner) banner.style.display = 'none';
@@ -8936,7 +8958,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <div style="background:rgba(255,170,68,0.06);border:1px solid rgba(255,170,68,0.2);border-radius:4px;padding:1rem 1.1rem;margin-bottom:1.2rem;">
       <div style="font-size:0.8rem;color:rgba(255,255,255,0.75);line-height:1.7;">
         <div style="margin-bottom:0.6rem;">🔑 <strong style="color:#fff;">Your move stays secret</strong> until you reveal it — only you can do that.</div>
-        <div style="margin-bottom:0.6rem;">⏱️ Once an opponent joins, you'll have <strong style="color:#ffaa44;">6 hours</strong> to come back and reveal.</div>
+        <div style="margin-bottom:0.6rem;">⏱️ Your move stays sealed until someone accepts — that's what makes the duel impossible to rig. Once they join, you have <strong style="color:#ffaa44;">24 hours</strong> to come back and unseal it.</div>
         <div>⚠️ <strong style="color:#ff6655;">If you don't reveal in time, your opponent can claim your entire stake</strong> — yours and theirs.</div>
       </div>
     </div>
@@ -8985,7 +9007,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       <div style="font-size:0.78rem;color:rgba(255,255,255,0.4);line-height:1.5;">
         <strong style="color:rgba(255,255,255,0.55);">🤝 Tie:</strong> both players are fully refunded.<br>
-        <strong style="color:rgba(255,255,255,0.55);">⏱ Reveal timeout:</strong> if the creator doesn't reveal within 6h, the opponent can claim the full pot.<br>
+        <strong style="color:rgba(255,255,255,0.55);">⏱ Reveal timeout:</strong> if the creator doesn't unseal within 24h, the opponent can claim the full pot.<br>
         <strong style="color:rgba(255,255,255,0.55);">↩ Cancel:</strong> an unmatched duel can be cancelled anytime for a full refund, as long as no one has joined.
       </div>
 
@@ -9073,26 +9095,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 <style>
 </style>
-<div id="feats-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,1,12,0.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1.5rem;" onclick="if(event.target===this)this.style.display='none'">
-  <div class="feats-scroll" style="background:linear-gradient(135deg,rgba(12,8,30,0.99),rgba(6,3,20,0.99));border:1px solid rgba(0,229,204,0.25);border-radius:6px;max-width:680px;width:100%;max-height:85vh;overflow-y:auto;padding:1.8rem;position:relative;box-shadow:0 0 50px rgba(0,229,204,0.06);">
-    <button onclick="document.getElementById('feats-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;width:28px;height:28px;border-radius:50%;background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;z-index:2;">✕</button>
-
-    <div style="font-family:'Cinzel',serif;font-size:0.95rem;letter-spacing:0.2em;color:var(--teal);text-transform:uppercase;margin-bottom:0.3rem;">🏆 Hall of Feats</div>
-    <div style="font-size:0.8rem;color:rgba(255,255,255,0.4);margin-bottom:1.2rem;">Prove your worth in the arena of the Void.</div>
-
-    <div style="background:rgba(0,229,204,0.05);border:1px solid rgba(0,229,204,0.15);border-radius:4px;padding:0.9rem 1.1rem;margin-bottom:1.4rem;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
-        <span style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:var(--teal);text-transform:uppercase;">Progress</span>
-        <span id="feats-count" style="font-family:'Cinzel',serif;font-size:0.8rem;color:#fff;">0 / 0</span>
-      </div>
-      <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">
-        <div id="feats-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--teal),#5ef5e0);transition:width 0.6s ease;"></div>
-      </div>
-    </div>
-
-    <div id="feats-grid" style="display:flex;flex-direction:column;gap:0.6rem;"></div>
-  </div>
-</div>
 
 <script>
 // ═══ ACHIEVEMENTS / HALL OF FEATS ═══
@@ -9413,10 +9415,410 @@ async function featsOpen() {
     catHeader('The Duelist Saga', '📖') +
     '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:0.6rem;">' + sagaFeats.map(renderFeat).join('') + '</div>';
 
-  document.getElementById('feats-modal').style.display = 'flex';
+  // The Feats content now lives inside the Codex; the old standalone modal is
+  // gone, so only show it if it still exists (defensive).
+  const _fm = document.getElementById('feats-modal');
+  if (_fm) _fm.style.display = 'flex';
 }
 </script>
 <!-- ═══════════════ END HALL OF FEATS ═══════════════ -->
+
+<!-- ═══════════════ THE CODEX (grimoire / inspection) ═══════════════ -->
+<style>
+  #codex-modal .cx-panel{
+    width:min(1040px,96vw); max-height:92vh; overflow-y:auto; position:relative;
+    background:linear-gradient(160deg,#0a0a1a 0%,#0d0d22 100%);
+    border:1px solid rgba(120,140,200,0.18); border-radius:10px; padding:1.6rem 1.3rem 2rem;
+  }
+  #codex-modal{--common:#8ab0c8;--rare:#00e5cc;--epic:#b075ff;--legendary:#ffd27a;}
+  #codex-modal .cx-card{
+    border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:0 0 0.85rem;
+    text-align:center; background:rgba(255,255,255,0.02); transition:all 0.25s;
+    overflow:hidden;
+  }
+  #codex-modal .cx-card.owned{ background:rgba(255,255,255,0.04); }
+  #codex-modal .cx-card.owned:hover{ transform:translateY(-3px); }
+  /* Rarity has to be felt, not just read. Higher tiers get a thicker frame,
+     a deeper glow and a slow breathing pulse; commons stay plain so the
+     contrast does the work. */
+  #codex-modal .cx-card, #codex-modal .cx-skin{ position:relative; }
+  #codex-modal .cx-card.r-epic, #codex-modal .cx-skin.r-epic{
+    border-width:2px; animation:cxPulseEpic 3.4s ease-in-out infinite;
+  }
+  #codex-modal .cx-card.r-legendary, #codex-modal .cx-skin.r-legendary,
+  #codex-modal .cx-skin.r-relic{
+    border-width:2px; animation:cxPulseLegend 3s ease-in-out infinite;
+  }
+  @keyframes cxPulseEpic{
+    0%,100%{ box-shadow:0 0 14px rgba(176,117,255,0.18); }
+    50%    { box-shadow:0 0 26px rgba(176,117,255,0.42); }
+  }
+  @keyframes cxPulseLegend{
+    0%,100%{ box-shadow:0 0 16px rgba(255,210,122,0.22); }
+    50%    { box-shadow:0 0 32px rgba(255,210,122,0.55); }
+  }
+  /* A corner mark flags the top tiers at a glance. */
+  #codex-modal .cx-card.r-epic::after, #codex-modal .cx-card.r-legendary::after,
+  #codex-modal .cx-skin.r-epic::after, #codex-modal .cx-skin.r-legendary::after,
+  #codex-modal .cx-skin.r-relic::after{
+    content:'\2726'; position:absolute; top:0.45rem; right:0.55rem; font-size:0.85rem;
+    text-shadow:0 0 8px currentColor; z-index:3; pointer-events:none;
+  }
+  #codex-modal .cx-card.r-epic::after, #codex-modal .cx-skin.r-epic::after{ color:#b075ff; }
+  #codex-modal .cx-card.r-legendary::after, #codex-modal .cx-skin.r-legendary::after,
+  #codex-modal .cx-skin.r-relic::after{ color:#ffd27a; }
+  /* Sealed cards never glow — no teasing with what you don't own. */
+  #codex-modal .cx-card.sealed, #codex-modal .cx-skin.sealed{ animation:none !important; box-shadow:none !important; }
+  #codex-modal .cx-card.sealed::after, #codex-modal .cx-skin.sealed::after{ opacity:0.22; }
+  #codex-modal .cx-card.sealed{ opacity:0.38; }
+  /* The artwork is the point — let it fill the card edge to edge. */
+  #codex-modal .cx-art{
+    width:100%;aspect-ratio:1;object-fit:cover;display:block;margin:0 0 0.7rem;
+  }
+  #codex-modal .cx-sealed-art{
+    width:100%;aspect-ratio:1;margin:0 0 0.7rem;
+    display:flex;align-items:center;justify-content:center;font-size:2.4rem;
+    background:rgba(255,255,255,0.03);border-bottom:1px dashed rgba(255,255,255,0.1);
+    color:rgba(255,255,255,0.22);
+  }
+  #codex-modal .cx-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(178px,1fr)); gap:1rem; }
+  @media (max-width:640px){
+    #codex-modal .cx-grid{ grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:0.7rem; }
+  }
+  #codex-modal .cx-chap{
+    font-family:'Cinzel',serif;font-size:0.82rem;letter-spacing:0.22em;text-transform:uppercase;
+    color:rgba(255,255,255,0.5);margin:1.7rem 0 0.9rem;border-bottom:1px solid rgba(255,255,255,0.07);
+    padding-bottom:0.4rem;display:flex;justify-content:space-between;align-items:baseline;
+  }
+  #codex-modal .cx-stat{ text-align:center; }
+  #codex-modal .cx-stat b{ display:block;font-family:'Cinzel',serif;font-size:1.32rem;color:#c9d6ff; }
+  #codex-modal .cx-skin{
+    border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:1rem 0.5rem 0.9rem;
+    text-align:center; background:rgba(255,255,255,0.02); transition:all 0.25s;
+  }
+  #codex-modal .cx-skin.owned{ background:rgba(255,255,255,0.04); }
+  #codex-modal .cx-skin.owned:hover{ transform:translateY(-3px); }
+  /* Missing skins are visibly out of reach — desaturated and dimmed. */
+  #codex-modal .cx-skin.sealed{ opacity:0.42; filter:grayscale(0.85); }
+  #codex-modal .cx-tab{
+    flex:1;padding:0.55rem 0.3rem;background:transparent;border:1px solid rgba(255,255,255,0.1);
+    border-radius:6px;color:rgba(255,255,255,0.45);font-family:'Cinzel',serif;font-size:0.76rem;
+    letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;
+  }
+  #codex-modal .cx-tab.active{
+    background:rgba(176,117,255,0.12);border-color:rgba(176,117,255,0.4);color:#c9b3ff;
+  }
+  #codex-modal .cx-stat span{ font-size:0.63rem;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.4); }
+</style>
+
+<div id="codex-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,1,12,0.9);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1.2rem;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="cx-panel">
+    <button onclick="document.getElementById('codex-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;width:28px;height:28px;border-radius:50%;background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;z-index:5;">&times;</button>
+    <div id="codex-header" style="margin-bottom:1.2rem;"></div>
+    <div style="display:flex;gap:0.4rem;margin-bottom:1.3rem;border-bottom:1px solid rgba(255,255,255,0.07);padding-bottom:0.7rem;">
+      <button id="cx-tab-relics" onclick="codexTab('relics')" class="cx-tab">⬡ Relics</button>
+      <button id="cx-tab-forge"  onclick="codexTab('forge')"  class="cx-tab">✵ Ring Skins</button>
+      <button id="cx-tab-feats"  onclick="codexTab('feats')"  class="cx-tab">🏆 Feats</button>
+    </div>
+    <div id="codex-relics-pane">
+      <div id="cx-bar-relics" style="margin-bottom:1.1rem;"></div>
+      <div id="codex-body" style="min-height:200px;"></div>
+    </div>
+    <div id="codex-forge-pane" style="display:none;">
+      <div id="cx-bar-skins" style="margin-bottom:1.1rem;"></div>
+      <div style="font-size:0.72rem;color:rgba(255,255,255,0.35);margin-bottom:1rem;font-style:italic;">Worn in the arena, seen by all. New skins are forged in the Void Store.</div>
+      <div id="codex-skins-grid" class="cx-grid"></div>
+    </div>
+    <div id="codex-feats-pane" style="display:none;">
+      <div style="margin-bottom:1.3rem;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.35rem;">
+          <span style="font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.16em;color:rgba(255,255,255,0.35);text-transform:uppercase;">Collected</span>
+          <span id="feats-count" style="font-family:'Cinzel',serif;font-size:0.9rem;color:#c9b3ff;">0 / 0</span>
+        </div>
+        <div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">
+          <div id="feats-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#b075ff,#8a5fd8);transition:width 0.6s ease;"></div>
+        </div>
+      </div>
+      <div id="feats-grid" style="display:flex;flex-direction:column;gap:0.6rem;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ THE CODEX — real on-chain data ═══
+// Reads are targeted, not scanned: hasClaimed(wallet, rank, nftId) for the 9
+// rank NFTs and hasMinted(wallet, sagaId) for the 4 Saga ones = 13 calls,
+// all fired in parallel. Works for ANY address, which is what makes player
+// inspection possible without the contract exposing enumeration.
+
+const CX_RARITY_COLOR = { common:'#8ab0c8', rare:'#00e5cc', epic:'#b075ff', legendary:'#ffd27a' };
+
+function cxShort(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : ''; }
+
+
+/// Codex view of the ring skins — a COLLECTION, not a shop. Owned skins are
+/// lit and equippable; missing ones are greyed with the reason they're locked.
+/// Buying lives in the Void Store, deliberately: the Codex shows what you have
+/// and what you lack, which is what creates the pull in the first place.
+function codexSkinsRender(){
+  const grid = document.getElementById('codex-skins-grid');
+  if (!grid) return;
+  const unlocked = (typeof featsLoad === 'function') ? featsLoad() : {};
+  const owned = (id) => id === 'ring_default' || (typeof _myOwned !== 'undefined' && _myOwned.includes(id));
+
+  grid.innerHTML = SKINS.map(s => {
+    const col = SKIN_RARITY_COLORS[s.rarity] || '#8ab0c8';
+    const has = owned(s.id);
+    const equipped = (typeof _mySkin !== 'undefined') &&
+      (_mySkin === s.id || (s.id === 'ring_default' && (!_mySkin || _mySkin === 'ring_default')));
+
+    // Why is it missing? A relic is earned, everything else is forged.
+    let hint = '';
+    if (!has) {
+      if (s.rarity === 'relic') {
+        const feat = (typeof FEATS !== 'undefined') ? FEATS.find(f => f.id === s.featId) : null;
+        hint = feat && feat.goal ? 'Earned · ' + feat.desc : 'Earned, never sold';
+      } else {
+        hint = 'Available in the Store';
+      }
+    }
+
+    const ring = s.id === 'ring_default'
+      ? '<span class="fgl" style="background:conic-gradient(' + (window._pbRingColor||'rgba(0,229,204,0.55)') + ' 0 ' + (window._pbRingPct||35) + '%, rgba(255,255,255,0.08) ' + (window._pbRingPct||35) + '% 100%);"></span>'
+      : (typeof SKIN_FX === 'function' ? SKIN_FX(s.id, 92, false) : '');
+
+    return '<div class="cx-skin ' + (has ? 'owned' : 'sealed') + ' r-' + s.rarity + '"'
+      + ' style="border-color:' + (has ? col + '55' : 'rgba(255,255,255,0.07)') + ';'
+      + (equipped ? 'background:rgba(0,229,204,0.05);' : '') + '">'
+      + '<div style="position:relative;width:92px;height:92px;margin:0 auto 0.7rem;">'
+      +   ring
+      +   '<span style="position:absolute;inset:14px;border-radius:50%;background:#0c0824;z-index:2;"></span>'
+      + '</div>'
+      + '<div style="font-family:\'Cinzel\',serif;font-size:0.9rem;color:' + (has ? '#fff' : 'rgba(255,255,255,0.4)') + ';">' + s.name + '</div>'
+      + '<div style="font-size:0.66rem;letter-spacing:0.14em;text-transform:uppercase;color:' + col + ';opacity:' + (has ? 0.95 : 0.45) + ';margin-top:0.3rem;font-family:\'Cinzel\',serif;">' + s.rarity + '</div>'
+      + '<div style="font-size:0.74rem;color:rgba(255,255,255,0.34);margin-top:0.45rem;line-height:1.4;min-height:2.7em;padding:0 0.4rem;">' + (has ? s.desc : hint) + '</div>'
+      + (equipped
+          ? '<div style="margin-top:0.5rem;font-family:\'Cinzel\',serif;font-size:0.62rem;letter-spacing:0.1em;color:rgba(0,229,204,0.85);">\u2713 EQUIPPED</div>'
+          : has
+            ? '<button onclick="skinEquip(\'' + s.id + '\')" style="margin-top:0.5rem;font-family:\'Cinzel\',serif;font-size:0.62rem;letter-spacing:0.1em;color:#fff;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);border-radius:6px;padding:0.3rem 0.7rem;cursor:pointer;">EQUIP</button>'
+            : '')
+      + '</div>';
+  }).join('');
+
+  const total = SKINS.length;
+  const got = SKINS.filter(s => owned(s.id)).length;
+  codexSetBar('skins', got, total);
+}
+
+/// Shared progress bar for every Codex tab.
+function codexSetBar(which, got, total){
+  const el = document.getElementById('cx-bar-' + which);
+  if (!el) return;
+  const pct = total ? Math.round(got / total * 100) : 0;
+  el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.35rem;">'
+    + '<span style="font-family:\'Cinzel\',serif;font-size:0.66rem;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.4);">Collected</span>'
+    + '<span style="font-family:\'Cinzel\',serif;font-size:0.9rem;color:#c9b3ff;">' + got + ' / ' + total + '</span>'
+    + '</div>'
+    + '<div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">'
+    + '<div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#b075ff,#8a5fd8);transition:width 0.6s ease;"></div>'
+    + '</div>';
+}
+
+/// Switches the Codex tab. The Feats pane reuses the existing
+/// renderers (forgeRender / featsOpen) — their containers simply live inside
+/// the Codex now, so nothing had to be rewritten.
+function codexTab(which){
+  const panes = { relics:'codex-relics-pane', forge:'codex-forge-pane', feats:'codex-feats-pane' };
+  for (const [k, id] of Object.entries(panes)) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = (k === which) ? 'block' : 'none';
+    const tab = document.getElementById('cx-tab-' + k);
+    if (tab) tab.classList.toggle('active', k === which);
+  }
+  // The header (identity + stats) is persistent — it stays put across tabs.
+
+  if (which === 'forge') codexSkinsRender();
+  if (which === 'feats' && typeof featsOpen === 'function') featsOpen();
+}
+
+/// Opens the Codex. No address = the connected wallet (your own grimoire).
+/// With an address = inspect that Seeker.
+async function codexOpen(addr){
+  const target = (addr || connectedAddress || '').toLowerCase();
+  const modal = document.getElementById('codex-modal');
+  const body  = document.getElementById('codex-body');
+  modal.style.display = 'flex';
+  codexTab('relics');
+  // Inspecting someone else: Forge and Feats are personal, so hide those tabs.
+  const isOther = addr && connectedAddress && addr.toLowerCase() !== connectedAddress.toLowerCase();
+  ['forge','feats'].forEach(k => {
+    const t = document.getElementById('cx-tab-' + k);
+    if (t) t.style.display = isOther ? 'none' : '';
+  });
+
+  if (!target) {
+    body.innerHTML = '<div style="text-align:center;padding:3rem 1rem;color:rgba(255,255,255,0.4);font-family:\'Cinzel\',serif;letter-spacing:0.12em;">Connect your wallet to open your Codex.</div>';
+    return;
+  }
+
+  body.innerHTML = '<div style="text-align:center;padding:3rem 1rem;color:rgba(255,255,255,0.35);font-family:\'Cinzel\',serif;letter-spacing:0.15em;">Reading the chain…</div>';
+
+  try {
+    await initNFTContract();
+    if (typeof initSagaContract === 'function') await initSagaContract();
+
+    const nftRead  = nftReadContract  || nftContract;
+    const sagaRead = (typeof sagaReadContract !== 'undefined' && sagaReadContract) || (typeof sagaContract !== 'undefined' ? sagaContract : null);
+
+    // ── Rank + burned, one call ──
+    let burned = 0, rankIdx = -1, rankName = 'The Void';
+    try {
+      const info = await readContract.getBurnerInfo(target);
+      burned   = parseFloat(ethers.formatEther(info[0]));
+      rankIdx  = Number(info[1]);
+      rankName = info[2] || rankName;
+    } catch(e) { console.warn('codex: burner info failed', e); }
+
+    // ── Collection: 13 targeted reads in parallel ──
+    const rankChecks = [];
+    POOL_DATA.forEach((pool, rIdx) => {
+      pool.forEach((nft, nIdx) => {
+        rankChecks.push(
+          nftRead.hasClaimed(target, rIdx + 1, nIdx)
+            .then(ok => ({ kind:'rank', rIdx, nIdx, nft, owned: !!ok }))
+            .catch(() => ({ kind:'rank', rIdx, nIdx, nft, owned:false }))
+        );
+      });
+    });
+
+    const sagaChecks = (typeof FEATS !== 'undefined' ? FEATS : [])
+      .filter(f => f.cat === 'Saga')
+      .map((f, i) => {
+        const sagaId = i + 1;
+        if (!sagaRead) return Promise.resolve({ kind:'saga', f, owned:false });
+        return sagaRead.hasMinted(target, sagaId)
+          .then(ok => ({ kind:'saga', f, owned: !!ok }))
+          .catch(() => ({ kind:'saga', f, owned:false }));
+      });
+
+    const results = await Promise.all([...rankChecks, ...sagaChecks]);
+    const ranks = results.filter(r => r.kind === 'rank');
+    const sagas = results.filter(r => r.kind === 'saga');
+
+    const ownedCount = results.filter(r => r.owned).length;
+    const totalCount = results.length;
+
+    // ── Duel record, reused from the leaderboard scan when available ──
+    let duelLine = '';
+    try {
+      const rows = (typeof _duelistLBCache !== 'undefined' && _duelistLBCache && _duelistLBCache.rows) ? _duelistLBCache.rows : [];
+      const me = rows.find(r => (r.wallet||'').toLowerCase() === target);
+      if (me) {
+        const played = (me.wins||0)+(me.ties||0)+(me.losses||0);
+        duelLine = `<div class="cx-stat"><b>${played}</b><span>Duels</span></div>
+                    <div class="cx-stat"><b>${me.wins||0}</b><span>Wins</span></div>`;
+      }
+    } catch(e) {}
+
+    const isSelf = target === (connectedAddress||'').toLowerCase();
+
+    // Feats and skins live client-side (localStorage / the connected wallet's
+    // avatar record), so they can only be shown for your own Codex.
+    let selfLine = '';
+    if (isSelf) {
+      try {
+        if (typeof featsEvaluate === 'function') featsEvaluate();
+        const un = (typeof featsLoad === 'function') ? featsLoad() : {};
+        const fGot = (typeof FEATS !== 'undefined')
+          ? Object.keys(un).filter(k => FEATS.some(f => f.id === k)).length : 0;
+        const fTot = (typeof FEATS !== 'undefined') ? FEATS.length : 0;
+        const sTot = (typeof SKINS !== 'undefined') ? SKINS.length : 0;
+        const sGot = (typeof SKINS !== 'undefined')
+          ? SKINS.filter(s => s.id === 'ring_default' || (typeof _myOwned !== 'undefined' && _myOwned.includes(s.id))).length : 0;
+        selfLine = `<div class="cx-stat"><b>${sGot}/${sTot}</b><span>Ring Skins</span></div>
+                    <div class="cx-stat"><b>${fGot}/${fTot}</b><span>Feats</span></div>`;
+      } catch(e) { console.warn('codex: self stats failed', e); }
+    }
+    const rankColor = (typeof getRankColor === 'function' && rankIdx >= 0) ? getRankColor(rankIdx) : '#8ab0c8';
+
+    const cardHTML = (item, owned, sealedHint) => {
+      const col = CX_RARITY_COLOR[item.rarity] || '#8ab0c8';
+      const art = owned
+        ? `<img class="cx-art" src="${item.artUrl}" alt="${item.name}" onerror="this.outerHTML='<div class=\\'cx-sealed-art\\'>${item.icon||'✦'}</div>'">`
+        : `<div class="cx-sealed-art">🔒</div>`;
+      return `<div class="cx-card ${owned?'owned':'sealed'} r-${item.rarity||'common'}" style="${owned?`border-color:${col}${(item.rarity==='epic'||item.rarity==='legendary')?'99':'55'};`:''}">
+        ${art}
+        <div style="padding:0 0.6rem;">
+          <div style="font-family:'Cinzel',serif;font-size:0.88rem;color:${owned?'#e8ecff':'rgba(255,255,255,0.35)'};line-height:1.3;min-height:2.2em;">${owned?item.name:'Sealed'}</div>
+          <div style="font-size:0.64rem;letter-spacing:0.14em;text-transform:uppercase;color:${col};opacity:${owned?0.95:0.45};margin-top:0.4rem;">${item.rarity||''}${item.odds?' · '+item.odds:''}</div>
+          ${!owned&&sealedHint?`<div style="font-size:0.62rem;color:rgba(255,255,255,0.28);margin-top:0.3rem;">${sealedHint}</div>`:''}
+        </div>
+      </div>`;
+    };
+
+    // The header is written to its own persistent container so it survives
+    // tab switches; only the relic grid goes into #codex-body.
+    const headerHTML = `
+      <div style="text-align:center;margin-bottom:0.3rem;">
+        <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.3em;text-transform:uppercase;color:rgba(255,255,255,0.3);">${isSelf?'Your Codex':'Seeker'}</div>
+        <div style="font-family:'Cinzel',serif;font-size:1.5rem;color:${rankColor};margin-top:0.3rem;">${rankName}</div>
+        <div style="font-size:0.62rem;color:rgba(255,255,255,0.3);font-family:monospace;margin-top:0.15rem;">${cxShort(target)}</div>
+      </div>
+
+      <div style="display:flex;justify-content:center;gap:1.9rem;margin:1.3rem 0 0.5rem;flex-wrap:wrap;">
+        <div class="cx-stat"><b>${burned.toFixed(3)}</b><span>zkLTC Burned</span></div>
+        ${duelLine}
+        <div class="cx-stat"><b>${ownedCount}/${totalCount}</b><span>Relics</span></div>
+        ${selfLine}
+      </div>
+
+      <div style="text-align:center;font-size:0.66rem;color:rgba(255,255,255,0.3);font-style:italic;margin-bottom:0.6rem;">
+        Every relic below is verified on-chain. Nothing here can be faked.
+      </div>
+    `;
+    const hdrEl = document.getElementById('codex-header');
+    if (hdrEl) hdrEl.innerHTML = headerHTML;
+    codexSetBar('relics', ownedCount, totalCount);
+    // Publish for the profile panel, which shows the same fraction without
+    // having to re-read the chain.
+    if (isSelf) { window._codexOwnedCount = ownedCount; window._codexTotalCount = totalCount; }
+
+    let html = '';
+
+    // ── Chapter 1: The Ascent ──
+    html += `<div class="cx-chap"><span>The Ascent</span><span style="font-size:0.6rem;">${ranks.filter(r=>r.owned).length}/${ranks.length}</span></div>`;
+    POOL_DATA.forEach((pool, rIdx) => {
+      const rd = (typeof RANKS_DATA !== 'undefined' && RANKS_DATA[rIdx]) ? RANKS_DATA[rIdx] : null;
+      const label = rd ? rd.name : 'Rank ' + (rIdx+1);
+      const reached = rankIdx >= rIdx;
+      html += `<div style="font-size:0.68rem;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,${reached?0.55:0.25});margin:1rem 0 0.55rem;">Rank ${rIdx+1} · ${label}${reached?'':' — not reached'}</div>`;
+      html += '<div class="cx-grid">';
+      pool.forEach((nft, nIdx) => {
+        const rec = ranks.find(r => r.rIdx===rIdx && r.nIdx===nIdx);
+        html += cardHTML(nft, rec && rec.owned, reached ? '' : 'Locked');
+      });
+      html += '</div>';
+    });
+
+    // ── Chapter 2: The Duelist Saga ──
+    if (sagas.length) {
+      html += `<div class="cx-chap"><span>The Duelist Saga</span><span style="font-size:0.6rem;">${sagas.filter(s=>s.owned).length}/${sagas.length}</span></div><div class="cx-grid">`;
+      sagas.forEach(s => {
+        html += cardHTML({ name:s.f.name, artUrl:s.f.artUrl, icon:s.f.icon, rarity:'legendary' }, s.owned, s.f.desc);
+      });
+      html += '</div>';
+    }
+
+    body.innerHTML = html;
+
+  } catch (e) {
+    console.error('codexOpen error:', e);
+    body.innerHTML = '<div style="text-align:center;padding:3rem 1rem;color:rgba(255,120,120,0.7);font-size:0.8rem;">The chain did not answer. Try again.</div>';
+  }
+}
+</script>
+<!-- ═══════════════ END THE CODEX ═══════════════ -->
+
 
 
 
@@ -10700,88 +11102,33 @@ async function avatarSelect(id) {
     <svg onclick="profileCopyAddr()" title="Copy wallet address" style="width:18px;height:18px;flex-shrink:0;cursor:pointer;opacity:0.35;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='0.35'" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
   </div>
 
-  <div style="display:flex;border:1px solid rgba(255,255,255,0.09);border-radius:8px;overflow:hidden;margin-bottom:1rem;">
-    <button id="profile-tab-main" onclick="profilePanelSwitchTab('main')" style="flex:1;padding:0.62rem;font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;background:rgba(0,229,204,0.1);border:none;color:var(--teal);transition:all 0.2s;">Profile</button>
-    <button id="profile-tab-stats" onclick="profilePanelSwitchTab('stats')" style="flex:1;padding:0.62rem;font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;background:transparent;border:none;border-left:1px solid rgba(255,255,255,0.09);color:rgba(255,255,255,0.4);transition:all 0.2s;">Stats</button>
-    <button id="profile-tab-forge" onclick="profilePanelSwitchTab('forge')" style="flex:1;padding:0.62rem;font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;background:transparent;border:none;border-left:1px solid rgba(255,255,255,0.09);color:rgba(255,255,255,0.4);transition:all 0.2s;">Forge</button>
-  </div>
-
-  <!-- FORGE TAB — cosmetic ring skins shop -->
-  <div id="profile-tab-content-forge" style="display:none;">
-    <div id="forge-price-note" style="font-size:0.73rem;color:rgba(255,255,255,0.3);text-align:center;margin-bottom:0.6rem;font-style:italic;">Half of every purchase is burned in your name 🔥</div>
-    <div id="forge-list" style="display:flex;flex-direction:column;gap:0.45rem;max-height:460px;overflow-y:auto;scrollbar-width:thin;"></div>
-  </div>
-  <style>
-  @keyframes fgspin{to{transform:rotate(360deg)}}
-  @keyframes fgspinr{to{transform:rotate(-360deg)}}
-  @keyframes fgflick{0%,100%{filter:brightness(1)}30%{filter:brightness(1.35)}50%{filter:brightness(0.9)}72%{filter:brightness(1.25)}}
-  @keyframes fgrise{0%{transform:translateY(0) scale(1);opacity:0}15%{opacity:0.9}100%{transform:translateY(-22px) scale(0.3);opacity:0}}
-  @keyframes fgfall{0%{transform:translateY(-20px) scale(0.4);opacity:0}20%{opacity:0.9}100%{transform:translateY(0) scale(1);opacity:0}}
-  @keyframes fgbreathe{0%,100%{box-shadow:0 0 6px rgba(120,60,220,0.25)}50%{box-shadow:0 0 16px rgba(120,60,220,0.6)}}
-  @keyframes fgglint{0%,88%,100%{opacity:0}92%{opacity:1}}
-  @keyframes svHollow{0%,100%{transform:scale(0.42);opacity:0.9}50%{transform:scale(0.78);opacity:1}}
-  @keyframes svBolt{0%,100%{opacity:0}6%{opacity:1}11%{opacity:0.15}16%{opacity:0.95}22%{opacity:0}}
-  @keyframes svFade{0%,100%{opacity:0.85}50%{opacity:0.18}}
-  .fgl{position:absolute;inset:0;border-radius:50%;pointer-events:none}
-  .fgp{position:absolute;border-radius:50%;pointer-events:none;z-index:1}
-  .fgo{position:absolute;inset:0;pointer-events:none;z-index:4}
-  .fgo .fgg{position:absolute;top:-4px;left:50%;font-family:'Cinzel',serif;font-weight:600;display:flex;align-items:center;justify-content:center;pointer-events:none}
-  </style>
-
-  <!-- PROFILE TAB -->
-  <div id="profile-tab-content-main">
-    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.7rem;">
-      <span style="width:14px;height:1px;background:rgba(0,229,204,0.4);"></span>
-      <span style="font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.2em;color:rgba(0,229,204,0.55);text-transform:uppercase;">Quick Avatar</span>
+  <!-- ═══ IDENTITY: rank progress ═══ -->
+  <div style="margin:0.2rem 0 0.2rem;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.35rem;">
+      <span id="pp-next-label" style="font-family:'Cinzel',serif;font-size:0.64rem;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.35);">Next rank</span>
+      <span id="pp-next-val" style="font-family:'Cinzel',serif;font-size:0.78rem;color:#c9b3ff;">—</span>
     </div>
-    <div id="profile-panel-avatars" style="display:grid;grid-template-columns:repeat(6,1fr);gap:0.5rem;margin-bottom:1rem;"></div>
-
-    <div style="display:flex;gap:0.4rem;">
-      <button onclick="document.getElementById('profile-panel').style.display='none';featsOpen();" style="flex:1;padding:0.7rem 0.25rem;background:transparent;border:1px solid rgba(200,168,74,0.3);border-radius:8px;color:rgba(200,168,74,0.9);font-size:0.73rem;letter-spacing:0.12em;cursor:pointer;font-family:'Cinzel',serif;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(200,168,74,0.08)'" onmouseout="this.style.background='transparent'">🏆 Feats</button>
-      <button onclick="document.getElementById('profile-panel').style.display='none';if(typeof myDuelsScan==='function')myDuelsScan();document.getElementById('duel').scrollIntoView({behavior:'smooth'});" style="flex:1;padding:0.7rem 0.25rem;background:transparent;border:1px solid rgba(119,85,204,0.35);border-radius:8px;color:#9d7fee;font-size:0.73rem;letter-spacing:0.12em;cursor:pointer;font-family:'Cinzel',serif;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(119,85,204,0.1)'" onmouseout="this.style.background='transparent'">⚔ Duels</button>
-      <button onclick="document.getElementById('profile-panel').style.display='none';avatarOpen();" style="flex:1;padding:0.7rem 0.25rem;background:transparent;border:1px solid rgba(0,229,204,0.28);border-radius:8px;color:rgba(0,229,204,0.85);font-size:0.73rem;letter-spacing:0.12em;cursor:pointer;font-family:'Cinzel',serif;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.background='rgba(0,229,204,0.07)'" onmouseout="this.style.background='transparent'">🌑 Gallery</button>
+    <div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">
+      <div id="pp-next-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#5a9fff,#7755cc);border-radius:3px;transition:width 0.6s ease;"></div>
     </div>
   </div>
 
-  <!-- STATS TAB -->
-  <div id="profile-tab-content-stats" style="display:none;">
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:0.55rem 0.15rem;border-bottom:1px solid rgba(255,255,255,0.06);">
-      <span style="font-size:0.86rem;color:rgba(255,255,255,0.5);letter-spacing:0.05em;">Burned (ritual)</span>
-      <span id="stats-burned" style="font-family:'Cinzel',serif;font-size:1.01rem;color:#ff9a4d;">—</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:0.55rem 0.15rem;margin-bottom:0.9rem;">
-      <span style="font-size:0.86rem;color:rgba(255,255,255,0.5);letter-spacing:0.05em;">Hall of Feats</span>
-      <span id="stats-feats" style="font-family:'Cinzel',serif;font-size:1.01rem;color:#ffd27a;">—</span>
-    </div>
-
-    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.6rem;">
-      <span style="width:14px;height:1px;background:rgba(119,85,204,0.4);"></span>
-      <span style="font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.2em;color:#9d7fee;text-transform:uppercase;">Arena record</span>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.4rem;margin-bottom:0.7rem;">
-      <div style="background:rgba(119,85,204,0.06);border:1px solid rgba(119,85,204,0.18);border-radius:8px;padding:0.5rem;text-align:center;">
-        <div style="font-family:'Cinzel',serif;font-size:1.17rem;color:#9d7fee;" id="stats-wins">—</div>
-        <div style="font-size:0.72rem;color:rgba(255,255,255,0.35);letter-spacing:0.05em;margin-top:0.1rem;">WINS</div>
-      </div>
-      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:0.5rem;text-align:center;">
-        <div style="font-family:'Cinzel',serif;font-size:1.17rem;color:rgba(255,255,255,0.6);" id="stats-ties">—</div>
-        <div style="font-size:0.72rem;color:rgba(255,255,255,0.35);letter-spacing:0.05em;margin-top:0.1rem;">TIES</div>
-      </div>
-      <div style="background:rgba(255,68,102,0.05);border:1px solid rgba(255,68,102,0.15);border-radius:8px;padding:0.5rem;text-align:center;">
-        <div style="font-family:'Cinzel',serif;font-size:1.17rem;color:#ff8899;" id="stats-losses">—</div>
-        <div style="font-size:0.72rem;color:rgba(255,255,255,0.35);letter-spacing:0.05em;margin-top:0.1rem;">LOSSES</div>
-      </div>
-    </div>
-    <div id="stats-arena-source" style="font-size:0.75rem;color:rgba(255,255,255,0.25);font-style:italic;text-align:center;margin:-0.3rem 0 0.7rem;min-height:1em;"></div>
-
-    <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(119,85,204,0.08);border:1px solid rgba(119,85,204,0.25);border-radius:8px;padding:0.6rem 0.8rem;">
-      <div>
-        <div style="font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.1em;color:rgba(157,127,238,0.6);text-transform:uppercase;">Duelist score</div>
-        <div id="stats-rank-position" style="font-size:0.81rem;color:rgba(255,255,255,0.4);margin-top:0.15rem;">—</div>
-      </div>
-      <div id="stats-score" style="font-family:'Cinzel',serif;font-size:1.69rem;color:#9d7fee;font-weight:600;">—</div>
-    </div>
+  <!-- ═══ A glance at what's collected — the incomplete fractions are the hook ═══ -->
+  <div id="pp-mini" style="display:flex;justify-content:space-between;margin:1.15rem 0;padding:0.8rem 0.2rem;border-top:1px solid rgba(255,255,255,0.09);border-bottom:1px solid rgba(255,255,255,0.09);">
+    <div style="text-align:center;flex:1;"><b id="pp-m-duels" style="display:block;font-family:'Cinzel',serif;font-size:0.98rem;color:#c9d6ff;">—</b><span style="font-size:0.56rem;letter-spacing:0.13em;text-transform:uppercase;color:rgba(255,255,255,0.35);">Duels</span></div>
+    <div style="text-align:center;flex:1;"><b id="pp-m-relics" style="display:block;font-family:'Cinzel',serif;font-size:0.98rem;color:#c9d6ff;">—</b><span style="font-size:0.56rem;letter-spacing:0.13em;text-transform:uppercase;color:rgba(255,255,255,0.35);">Relics</span></div>
+    <div style="text-align:center;flex:1;"><b id="pp-m-skins" style="display:block;font-family:'Cinzel',serif;font-size:0.98rem;color:#c9d6ff;">—</b><span style="font-size:0.56rem;letter-spacing:0.13em;text-transform:uppercase;color:rgba(255,255,255,0.35);">Rings</span></div>
+    <div style="text-align:center;flex:1;"><b id="pp-m-feats" style="display:block;font-family:'Cinzel',serif;font-size:0.98rem;color:#c9d6ff;">—</b><span style="font-size:0.56rem;letter-spacing:0.13em;text-transform:uppercase;color:rgba(255,255,255,0.35);">Feats</span></div>
   </div>
+
+  <!-- ═══ APPEARANCE ═══ -->
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.7rem;">
+    <span style="font-family:'Cinzel',serif;font-size:0.64rem;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.35);">Appearance</span>
+    <a onclick="document.getElementById('profile-panel').style.display='none';avatarOpen();" style="color:#00e5cc;font-size:0.62rem;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:0.1em;">See all</a>
+  </div>
+  <div id="profile-panel-avatars"></div>
+
+  <button onclick="document.getElementById('profile-panel').style.display='none';codexOpen();" style="display:block;width:100%;margin-top:1.35rem;padding:0.95rem;border-radius:10px;cursor:pointer;font-family:'Cinzel',serif;font-size:0.86rem;letter-spacing:0.16em;text-transform:uppercase;background:linear-gradient(135deg,rgba(176,117,255,0.22),rgba(90,159,255,0.14));border:1px solid rgba(176,117,255,0.45);color:#e6dcff;transition:all 0.2s;" onmouseover="this.style.boxShadow='0 0 26px rgba(176,117,255,0.28)'" onmouseout="this.style.boxShadow='none'">📖 Open the Codex</button>
 </div>
 
 <script>
@@ -10793,108 +11140,15 @@ async function profileToggle() {
   if (!isOpen) {
     await avatarRefreshPoolCache();
     profilePanelRender();
-    profileStatsRender(); // pre-compute so numbers are ready instantly if the user switches tabs
-    if (typeof mySkinLoad === 'function') mySkinLoad().then(() => forgeRender());
+    // Skins now live in the Codex; load ownership so the panel's ring counter
+    // is right, then re-render the panel with it.
+    if (typeof mySkinLoad === 'function') mySkinLoad().then(() => profilePanelRender());
   }
 }
 
-function profilePanelSwitchTab(tab) {
-  const tabs = {
-    main:  { btn:'profile-tab-main',  content:'profile-tab-content-main',  active:'rgba(0,229,204,0.1)',   color:'var(--teal)' },
-    stats: { btn:'profile-tab-stats', content:'profile-tab-content-stats', active:'rgba(119,85,204,0.12)', color:'#9d7fee' },
-    forge: { btn:'profile-tab-forge', content:'profile-tab-content-forge', active:'rgba(255,210,122,0.1)', color:'#ffd27a' },
-  };
-  for (const key of Object.keys(tabs)) {
-    const t = tabs[key];
-    const btn = document.getElementById(t.btn);
-    const content = document.getElementById(t.content);
-    const on = key === tab;
-    if (content) content.style.display = on ? 'block' : 'none';
-    if (btn) { btn.style.background = on ? t.active : 'transparent'; btn.style.color = on ? t.color : 'rgba(255,255,255,0.4)'; }
-  }
-  if (tab === 'stats') profileStatsRender(); // refresh in case burn/feats data changed since panel opened
-  if (tab === 'forge') forgeRender();
-}
 
 // Fills the My Stats tab using data already in memory — no blockchain scan,
 // so the numbers appear instantly the moment the tab is opened.
-function profileStatsRender() {
-  const burnedEl = document.getElementById('stats-burned');
-  if (burnedEl) burnedEl.textContent = (typeof _burnTotal !== 'undefined' ? _burnTotal.toFixed(2) : '0.00') + ' zkLTC';
-
-  const featsEl = document.getElementById('stats-feats');
-  if (featsEl) {
-    const unlocked = typeof featsLoad === 'function' ? Object.keys(featsLoad()).length : 0;
-    const total = typeof FEATS !== 'undefined' ? FEATS.length : 0;
-    featsEl.textContent = unlocked + ' / ' + total;
-  }
-
-  // Arena record — prefer the exact on-chain numbers already computed by
-  // the Duelist board scan (accurate: every duel, every device) when a
-  // fresh-enough cache exists for this wallet. Local duel history is only
-  // a fallback for when no scan has run yet in this session (it only
-  // reflects duels observed live in *this* browser, capped at 50 — it can
-  // drift from the real on-chain record, which is why we don't trust it
-  // as the primary source anymore).
-  let wins = 0, ties = 0, losses = 0, source = 'local';
-  const cacheRow = (typeof _duelistLBCache !== 'undefined' && _duelistLBCache && connectedAddress)
-    ? _duelistLBCache.rows.find(r => r.wallet === connectedAddress.toLowerCase())
-    : null;
-
-  if (cacheRow) {
-    wins = cacheRow.wins; ties = cacheRow.ties; losses = cacheRow.losses;
-    source = 'chain';
-  } else {
-    const history = typeof duelHistoryLoad === 'function' ? duelHistoryLoad() : [];
-    history.forEach(h => {
-      if (h.isTie) ties++;
-      else if (h.isWin) wins++;
-      else losses++;
-    });
-    // Kick off a background scan so the next time this tab opens (or the
-    // Duelist board is visited) we have the real numbers cached. Fire and
-    // forget — this tab must stay instant, so we don't await it.
-    //
-    // Guarded to run AT MOST ONCE per wallet per page load: a wallet that
-    // has genuinely never played a duel will never get a cacheRow (the
-    // scan only creates rows for wallets with at least one finished duel),
-    // so without this guard the .then() callback below would re-render,
-    // land back in this same "no cacheRow" branch, and re-trigger the scan
-    // — forever. That infinite loop is what was freezing the tab.
-    if (connectedAddress && typeof duelistLeaderboardRefresh === 'function'
-        && !_duelistLBScanning && _arenaBgScanWallet !== connectedAddress) {
-      _arenaBgScanWallet = connectedAddress;
-      duelistLeaderboardRefresh(false).then(() => {
-        const stillOpen = document.getElementById('profile-panel');
-        if (stillOpen && stillOpen.style.display === 'block') profileStatsRender();
-      }).catch(() => {});
-    }
-  }
-  const score = wins * 2 + ties * 1;
-
-  const winsEl = document.getElementById('stats-wins'); if (winsEl) winsEl.textContent = wins;
-  const tiesEl = document.getElementById('stats-ties'); if (tiesEl) tiesEl.textContent = ties;
-  const lossesEl = document.getElementById('stats-losses'); if (lossesEl) lossesEl.textContent = losses;
-  const scoreEl = document.getElementById('stats-score'); if (scoreEl) scoreEl.textContent = score;
-
-  const sourceEl = document.getElementById('stats-arena-source');
-  if (sourceEl) {
-    sourceEl.textContent = source === 'chain' ? '' : '(from this device only — visiting the Duelist board gives the exact count)';
-  }
-
-  // Position in the global duelist leaderboard, if it's already been computed.
-  // We don't trigger a fresh scan here (that's a 5-min-cached, heavier operation) —
-  // we just reflect whatever's already cached so this tab stays instant.
-  const posEl = document.getElementById('stats-rank-position');
-  if (posEl) {
-    if (typeof _duelistLBCache !== 'undefined' && _duelistLBCache && connectedAddress) {
-      const idx = _duelistLBCache.rows.findIndex(r => r.wallet === connectedAddress.toLowerCase());
-      posEl.textContent = idx >= 0 ? ('Rank #' + (idx + 1) + ' on the Duelist board') : 'Not ranked yet';
-    } else {
-      posEl.textContent = 'Visit the Duelist board to rank in';
-    }
-  }
-}
 
 // Close the panel when clicking outside of it (use closest() so clicks on
 // the avatar <img> inside the button — whose target isn't the button itself —
@@ -11339,20 +11593,131 @@ function profilePanelRender() {
     }
   }
 
-  // Quick avatar row — show up to 6 unlocked avatars for fast switching
+  // ── Progress toward the next rank ──────────────────────────────────────
+  // The one number that lives nowhere else: how far you are from the next
+  // rank. Everything else the panel shows is a count of what you already own.
+  (function(){
+    const THRESH = [0.5, 5, 20, 100];
+    const NAMES  = ['Simple Holder','Apprentice Litecoiner','Devoted Litecoiner','Silver Maximalist'];
+    const lab = document.getElementById('pp-next-label');
+    const val = document.getElementById('pp-next-val');
+    const bar = document.getElementById('pp-next-bar');
+    if (!lab || !val || !bar) return;
+
+    const burned = (typeof _burnTotal !== 'undefined' && _burnTotal != null)
+      ? Number(_burnTotal) : NaN;
+    const idx = (typeof _burnRank !== 'undefined') ? _burnRank : -1;
+
+    if (!connectedAddress || !isFinite(burned)) {
+      lab.textContent = 'Next rank'; val.textContent = '—'; bar.style.width = '0%'; return;
+    }
+    if (idx >= 3) {  // top rank reached
+      lab.textContent = 'Highest rank reached';
+      val.textContent = burned.toFixed(2) + ' zkLTC';
+      bar.style.width = '100%';
+      return;
+    }
+    const nextIdx  = idx + 1;                 // -1 (unranked) -> 0
+    const floorAmt = idx >= 0 ? THRESH[idx] : 0;
+    const target   = THRESH[nextIdx];
+    const pct = Math.max(0, Math.min(100, (burned - floorAmt) / (target - floorAmt) * 100));
+    lab.textContent = 'Toward ' + NAMES[nextIdx];
+    val.textContent = burned.toFixed(burned < 10 ? 2 : 1) + ' / ' + target;
+    bar.style.width = pct + '%';
+  })();
+
+  // ── The four counters ──────────────────────────────────────────────────
+  (function(){
+    const set = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
+
+    // Duels: reuse the leaderboard scan if it already ran this session.
+    let duels = '—';
+    try {
+      const rows = (typeof _duelistLBCache !== 'undefined' && _duelistLBCache && _duelistLBCache.rows) ? _duelistLBCache.rows : [];
+      const me = connectedAddress ? rows.find(r => (r.wallet||'').toLowerCase() === connectedAddress.toLowerCase()) : null;
+      if (me) duels = (me.wins||0) + (me.ties||0) + (me.losses||0);
+    } catch(e) {}
+    set('pp-m-duels', duels);
+
+    // Relics: rank pools + saga, counted from the same cache the Codex fills.
+    try {
+      const poolTotal = (typeof POOL_DATA !== 'undefined') ? POOL_DATA.reduce((n,p) => n + p.length, 0) : 0;
+      const sagaTotal = (typeof FEATS !== 'undefined') ? FEATS.filter(f => f.cat === 'Saga').length : 0;
+      const total = poolTotal + sagaTotal;
+      const got = (typeof window._codexOwnedCount === 'number') ? window._codexOwnedCount : null;
+      set('pp-m-relics', got === null ? '· / ' + total : got + '/' + total);
+    } catch(e) {}
+
+    // Ring skins.
+    try {
+      const sTot = (typeof SKINS !== 'undefined') ? SKINS.length : 0;
+      const sGot = (typeof SKINS !== 'undefined')
+        ? SKINS.filter(s => s.id === 'ring_default' || (typeof _myOwned !== 'undefined' && _myOwned.includes(s.id))).length : 0;
+      set('pp-m-skins', sGot + '/' + sTot);
+    } catch(e) {}
+
+    // Feats.
+    try {
+      if (typeof featsEvaluate === 'function') featsEvaluate();
+      const un = (typeof featsLoad === 'function') ? featsLoad() : {};
+      const fTot = (typeof FEATS !== 'undefined') ? FEATS.length : 0;
+      const fGot = (typeof FEATS !== 'undefined')
+        ? Object.keys(un).filter(k => FEATS.some(f => f.id === k)).length : 0;
+      set('pp-m-feats', fGot + '/' + fTot);
+    } catch(e) {}
+  })();
+
+  // ── Appearance row ─────────────────────────────────────────────────────
+  // Round pills, matching how the avatar actually appears everywhere else in
+  // the game. The active one wears your equipped ring, so picking an avatar
+  // previews the real thing instead of a cropped square.
   const grid = document.getElementById('profile-panel-avatars');
   if (grid) {
-    const unlocked = avatarOnlyUnlocked().slice(0, 6);
-    grid.innerHTML = unlocked.map(a => {
+    const all = avatarOnlyUnlocked();
+    const shown = all.slice(0, 5);
+    const rest = all.length - shown.length;
+
+    grid.style.display = 'flex';
+    grid.style.gap = '0.55rem';
+    grid.style.alignItems = 'center';
+
+    const pill = (a) => {
       const isActive = a.id === _myAvatarId;
       const inner = a.type === 'image'
-        ? `<img src="${a.url}" style="width:100%;height:100%;border-radius:4px;object-fit:cover;" onerror="this.outerHTML='🌑';" />`
+        ? `<img src="${a.url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.outerHTML='🌑';" />`
         : a.type === 'glyph'
-        // Le Ł est un caractère, pas un emoji : plus grand et coloré.
-        ? `<span style="display:flex;width:100%;height:100%;align-items:center;justify-content:center;border-radius:6px;background:radial-gradient(circle at 42% 36%, #12193a 0%, #060a1e 70%, #04061a 100%);font-family:'Cinzel',Georgia,serif;font-weight:600;font-synthesis:none;-webkit-font-synthesis:none;font-size:1.7rem;line-height:1;color:#00e5cc;-webkit-text-fill-color:#00e5cc;text-shadow:0 0 10px rgba(0,229,204,0.75),0 0 22px rgba(0,229,204,0.35);">${a.icon}</span>`
-        : `<span style="font-size:1.1rem;">${a.icon}</span>`;
-      return `<div onclick="avatarSelect('${a.id}');profilePanelRender();" title="${a.name}" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:${isActive?'rgba(0,229,204,0.12)':'rgba(255,255,255,0.025)'};border:1px solid ${isActive?'rgba(0,229,204,0.55)':'rgba(255,255,255,0.07)'};box-shadow:${isActive?'0 0 8px rgba(0,229,204,0.25)':'none'};border-radius:3px;cursor:pointer;overflow:hidden;transition:all 0.15s;" onmouseover="this.style.borderColor='rgba(0,229,204,0.4)'" onmouseout="this.style.borderColor='${isActive?'rgba(0,229,204,0.55)':'rgba(255,255,255,0.07)'}'">${inner}</div>`;
-    }).join('');
+        ? `<span style="display:flex;width:100%;height:100%;align-items:center;justify-content:center;border-radius:50%;background:radial-gradient(circle at 42% 36%, #12193a 0%, #060a1e 70%, #04061a 100%);font-family:'Cinzel',Georgia,serif;font-weight:600;font-size:1.5rem;line-height:1;color:#00e5cc;-webkit-text-fill-color:#00e5cc;text-shadow:0 0 10px rgba(0,229,204,0.75);">${a.icon}</span>`
+        : `<span style="font-size:1.15rem;">${a.icon}</span>`;
+
+      // The active pill is framed by the equipped ring's own gradient.
+      const ringBg = (window._pbRingColor || 'rgba(0,229,204,0.55)');
+      const ringPct = (window._pbRingPct != null ? window._pbRingPct : 62);
+      const halo = isActive
+        ? `<span style="position:absolute;inset:-3px;border-radius:50%;z-index:0;background:conic-gradient(${ringBg} 0 ${ringPct}%, rgba(255,255,255,0.1) ${ringPct}% 100%);"></span>
+           <span style="position:absolute;inset:0;border-radius:50%;background:#140d33;z-index:1;"></span>`
+        : '';
+
+      return `<div onclick="avatarSelect('${a.id}');profilePanelRender();" title="${a.name}"
+        style="position:relative;width:48px;height:48px;border-radius:50%;flex-shrink:0;cursor:pointer;
+        background:#140d33;border:1px solid ${isActive ? 'transparent' : 'rgba(255,255,255,0.1)'};
+        display:flex;align-items:center;justify-content:center;overflow:visible;transition:transform 0.18s,border-color 0.18s;"
+        onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+        ${halo}
+        <span style="position:relative;z-index:2;width:100%;height:100%;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;">${inner}</span>
+      </div>`;
+    };
+
+    const more = rest > 0
+      ? `<div onclick="document.getElementById('profile-panel').style.display='none';avatarOpen();" title="All avatars"
+          style="width:48px;height:48px;border-radius:50%;flex-shrink:0;cursor:pointer;
+          background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
+          display:flex;align-items:center;justify-content:center;
+          font-family:'Cinzel',serif;font-size:0.7rem;color:rgba(255,255,255,0.45);transition:all 0.18s;"
+          onmouseover="this.style.color='#fff';this.style.transform='translateY(-3px)'"
+          onmouseout="this.style.color='rgba(255,255,255,0.45)';this.style.transform='none'">+${rest}</div>`
+      : '';
+
+    grid.innerHTML = shown.map(pill).join('') + more;
   }
 }
 </script>
@@ -11503,7 +11868,7 @@ async function myDuelsScan() {
         statusColor = '#9d7fee';
         const joinedAt = Number(d.joinedAt);
         const now = Math.floor(Date.now()/1000);
-        const remaining = 21600 - (now - joinedAt);
+        const remaining = (typeof REVEAL_WINDOW !== 'undefined' ? REVEAL_WINDOW : 86400) - (now - joinedAt);
         if (remaining > 0) {
           const h = Math.floor(remaining/3600);
           const m = Math.floor((remaining%3600)/60);
