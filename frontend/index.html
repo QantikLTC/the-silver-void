@@ -10663,13 +10663,25 @@ async function profilesBatchPrefetch(wallets) {
 }
 
 async function usernameFetch(wallet) {
+  // A cached entry with username === null is NOT proof there's no name: the
+  // batch endpoint returns null for any wallet it couldn't resolve, and that
+  // null then stuck for the whole 15-minute TTL, hiding real names from the
+  // leaderboard and the profile panel. Only trust a cache hit that actually
+  // carries a name; otherwise fall through to the authoritative endpoint.
   const hit = _profileGet(wallet);
-  if (hit) return hit.username;
+  if (hit && hit.username) return hit.username;
   try {
     const res = await fetch(`${USERNAME_API}?wallet=${encodeURIComponent(wallet)}`);
     if (!res.ok) return null;
     const data = await res.json();
-    return data.username || null;
+    const name = data.username || null;
+    // Write it back so the next reader (leaderboard row, panel, codex) is a
+    // cache hit rather than another API call.
+    if (name) {
+      const k = wallet.toLowerCase();
+      _profileCache[k] = Object.assign({ avatar: null, skin: null }, _profileCache[k] || {}, { username: name, ts: Date.now() });
+    }
+    return name;
   } catch (e) {
     console.warn('usernameFetch failed:', e);
     return null;
@@ -11167,6 +11179,12 @@ async function profileToggle() {
   panel.style.display = isOpen ? 'none' : 'block';
   if (!isOpen) {
     await avatarRefreshPoolCache();
+    // Make sure the display name is loaded before the first paint, otherwise
+    // the panel shows the raw address while the nav button already shows the
+    // name (they read _myUsername at different times).
+    if (!_myUsername && typeof refreshDisplayedUsername === 'function') {
+      try { await refreshDisplayedUsername(); } catch(e) {}
+    }
     profilePanelRender();
     // Skins now live in the Codex; load ownership so the panel's ring counter
     // is right, then re-render the panel with it.
