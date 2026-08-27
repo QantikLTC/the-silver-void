@@ -2,28 +2,49 @@
 //
 // Storage (Upstash Redis REST API via Vercel KV):
 //   username:<wallet>           -> the player's chosen name (lowercased wallet key)
-//   usernametaken:<name_lower>  -> the wallet that owns this name (for uniqueness, case-insensitive)
+//   usernametaken:<name_lower>  -> the wallet that owns this name (case-insensitive)
 //
-// Rules enforced server-side:
-//   - 3 to 16 characters
-//   - letters, numbers, underscore, hyphen only
-//   - case-insensitive uniqueness
-//   - basic banned-word filter
+// ═══ WHAT CHANGED AND WHY ═══
 //
-// This does NOT enforce the "must have Simple Holder rank" or "first is free,
-// then pay to change" business rules — those are enforced by the FRONTEND
-// before calling this API (the frontend checks the rank and, for paid changes,
-// requires a successful on-chain payment tx before calling this endpoint).
-// The server only guarantees format validity + uniqueness.
+// 1. SIGNED WRITES. The old POST took { wallet, username } and trusted both.
+//    Anyone could rename any player — including overwriting a name they didn't
+//    own — with a single curl. Writes now require a signature produced by the
+//    wallet's private key over a fixed message; the server recovers the signer
+//    and only accepts the write if it matches the wallet being changed.
+//
+// 2. CORS RESTRICTED. Was '*', so any site on the internet could call this
+//    endpoint from a visitor's browser. Now limited to the project's own
+//    origins.
+//
+// 3. CACHED READS. GET responses are cacheable at the edge for 5 minutes.
+//    Names change rarely, and a burst of scripted traffic on this route (25k
+//    invocations in an hour, from scattered ASNs) is what prompted this pass —
+//    cached reads are served without invoking the function at all.
+//
+// 4. LIGHT RATE LIMIT on writes, per wallet, so a leaked signature can't be
+//    replayed into a rename loop.
+//
+// Business rules (rank required, first change free) still live in the frontend;
+// this endpoint guarantees format, uniqueness, and now ownership.
+
+import { verifyMessage } from 'ethers';
 
 const MIN_LEN = 3;
 const MAX_LEN = 16;
 const NAME_REGEX = /^[a-zA-Z0-9_-]+$/;
 
-// Minimal banned-word filter — extend this list as needed.
+// Must match exactly what the frontend asks the wallet to sign.
+const SIGN_MESSAGE = 'The Silver Void — set my display name';
+
+// Origins allowed to call this endpoint from a browser.
+const ALLOWED_ORIGINS = [
+  'https://thesilvervoid.com',
+  'https://www.thesilvervoid.com',
+];
+
 const BANNED_WORDS = [
   'admin', 'moderator', 'fuck', 'shit', 'cunt', 'nigger', 'rape',
-  'hitler', 'nazi', 'support', 'official'
+  'hitler', 'nazi', 'support', 'official',
 ];
 
 function isBanned(name) {
@@ -48,39 +69,95 @@ async function redisCall(path, opts = {}) {
   return res.json();
 }
 
+/// Allows same-origin requests (no Origin header) and the project's own sites.
+function applyCors(req, res) {
+  const origin = req.headers.origin;
+  if (!origin) return true;                       // same-origin / server-side
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    return true;
+  }
+  return false;
+}
+
+/// One rename per wallet per 30s. Enough to stop a loop, invisible to a human.
+async function rateLimited(walletKey) {
+  const key = `ratelimit:username:${walletKey}`;
+  try {
+    const hit = await redisCall(`/get/${encodeURIComponent(key)}`, { method: 'GET' });
+    if (hit.result) return true;
+    await redisCall(`/set/${encodeURIComponent(key)}/1?EX=30`, { method: 'POST' });
+    return false;
+  } catch (e) {
+    // A failing limiter must not block legitimate writes.
+    console.warn('rate limit check failed:', e.message);
+    return false;
+  }
+}
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const corsOk = applyCors(req, res);
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
-    res.status(204).end();
+    res.status(corsOk ? 204 : 403).end();
+    return;
+  }
+  if (!corsOk) {
+    res.status(403).json({ error: 'Origin not allowed' });
     return;
   }
 
   try {
+    // ───────────────────────── GET ─────────────────────────
     if (req.method === 'GET') {
       const { wallet } = req.query || {};
       if (!wallet) {
         res.status(400).json({ error: 'Missing wallet' });
         return;
       }
-      const key = `username:${wallet.toLowerCase()}`;
+      const key = `username:${String(wallet).toLowerCase()}`;
       const data = await redisCall(`/get/${encodeURIComponent(key)}`, { method: 'GET' });
+
+      // Served from the edge for 5 minutes; stale copies may be reused for an
+      // hour while a fresh one is fetched in the background.
+      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
       res.status(200).json({ username: data.result || null });
       return;
     }
 
+    // ───────────────────────── POST ─────────────────────────
     if (req.method === 'POST') {
-      const { wallet, username } = req.body || {};
-      if (!wallet || !username) {
-        res.status(400).json({ error: 'Missing wallet or username' });
+      const { wallet, username, signature } = req.body || {};
+      if (!wallet || !username || !signature) {
+        res.status(400).json({ error: 'Missing wallet, username, or signature' });
+        return;
+      }
+
+      // ── Ownership: recover the signer and require it to be the wallet ──
+      let signer;
+      try {
+        signer = verifyMessage(SIGN_MESSAGE, signature);
+      } catch (e) {
+        res.status(401).json({ error: 'Invalid signature' });
+        return;
+      }
+      if (signer.toLowerCase() !== String(wallet).toLowerCase()) {
+        res.status(401).json({ error: 'Signature does not match wallet' });
+        return;
+      }
+
+      const walletKey = String(wallet).toLowerCase();
+      if (await rateLimited(walletKey)) {
+        res.status(429).json({ error: 'Too many changes — wait a moment.' });
         return;
       }
 
       const trimmed = String(username).trim();
 
-      // ── Format validation ──
+      // ── Format ──
       if (trimmed.length < MIN_LEN || trimmed.length > MAX_LEN) {
         res.status(400).json({ error: `Username must be ${MIN_LEN}-${MAX_LEN} characters.` });
         return;
@@ -94,18 +171,17 @@ export default async function handler(req, res) {
         return;
       }
 
-      const walletKey = wallet.toLowerCase();
       const nameLower = trimmed.toLowerCase();
       const takenKey = `usernametaken:${nameLower}`;
 
-      // ── Uniqueness check (case-insensitive) ──
+      // ── Uniqueness (case-insensitive) ──
       const existing = await redisCall(`/get/${encodeURIComponent(takenKey)}`, { method: 'GET' });
       if (existing.result && existing.result !== walletKey) {
         res.status(409).json({ error: 'This name is already taken.' });
         return;
       }
 
-      // ── Release the player's previous name reservation, if any ──
+      // ── Release the previous reservation, if any ──
       const userKey = `username:${walletKey}`;
       const prev = await redisCall(`/get/${encodeURIComponent(userKey)}`, { method: 'GET' });
       if (prev.result) {
@@ -115,7 +191,7 @@ export default async function handler(req, res) {
         }
       }
 
-      // ── Reserve the new name and save it ──
+      // ── Reserve and save ──
       await redisCall(`/set/${encodeURIComponent(takenKey)}/${encodeURIComponent(walletKey)}`, { method: 'POST' });
       await redisCall(`/set/${encodeURIComponent(userKey)}/${encodeURIComponent(trimmed)}`, { method: 'POST' });
 
