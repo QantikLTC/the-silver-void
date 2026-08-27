@@ -10639,6 +10639,9 @@ async function storeCancel(listingId) {
 <script>
 // ═══ USERNAME SYSTEM ═══
 const USERNAME_API = '/api/username';
+// Must match SIGN_MESSAGE in /api/username.js character for character —
+// any difference and the recovered signer won't match the wallet.
+const USERNAME_SIGN_MESSAGE = 'The Silver Void \u2014 set my display name';
 const USERNAME_CHANGE_FEE = '0.05'; // zkLTC — charged on-chain before any change after the first
 const CREATOR_ADDRESS = '0x5489667F306a6F03F550FCB129F765f83FaCB24E';
 let _myUsername = null; // cached current username for this wallet
@@ -10786,11 +10789,23 @@ async function usernameSubmit() {
       await tx.wait();
     }
 
+    // The API proves ownership before writing: without a signature anyone
+    // could rename any player with a single request.
+    btn.textContent = 'Sign to confirm...';
+    let nameSignature;
+    try {
+      nameSignature = await signer.signMessage(USERNAME_SIGN_MESSAGE);
+    } catch (e) {
+      errBox.textContent = 'Signature cancelled.';
+      errBox.style.display = 'block';
+      return;
+    }
+
     btn.textContent = 'Saving...';
     const res = await fetch(USERNAME_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet: connectedAddress, username: name })
+      body: JSON.stringify({ wallet: connectedAddress, username: name, signature: nameSignature })
     });
     const data = await res.json();
 
