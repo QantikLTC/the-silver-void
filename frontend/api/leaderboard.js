@@ -100,7 +100,7 @@
 const EXPLORER_BASE = 'https://liteforge.explorer.caldera.xyz';
 const RPC_URL = 'https://liteforge.rpc.caldera.xyz/http';
 const CONTRACT_ADDRESS = '0x0AD3f776C45FF457d2d8e211A3174A4Db201b656';
-const NETWORK_TAG = 'liteforge-testnet-v8';
+const NETWORK_TAG = 'liteforge-testnet-v9';
 // ─────────────────────────────────────────────────────────────────────
 
 // keccak256("Burned(address,uint256,uint256,uint256,uint256)")
@@ -135,21 +135,29 @@ export const config = { maxDuration: 60 };
 // Redis (Upstash REST)
 // ═══════════════════════════════════════════════════════════════════════
 
-async function redisCall(path, opts = {}) {
-  const url = `${process.env.KV_REST_API_URL}${path}`;
-  const res = await fetch(url, {
-    ...opts,
+// Toutes les commandes passent par le format tableau ["SET", cle, valeur].
+// C'est la forme native de Redis : les flags (NX, EX) sont de simples
+// elements du tableau, et le payload voyage dans le BODY.
+//
+// L'ancienne approche construisait des URL du type /set/<cle>/<valeur> :
+//   - un flag sans valeur (?NX) pouvait etre rejete en HTTP 400, ce qui
+//     bloquait l'acquisition du verrou et empechait TOUT scan de demarrer ;
+//   - l'etat des 1833 adresses encode dans l'URL fait ~172 KB, au-dela des
+//     limites : l'ecriture echouait et le cycle entier etait perdu.
+async function redisCmd(cmd) {
+  const res = await fetch(process.env.KV_REST_API_URL, {
+    method: 'POST',
     headers: {
       Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
       'Content-Type': 'application/json',
-      ...(opts.headers || {}),
     },
+    body: JSON.stringify(cmd),
   });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Redis call failed (${res.status}): ${text}`);
+  const json = await res.json().catch(() => null);
+  if (!res.ok || (json && json.error)) {
+    throw new Error(`Redis ${cmd[0]} a echoue: HTTP ${res.status} ${json && json.error ? json.error : ''}`);
   }
-  return res.json();
+  return json ? json.result : null;
 }
 
 function withTimeout(promise, ms, label = 'TIMEOUT') {
@@ -162,33 +170,28 @@ function withTimeout(promise, ms, label = 'TIMEOUT') {
 
 async function redisGet(key) {
   try {
-    const data = await redisCall(`/get/${encodeURIComponent(key)}`, { method: 'GET' });
-    return data.result ? JSON.parse(data.result) : null;
+    const r = await redisCmd(['GET', key]);
+    return r ? JSON.parse(r) : null;
   } catch (e) {
-    console.warn(`redisGet(${key}) a échoué:`, e.message);
+    console.warn(`redisGet(${key}) a echoue:`, e.message);
     return null;
   }
 }
 
-// (b) Payload en BODY. Avec 1833 adresses l'état pèse ~140 KB : encodé
-// dans l'URL il en ferait 172 KB et l'écriture échouerait silencieusement.
 async function redisSet(key, value) {
-  await redisCall(`/set/${encodeURIComponent(key)}`, {
-    method: 'POST',
-    body: JSON.stringify(value),
-  });
+  return redisCmd(['SET', key, JSON.stringify(value)]);
 }
 
 async function redisDel(key) {
-  try { await redisCall(`/del/${encodeURIComponent(key)}`, { method: 'POST' }); } catch {}
+  try { await redisCmd(['DEL', key]); } catch {}
 }
 
-// (a) NX est un FLAG. En cas d'échec on REFUSE le verrou : ne pas avancer
-// est toujours préférable à faire avancer deux cycles en parallèle.
+// NX et EX sont des elements du tableau : plus rien a encoder dans une URL.
+// En cas d'echec on REFUSE le verrou : ne pas avancer vaut mieux que faire
+// tourner deux cycles en parallele (c'etait la cause des montants faux).
 async function tryAcquireLock() {
   try {
-    const data = await redisCall(`/set/${encodeURIComponent(KEY_LOCK)}/1?NX&EX=55`, { method: 'POST' });
-    return data.result === 'OK';
+    return (await redisCmd(['SET', KEY_LOCK, '1', 'NX', 'EX', '55'])) === 'OK';
   } catch (e) {
     console.warn('leaderboard: verrou indisponible, on n\'avance pas:', e.message);
     return false;
@@ -196,7 +199,7 @@ async function tryAcquireLock() {
 }
 
 async function releaseLock() {
-  try { await redisCall(`/del/${encodeURIComponent(KEY_LOCK)}`, { method: 'POST' }); } catch {}
+  try { await redisCmd(['DEL', KEY_LOCK]); } catch {}
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -553,6 +556,34 @@ export default async function handler(req, res) {
 
   try {
     const forceFull = req.query && (req.query.full === '1' || req.query.full === 'true');
+
+    // ── MODE DIAGNOSTIC : /api/leaderboard?debug=1 ──
+    // Affiche l'etat reel du systeme au lieu d'echouer en silence.
+    if (req.query && req.query.debug === '1') {
+      const out = {
+        variablesEnv: {
+          KV_REST_API_URL: !!process.env.KV_REST_API_URL,
+          KV_REST_API_TOKEN: !!process.env.KV_REST_API_TOKEN,
+        },
+      };
+      try { out.redisPing = await redisCmd(['PING']); }
+      catch (e) { out.redisErreur = e.message; }
+      try {
+        const l = await tryAcquireLock();
+        out.verrouObtenu = l;
+        if (l) await releaseLock();
+      } catch (e) { out.verrouErreur = e.message; }
+      try { await advance(forceFull); out.scanExecute = 'ok'; }
+      catch (e) { out.scanErreur = e.message; out.scanStack = String(e.stack || '').split('\n').slice(0, 4); }
+      const st = await redisGet(KEY_STATE);
+      out.adressesEnregistrees = st && st.amounts ? Object.keys(st.amounts).length : 0;
+      out.bootstrapTermine = st ? !!st.bootstrapped : false;
+      const sc = await redisGet(KEY_SCAN);
+      out.scanPagesLues = sc && sc.pages ? sc.pages : 0;
+      out.scanAdressesTrouvees = sc && sc.dirty ? sc.dirty.length : 0;
+      res.status(200).json(out);
+      return;
+    }
 
     let state = null;
     // Un seul advance() à la fois, réellement garanti cette fois (a).
