@@ -1818,6 +1818,37 @@ body::after {
 }
 .lb-empty strong { display:block; font-family:'Cinzel',serif; font-size:0.7rem; letter-spacing:0.3em; color:rgba(0,229,204,0.4); margin-bottom:0.5rem; font-style:normal; }
 
+/* ── Bandeau de maintenance du classement ──────────────────────────────
+   Affiché tant que LB_MAINTENANCE vaut true (voir le script plus bas).
+   Objectif : dire clairement que le RETARD est côté affichage et que les
+   burns, eux, sont intacts sur la chaîne — sans quoi un joueur qui voit un
+   montant inférieur au sien croit légitimement avoir perdu des zkLTC. */
+.lb-maint {
+  display:flex; align-items:flex-start; gap:0.8rem;
+  margin-bottom:1rem; padding:0.9rem 1.1rem;
+  background:linear-gradient(90deg, rgba(255,193,64,0.10), rgba(255,193,64,0.02));
+  border:1px solid rgba(255,193,64,0.32); border-radius:10px;
+}
+.lb-maint-icon {
+  flex:0 0 auto; font-size:1rem; line-height:1.4; color:#ffc140;
+  animation:lbMaintPulse 2.4s ease-in-out infinite;
+}
+@keyframes lbMaintPulse { 0%,100%{opacity:0.45;} 50%{opacity:1;} }
+.lb-maint-body { flex:1 1 auto; min-width:0; }
+.lb-maint-title {
+  font-family:'Cinzel',serif; font-size:0.66rem; letter-spacing:0.22em;
+  text-transform:uppercase; color:#ffc140; margin-bottom:0.35rem;
+}
+.lb-maint-text {
+  font-family:'Cormorant Garamond',serif; font-size:0.92rem; font-style:italic;
+  line-height:1.55; color:rgba(255,255,255,0.62);
+}
+.lb-maint-text b { font-style:normal; font-weight:600; color:rgba(255,255,255,0.82); }
+@media(max-width:600px){
+  .lb-maint { padding:0.75rem 0.85rem; gap:0.6rem; }
+  .lb-maint-text { font-size:0.86rem; }
+}
+
 
 
 
@@ -3293,6 +3324,21 @@ function svIntroParticles() {
       <div style="display:flex;align-items:center;justify-content:space-between;gap:0.6rem;margin-bottom:0.7rem;flex-wrap:wrap;">
         <span id="lb-sac-updated" style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:0.78rem;color:rgba(255,255,255,0.4);"></span>
         <button id="lb-sac-refresh-btn" onclick="lbSacManualRefresh()" style="background:rgba(0,229,204,0.08);border:1px solid rgba(0,229,204,0.3);border-radius:8px;padding:0.4rem 0.9rem;color:var(--teal);font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:all 0.2s;" onmouseover="this.style.background='rgba(0,229,204,0.18)'" onmouseout="this.style.background='rgba(0,229,204,0.08)'">↺ Refresh</button>
+      </div>
+      <!-- Bandeau de maintenance — piloté par LB_MAINTENANCE dans le script.
+           Repasser cette constante à false une fois l'indexation rétablie. -->
+      <div id="lb-maintenance" class="lb-maint" style="display:none;">
+        <div class="lb-maint-icon">⚙</div>
+        <div class="lb-maint-body">
+          <div class="lb-maint-title">Rankings under maintenance</div>
+          <div class="lb-maint-text">
+            The Sacrifiants board is being rebuilt from on-chain data, so the
+            amounts shown here may be incomplete or out of date.
+            <b>Nothing is lost — every burn is recorded on the chain</b>, and your
+            true total is always visible in your own Codex. Normal service will
+            resume shortly.
+          </div>
+        </div>
       </div>
       <div id="lb-rows">
         <div class="lb-empty"><strong>Loading...</strong>Calling the blockchain...</div>
@@ -6175,7 +6221,27 @@ async function lbSacManualRefresh(){
   }
 }
 
+// ══ MAINTENANCE DU CLASSEMENT ══════════════════════════════════════════
+// Mettre à false et redéployer une fois l'indexation rétablie : le bandeau
+// disparaît et les messages d'attente redeviennent ceux du régime normal.
+//
+// Pourquoi ce bandeau existe : le classement est servi par /api/leaderboard,
+// qui reconstruit les totaux à partir des events. Quand cette indexation est
+// en retard, un joueur voit un montant INFÉRIEUR à ce qu'il a réellement
+// brûlé et en conclut, légitimement, qu'il a perdu des zkLTC. Le contrat,
+// lui, n'a jamais rien perdu : getBurnerInfo() garde le cumul exact, et
+// c'est cette valeur qu'affiche le Codex personnel de chacun.
+const LB_MAINTENANCE = true;
+
+function lbMaintenanceApply(){
+  const el = document.getElementById('lb-maintenance');
+  if (el) el.style.display = LB_MAINTENANCE ? 'flex' : 'none';
+}
+document.addEventListener('DOMContentLoaded', lbMaintenanceApply);
+lbMaintenanceApply();
+
 async function loadLeaderboard(){
+  lbMaintenanceApply();
   try{
     const fp=window.svReadProvider;
     const fc2=new ethers.Contract(CONTRACT_ADDRESS,ABI,fp);
@@ -6229,7 +6295,7 @@ async function loadLeaderboard(){
     } catch(e) {
       console.error('Leaderboard API error:', e);
       const wrap=document.getElementById('lb-rows');
-      if(wrap) wrap.innerHTML=`<div class="lb-empty"><strong>Leaderboard temporarily unavailable</strong>The rankings are being rebuilt and will be back shortly. Every burn is safely recorded.</div>`;
+      if(wrap) wrap.innerHTML=`<div class="lb-empty"><strong>Rankings under maintenance</strong>The board is being rebuilt and will be back shortly.<br>Your burns are safe: the chain has recorded every one of them, and your exact total is shown in your Codex.</div>`;
       return;
     }
 
@@ -6244,9 +6310,13 @@ async function loadLeaderboard(){
       if (lbData && lbData.updatedAt) {
         const secAgo = Math.max(0, Math.floor((Date.now() - new Date(lbData.updatedAt).getTime()) / 1000));
         const label = secAgo < 60 ? `${secAgo}s ago` : `${Math.floor(secAgo/60)}m ago`;
-        updatedEl.textContent = `A new burn can take a few minutes to appear here — last updated ${label}`;
+        updatedEl.textContent = LB_MAINTENANCE
+          ? `Amounts may be incomplete during maintenance — last updated ${label}`
+          : `A new burn can take a few minutes to appear here — last updated ${label}`;
       } else {
-        updatedEl.textContent = 'A new burn can take a few minutes to appear here.';
+        updatedEl.textContent = LB_MAINTENANCE
+          ? 'Amounts may be incomplete while the rankings are rebuilt.'
+          : 'A new burn can take a few minutes to appear here.';
       }
     }
 
@@ -6254,7 +6324,7 @@ async function loadLeaderboard(){
     if((lbData && lbData.building) || apiList.length===0){
       allBurners=[];
       const wrap=document.getElementById('lb-rows');
-      if(wrap) wrap.innerHTML=`<div class="lb-empty"><strong>Building the rankings…</strong>The leaderboard is being assembled from on-chain data. Check back in a moment.</div>`;
+      if(wrap) wrap.innerHTML=`<div class="lb-empty"><strong>Rankings under maintenance</strong>The board is being rebuilt from on-chain data — this can take a few minutes.<br>Your burns are safe: the chain has recorded every one of them, and your exact total is shown in your Codex.</div>`;
       return;
     }
 
@@ -6320,7 +6390,7 @@ async function loadLeaderboard(){
   }catch(e){
     console.error('Leaderboard error:',e);
     const wrap=document.getElementById('lb-rows');
-    if(wrap) wrap.innerHTML=`<div class="lb-empty"><strong>Leaderboard temporarily unavailable</strong>The rankings are being rebuilt and will be back shortly. Every burn is safely recorded.</div>`;
+    if(wrap) wrap.innerHTML=`<div class="lb-empty"><strong>Rankings under maintenance</strong>The board is being rebuilt and will be back shortly.<br>Your burns are safe: the chain has recorded every one of them, and your exact total is shown in your Codex.</div>`;
   }
 }
 
