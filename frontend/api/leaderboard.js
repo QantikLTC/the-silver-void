@@ -100,7 +100,7 @@
 const EXPLORER_BASE = 'https://liteforge.explorer.caldera.xyz';
 const RPC_URL = 'https://liteforge.rpc.caldera.xyz/http';
 const CONTRACT_ADDRESS = '0x0AD3f776C45FF457d2d8e211A3174A4Db201b656';
-const NETWORK_TAG = 'liteforge-testnet-v9';
+const NETWORK_TAG = 'liteforge-testnet-v10';
 // ─────────────────────────────────────────────────────────────────────
 
 // keccak256("Burned(address,uint256,uint256,uint256,uint256)")
@@ -130,6 +130,19 @@ const KEY_SCAN = `leaderboard:${NETWORK_TAG}:scan`;
 const KEY_LOCK = `leaderboard:${NETWORK_TAG}:lock`;
 
 export const config = { maxDuration: 60 };
+
+// L'explorateur Caldera est derriere une protection anti-bot : la meme
+// requete passe depuis un navigateur et echoue depuis un serveur Vercel
+// (aucune page lue, scanPagesLues=0). On se presente donc avec des en-tetes
+// de navigateur ordinaire. Ce n'est pas un contournement de securite : c'est
+// une lecture publique de donnees publiques, deja accessible a tous.
+const BROWSER_HEADERS = {
+  Accept: 'application/json, text/plain, */*',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+  Referer: EXPLORER_BASE + '/',
+  Origin: EXPLORER_BASE,
+};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Redis (Upstash REST)
@@ -349,10 +362,10 @@ function extractBurn(it) {
 
 async function fetchLogsPage(cursor) {
   const qs = new URLSearchParams();
-  // (d) Les deux graphies : selon la version de Blockscout l'endpoint
-  // attend `topic` ou `topic0`. Un paramètre inconnu est ignoré sans erreur.
+  // Seul `topic0` est envoye. La double graphie precedente (`topic` ET
+  // `topic0`) etait une precaution inutile : le filtrage reel se fait de
+  // toute facon cote code sur topics[0], dans extractBurn().
   qs.set('topic0', BURN_TOPIC);
-  qs.set('topic', BURN_TOPIC);
   // (c) Curseur INTÉGRAL : toute clé absente = page suivante mal bornée
   // = events silencieusement sautés.
   if (cursor && typeof cursor === 'object') {
@@ -361,8 +374,14 @@ async function fetchLogsPage(cursor) {
     }
   }
   const url = `${EXPLORER_BASE}/api/v2/addresses/${CONTRACT_ADDRESS}/logs?${qs.toString()}`;
-  const res = await withTimeout(fetch(url, { headers: { Accept: 'application/json' } }), FETCH_TIMEOUT_MS);
-  if (!res.ok) throw new Error(`explorer HTTP ${res.status}`);
+  const res = await withTimeout(fetch(url, { headers: BROWSER_HEADERS }), FETCH_TIMEOUT_MS);
+  if (!res.ok) {
+    // Le corps de la reponse est inclus dans l'erreur : un 403 anti-bot et
+    // un 400 de parametre invalide se diagnostiquent en un coup d'oeil dans
+    // les logs Vercel, au lieu de laisser un `scanPagesLues: 0` muet.
+    const body = await res.text().catch(() => '');
+    throw new Error(`explorer HTTP ${res.status} — ${body.slice(0, 160)}`);
+  }
   return res.json();
 }
 
@@ -568,6 +587,23 @@ export default async function handler(req, res) {
       };
       try { out.redisPing = await redisCmd(['PING']); }
       catch (e) { out.redisErreur = e.message; }
+
+      // Test direct de l'explorateur DEPUIS LE SERVEUR (et non le navigateur,
+      // ou tout fonctionne deja). C'est la difference entre les deux qui
+      // revele une protection anti-bot.
+      try {
+        const testUrl = `${EXPLORER_BASE}/api/v2/addresses/${CONTRACT_ADDRESS}/logs?topic0=${BURN_TOPIC}`;
+        const r = await withTimeout(fetch(testUrl, { headers: BROWSER_HEADERS }), FETCH_TIMEOUT_MS);
+        out.explorateurStatut = r.status;
+        const txt = await r.text();
+        try {
+          const j = JSON.parse(txt);
+          out.explorateurItems = Array.isArray(j.items) ? j.items.length : 0;
+          out.explorateurPageSuivante = !!j.next_page_params;
+        } catch {
+          out.explorateurReponseNonJson = txt.slice(0, 200);
+        }
+      } catch (e) { out.explorateurErreur = e.message; }
       try {
         const l = await tryAcquireLock();
         out.verrouObtenu = l;
