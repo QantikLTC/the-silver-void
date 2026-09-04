@@ -100,7 +100,7 @@
 const EXPLORER_BASE = 'https://liteforge.explorer.caldera.xyz';
 const RPC_URL = 'https://liteforge.rpc.caldera.xyz/http';
 const CONTRACT_ADDRESS = '0x0AD3f776C45FF457d2d8e211A3174A4Db201b656';
-const NETWORK_TAG = 'liteforge-testnet-v10';
+const NETWORK_TAG = 'liteforge-testnet-v11';
 // ─────────────────────────────────────────────────────────────────────
 
 // keccak256("Burned(address,uint256,uint256,uint256,uint256)")
@@ -119,14 +119,15 @@ const RPC_TIMEOUT_MS = 15000;        // par requête RPC (batch de 100)
 const RPC_BATCH_SIZE = 100;          // eth_call par requête HTTP groupée
 const RPC_CONCURRENCY = 3;           // requêtes groupées en parallèle
 const SWEEP_SIZE = 200;              // adresses relues par cycle au repos
-const REORG_MARGIN = 50;             // blocs de recouvrement (sécurité réorg)
+const REORG_MARGIN = 200;            // blocs de recouvrement (sécurité réorg)
+const LOG_CHUNK = 50000;             // blocs par eth_getLogs (réduit tout seul si refus)
+const MIN_LOG_CHUNK = 1000;          // plancher de réduction
 
 const INVOCATION_BUDGET_MS = 45000;  // marge sous maxDuration=60
 const DISCOVERY_BUDGET_MS = 20000;   // part réservée au scan d'events
 const SAVE_RESERVE_MS = 4000;        // marge pour l'écriture Redis finale
 
 const KEY_STATE = `leaderboard:${NETWORK_TAG}:state`;
-const KEY_SCAN = `leaderboard:${NETWORK_TAG}:scan`;
 const KEY_LOCK = `leaderboard:${NETWORK_TAG}:lock`;
 
 export const config = { maxDuration: 60 };
@@ -325,144 +326,96 @@ async function refreshAmounts(addresses, deadline) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// ÉTAGE 1 — Découverte des adresses via les events
+// ÉTAGE 1 — Découverte des adresses via eth_getLogs (RPC)
 // ═══════════════════════════════════════════════════════════════════════
+//
+// POURQUOI PLUS L'EXPLORATEUR : depuis Vercel, chaque appel à Blockscout
+// part en TIMEOUT (constaté via ?debug=1 : explorateurErreur "TIMEOUT",
+// scanPagesLues 0). Les mêmes URL fonctionnent pourtant depuis un
+// navigateur. Le serveur ne joint tout simplement pas l'explorateur de
+// façon fiable — alors que le RPC, lui, répond parfaitement (c'est déjà
+// par lui que passent toutes les lectures getBurnerInfo).
+//
+// On lit donc les events directement par eth_getLogs, PAR PLAGES DE BLOCS.
+// Le découpage est indispensable : un getLogs sur toute la chaîne est
+// refusé ou expire. La taille de plage s'ajuste toute seule si le noeud
+// se plaint (voir adaptiveChunk).
+//
+// L'explorateur reste utilisable en secours (?source=explorer) mais n'est
+// plus sur le chemin critique.
 
-function extractBurn(it) {
-  // (d) Garde-fou indispensable : le contrat n'étant pas vérifié,
-  // it.decoded est toujours null et rien ne distingue un Burned d'un autre
-  // event si le filtre serveur a été ignoré.
-  if (!Array.isArray(it.topics) || !it.topics[0]) return null;
-  if (String(it.topics[0]).toLowerCase() !== BURN_TOPIC) return null;
+function hexToInt(h) { return typeof h === 'string' ? parseInt(h, 16) : Number(h || 0); }
 
-  let addr = null, amount = null;
-
-  // Chemin nominal si le contrat est un jour vérifié.
-  const params = it.decoded && Array.isArray(it.decoded.parameters) ? it.decoded.parameters : null;
-  if (params) {
-    const pUser = params.find(p => p.name === 'user') || params.find(p => p.indexed && p.type === 'address');
-    const pAmt = params.find(p => p.name === 'amount') || params.find(p => !p.indexed && p.type === 'uint256');
-    if (pUser) addr = String(pUser.value).toLowerCase();
-    if (pAmt) amount = pAmt.value;
-  }
-
-  // Chemin brut (celui réellement emprunté aujourd'hui) : `user` est le
-  // seul paramètre indexé -> topics[1] ; `amount` est le premier mot non
-  // indexé -> 32 premiers octets du data.
-  if ((!addr || amount == null) && it.topics[1]) {
-    addr = ('0x' + String(it.topics[1]).slice(26)).toLowerCase();
-    if (typeof it.data === 'string' && it.data.length >= 66) {
-      amount = BigInt('0x' + it.data.slice(2, 66)).toString();
-    }
-  }
-
-  if (!addr || amount == null) return null;
-  return { addr, amount, block: Number(it.block_number ?? it.blockNumber ?? 0) };
+async function rpcCall(method, params) {
+  const res = await withTimeout(fetch(RPC_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+  }), RPC_TIMEOUT_MS, 'RPC_TIMEOUT');
+  if (!res.ok) throw new Error(`RPC HTTP ${res.status}`);
+  const json = await res.json();
+  if (json.error) throw new Error(`RPC ${method}: ${json.error.message}`);
+  return json.result;
 }
 
-async function fetchLogsPage(cursor) {
-  const qs = new URLSearchParams();
-  // Seul `topic0` est envoye. La double graphie precedente (`topic` ET
-  // `topic0`) etait une precaution inutile : le filtrage reel se fait de
-  // toute facon cote code sur topics[0], dans extractBurn().
-  qs.set('topic0', BURN_TOPIC);
-  // (c) Curseur INTÉGRAL : toute clé absente = page suivante mal bornée
-  // = events silencieusement sautés.
-  if (cursor && typeof cursor === 'object') {
-    for (const [k, v] of Object.entries(cursor)) {
-      if (v != null) qs.set(k, String(v));
-    }
-  }
-  const url = `${EXPLORER_BASE}/api/v2/addresses/${CONTRACT_ADDRESS}/logs?${qs.toString()}`;
-  const res = await withTimeout(fetch(url, { headers: BROWSER_HEADERS }), FETCH_TIMEOUT_MS);
-  if (!res.ok) {
-    // Le corps de la reponse est inclus dans l'erreur : un 403 anti-bot et
-    // un 400 de parametre invalide se diagnostiquent en un coup d'oeil dans
-    // les logs Vercel, au lieu de laisser un `scanPagesLues: 0` muet.
-    const body = await res.text().catch(() => '');
-    throw new Error(`explorer HTTP ${res.status} — ${body.slice(0, 160)}`);
-  }
-  return res.json();
+async function getLatestBlock() {
+  return hexToInt(await rpcCall('eth_blockNumber', []));
 }
 
-// Scan INCRÉMENTAL : les logs arrivant du plus récent au plus ancien, on
-// s'arrête dès qu'on repasse sous le high-water mark. En régime établi,
-// une seule page suffit.
-async function discoverIncremental(highWater, deadline) {
-  const dirty = new Set();
-  let cursor = null;
-  let newHigh = highWater;
-  let pages = 0;
-  const stopAt = Math.max(0, highWater - REORG_MARGIN);
+// Une plage de blocs. Renvoie les adresses trouvées, ou lève si le noeud
+// refuse la plage (trop large / trop de résultats) pour qu'on la réduise.
+async function getLogsRange(fromBlock, toBlock) {
+  const logs = await rpcCall('eth_getLogs', [{
+    address: CONTRACT_ADDRESS,
+    topics: [BURN_TOPIC],
+    fromBlock: '0x' + fromBlock.toString(16),
+    toBlock: '0x' + toBlock.toString(16),
+  }]);
+  const addrs = new Set();
+  if (Array.isArray(logs)) {
+    for (const lg of logs) {
+      // Le filtre `topics` est appliqué par le noeud, mais on revérifie :
+      // le contrat n'étant pas vérifié, rien d'autre ne distingue un Burned.
+      if (!Array.isArray(lg.topics) || String(lg.topics[0]).toLowerCase() !== BURN_TOPIC) continue;
+      if (!lg.topics[1]) continue;
+      addrs.add(('0x' + String(lg.topics[1]).slice(26)).toLowerCase());
+    }
+  }
+  return [...addrs];
+}
 
-  for (let i = 0; i < PAGES_PER_INVOCATION; i++) {
+// Parcourt [from, to] en réduisant automatiquement la plage si le noeud
+// refuse. Sauvegarde sa progression : un bootstrap sur une longue chaîne
+// s'étale sur plusieurs invocations sans jamais repartir de zéro.
+async function scanBlockRange(from, to, chunkSize, deadline, onAddrs) {
+  let cursor = from;
+  let chunk = chunkSize;
+  let calls = 0;
+
+  while (cursor <= to) {
     if (Date.now() > deadline) break;
 
-    let json;
-    try { json = await fetchLogsPage(cursor); }
-    catch (e) { console.warn('leaderboard: page échouée (incrémental):', e.message); break; }
-    pages++;
-
-    const items = Array.isArray(json.items) ? json.items : [];
-    let wentBelow = false;
-    for (const it of items) {
-      const b = extractBurn(it);
-      if (!b) continue;
-      if (b.block > newHigh) newHigh = b.block;
-      if (b.block <= stopAt) { wentBelow = true; continue; }
-      dirty.add(b.addr);
+    const end = Math.min(cursor + chunk - 1, to);
+    try {
+      const addrs = await getLogsRange(cursor, end);
+      calls++;
+      if (addrs.length) onAddrs(addrs);
+      cursor = end + 1;
+      // Plage acceptée : on ré-élargit prudemment vers la taille nominale.
+      if (chunk < chunkSize) chunk = Math.min(chunkSize, chunk * 2);
+    } catch (e) {
+      if (chunk > MIN_LOG_CHUNK) {
+        // Typiquement "query returned more than N results" ou timeout.
+        chunk = Math.max(MIN_LOG_CHUNK, Math.floor(chunk / 4));
+        console.warn(`leaderboard: plage réduite à ${chunk} blocs (${e.message})`);
+        continue;
+      }
+      console.warn(`leaderboard: plage [${cursor}, ${end}] abandonnée:`, e.message);
+      cursor = end + 1; // on n'insiste pas : le balayage de fond rattrapera
     }
-
-    if (wentBelow) break;             // on a rejoint le déjà-traité
-    cursor = json.next_page_params || null;
-    if (!cursor) break;               // fin des events
   }
 
-  return { dirty: [...dirty], newHigh, pages };
-}
-
-// Scan COMPLET, étalé sur plusieurs invocations via KEY_SCAN.
-// Utilisé au bootstrap et sur ?full=1. Les totaux d'events collectés ici
-// ne servent QUE de valeur d'attente : ils seront tous remplacés par les
-// lectures on-chain. C'est ce qui évite d'afficher un tableau vide pendant
-// la reconstruction initiale.
-async function discoverFullStep(deadline) {
-  const scan = (await redisGet(KEY_SCAN)) || { cursor: null, dirty: [], seed: {}, newHigh: 0, pages: 0 };
-  const dirty = new Set(scan.dirty || []);
-  const seed = scan.seed || {};
-  let cursor = scan.cursor || null;
-  let newHigh = scan.newHigh || 0;
-  let complete = false;
-
-  for (let i = 0; i < PAGES_PER_INVOCATION; i++) {
-    if (Date.now() > deadline) break;
-
-    let json;
-    try { json = await fetchLogsPage(cursor); }
-    catch (e) { console.warn('leaderboard: page échouée (full):', e.message); break; }
-    scan.pages = (scan.pages || 0) + 1;
-
-    const items = Array.isArray(json.items) ? json.items : [];
-    for (const it of items) {
-      const b = extractBurn(it);
-      if (!b) continue;
-      if (b.block > newHigh) newHigh = b.block;
-      dirty.add(b.addr);
-      try {
-        seed[b.addr] = ((seed[b.addr] ? BigInt(seed[b.addr]) : 0n) + BigInt(b.amount)).toString();
-      } catch {}
-    }
-
-    cursor = json.next_page_params || null;
-    if (!cursor) { complete = true; break; }
-  }
-
-  if (complete) {
-    await redisDel(KEY_SCAN);
-    return { complete: true, dirty: [...dirty], seed, newHigh, pages: scan.pages };
-  }
-  await redisSet(KEY_SCAN, { cursor, dirty: [...dirty], seed, newHigh, pages: scan.pages });
-  return { complete: false, dirty: [], seed: {}, newHigh, pages: scan.pages };
+  return { cursor, calls, done: cursor > to };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -470,44 +423,47 @@ async function discoverFullStep(deadline) {
 // ═══════════════════════════════════════════════════════════════════════
 
 function emptyState() {
-  return { amounts: {}, highWater: 0, queue: [], sweep: 0, bootstrapped: false, updatedAt: null };
+  return { amounts: {}, highWater: 0, scanFrom: 0, queue: [], sweep: 0, bootstrapped: false, updatedAt: null };
 }
 
 async function advance(forceFull) {
   const started = Date.now();
   const state = (await redisGet(KEY_STATE)) || emptyState();
-  if (forceFull) { state.bootstrapped = false; await redisDel(KEY_SCAN); }
+  if (forceFull) { state.bootstrapped = false; state.scanFrom = 0; state.highWater = 0; }
 
   const discoveryDeadline = started + DISCOVERY_BUDGET_MS;
-  let discovered = [];
+  const discovered = new Set();
   let note = '';
 
-  // ── ÉTAGE 1 : découverte ──
+  const latest = await getLatestBlock();
+
   if (!state.bootstrapped) {
-    const r = await discoverFullStep(discoveryDeadline);
-    note = `bootstrap page ${r.pages}`;
-    if (r.complete) {
-      // Les totaux d'events servent de valeur d'attente pour les adresses
-      // encore inconnues ; toutes passent en file pour lecture on-chain.
-      for (const [a, v] of Object.entries(r.seed)) {
-        if (state.amounts[a] == null) state.amounts[a] = v;
-      }
-      state.highWater = r.newHigh;
+    // ── Bootstrap : balayage complet, étalé sur plusieurs invocations ──
+    const from = state.scanFrom || 0;
+    const r = await scanBlockRange(from, latest, LOG_CHUNK, discoveryDeadline,
+      addrs => addrs.forEach(a => discovered.add(a)));
+    state.scanFrom = r.cursor;
+    if (r.done) {
       state.bootstrapped = true;
-      discovered = r.dirty;
-      note = `bootstrap terminé (${r.pages} pages, ${r.dirty.length} adresses)`;
+      state.highWater = latest;
+      note = `bootstrap TERMINÉ jusqu'au bloc ${latest}`;
+    } else {
+      const pct = latest > 0 ? ((r.cursor / latest) * 100).toFixed(1) : '0';
+      note = `bootstrap ${pct}% (bloc ${r.cursor}/${latest}, ${r.calls} appels)`;
     }
   } else {
-    const r = await discoverIncremental(state.highWater, discoveryDeadline);
-    state.highWater = r.newHigh;
-    discovered = r.dirty;
-    note = `incrémental ${r.pages} page(s), ${r.dirty.length} adresse(s) touchée(s)`;
+    // ── Régime établi : uniquement les blocs nouveaux ──
+    const from = Math.max(0, (state.highWater || 0) - REORG_MARGIN);
+    const r = await scanBlockRange(from, latest, LOG_CHUNK, discoveryDeadline,
+      addrs => addrs.forEach(a => discovered.add(a)));
+    if (r.done) state.highWater = latest;
+    note = `incrémental blocs ${from}→${latest} (${r.calls} appels)`;
   }
 
   // ── File de rafraîchissement : nouveautés en TÊTE (priorité) ──
   const queue = Array.isArray(state.queue) ? state.queue : [];
   const qSet = new Set(queue);
-  const fresh = discovered.filter(a => !qSet.has(a));
+  const fresh = [...discovered].filter(a => !qSet.has(a));
   let pending = [...fresh, ...queue];
 
   // ── ÉTAGE 3 : balayage de fond si rien d'urgent ──
@@ -522,22 +478,21 @@ async function advance(forceFull) {
     state.sweep = (start + SWEEP_SIZE) % known.length;
   }
 
-  // ── ÉTAGE 2 : lecture on-chain ──
+  // ── ÉTAGE 2 : lecture on-chain des montants ──
   const refreshDeadline = started + INVOCATION_BUDGET_MS - SAVE_RESERVE_MS;
   const { amounts, done, failed } = await refreshAmounts(pending, refreshDeadline);
 
   Object.assign(state.amounts, amounts);
   const doneSet = new Set(done);
-  state.queue = pending.filter(a => !doneSet.has(a) && !swept); // le balayage ne s'accumule pas
+  state.queue = swept ? [] : pending.filter(a => !doneSet.has(a));
   state.updatedAt = new Date().toISOString();
 
   await redisSet(KEY_STATE, state);
 
-  console.log(`leaderboard: ${note} | ${done.length} relues on-chain`
-    + (swept ? ` (dont balayage ${swept})` : '')
+  console.log(`leaderboard: ${note} | ${discovered.size} adresse(s) touchée(s)`
+    + ` | ${done.length} relues on-chain` + (swept ? ` (balayage ${swept})` : '')
     + ` | ${state.queue.length} en attente | ${failed} échecs`
-    + ` | ${Object.keys(state.amounts).length} sacrifiants`
-    + ` | ${Date.now() - started} ms`);
+    + ` | ${Object.keys(state.amounts).length} sacrifiants | ${Date.now() - started} ms`);
 
   return state;
 }
@@ -588,22 +543,16 @@ export default async function handler(req, res) {
       try { out.redisPing = await redisCmd(['PING']); }
       catch (e) { out.redisErreur = e.message; }
 
-      // Test direct de l'explorateur DEPUIS LE SERVEUR (et non le navigateur,
-      // ou tout fonctionne deja). C'est la difference entre les deux qui
-      // revele une protection anti-bot.
+      // Test du RPC : c'est lui, désormais, le chemin critique.
       try {
-        const testUrl = `${EXPLORER_BASE}/api/v2/addresses/${CONTRACT_ADDRESS}/logs?topic0=${BURN_TOPIC}`;
-        const r = await withTimeout(fetch(testUrl, { headers: BROWSER_HEADERS }), FETCH_TIMEOUT_MS);
-        out.explorateurStatut = r.status;
-        const txt = await r.text();
-        try {
-          const j = JSON.parse(txt);
-          out.explorateurItems = Array.isArray(j.items) ? j.items.length : 0;
-          out.explorateurPageSuivante = !!j.next_page_params;
-        } catch {
-          out.explorateurReponseNonJson = txt.slice(0, 200);
-        }
-      } catch (e) { out.explorateurErreur = e.message; }
+        const latest = await getLatestBlock();
+        out.rpcDernierBloc = latest;
+        const t0 = Date.now();
+        const a = await getLogsRange(Math.max(0, latest - 5000), latest);
+        out.rpcGetLogsOk = true;
+        out.rpcAdressesRecentes = a.length;
+        out.rpcDureeMs = Date.now() - t0;
+      } catch (e) { out.rpcErreur = e.message; }
       try {
         const l = await tryAcquireLock();
         out.verrouObtenu = l;
@@ -614,9 +563,8 @@ export default async function handler(req, res) {
       const st = await redisGet(KEY_STATE);
       out.adressesEnregistrees = st && st.amounts ? Object.keys(st.amounts).length : 0;
       out.bootstrapTermine = st ? !!st.bootstrapped : false;
-      const sc = await redisGet(KEY_SCAN);
-      out.scanPagesLues = sc && sc.pages ? sc.pages : 0;
-      out.scanAdressesTrouvees = sc && sc.dirty ? sc.dirty.length : 0;
+      out.scanBlocAtteint = st ? (st.scanFrom || 0) : 0;
+      out.fileEnAttente = st && st.queue ? st.queue.length : 0;
       res.status(200).json(out);
       return;
     }
@@ -636,9 +584,9 @@ export default async function handler(req, res) {
       res.setHeader('Cache-Control', 'public, s-maxage=15, stale-while-revalidate=60');
       res.status(200).json(buildLeaderboard(state));
     } else {
-      const scan = await redisGet(KEY_SCAN);
-      const partialCount = scan && scan.dirty ? scan.dirty.length : 0;
-      res.status(200).json({ leaderboard: [], totalBurners: 0, updatedAt: null, building: true, partialCount });
+      const partialCount = state && state.queue ? state.queue.length : 0;
+      const progress = state && state.scanFrom ? state.scanFrom : 0;
+      res.status(200).json({ leaderboard: [], totalBurners: 0, updatedAt: null, building: true, partialCount, progress });
     }
   } catch (e) {
     console.error('leaderboard.js error:', e);
