@@ -9777,6 +9777,19 @@ function lootRevealShow(item){
   }
 }
 
+// Illustrations des NFT de la Duelist Saga.
+//
+// Le code cherchait ces artworks dans FEATS via des ids 'saga_1'..'saga_4'
+// qui n'y ont JAMAIS existe : FEATS.find() renvoyait undefined, artUrl
+// valait null, et les cartes Saga s'affichaient sans image. Les noms
+// correspondent a des entrees d'ASCENT_ITEMS, on y prend directement l'art.
+const SAGA_ART = {
+  1: { name:'The Awakening',      rarity:'common',    img:'https://arweave.net/h1I5MVU7UNMBBm5DXB8jS6jiNIUWVzI1V3AyzBHQCKY' },
+  2: { name:'Lightning Adept',    rarity:'rare',      img:'https://arweave.net/GCf13cwQE2VZuGB51U4XWReiME8p0TDMedWEJ1ewzKo' },
+  3: { name:'Sanctuary Glimpse',  rarity:'epic',      img:'https://arweave.net/7gxV59_DIo4KTCmhK0TTXzKIY6ocvii6kBkri4f_xDc' },
+  4: { name:'Guardian Ascended',  rarity:'legendary', img:'https://arweave.net/Jj7EFW_G9zwwD3RMMhMb_fsWM5fWh4v8kmqYaYz2X7Y' },
+};
+
 // Item table, mirrors POOL_DATA order (ids 1-12) for reveal toasts.
 const ASCENT_ITEMS = [
   { name:'The Litecoin Revelation', rarity:'common',    img:'https://arweave.net/h1I5MVU7UNMBBm5DXB8jS6jiNIUWVzI1V3AyzBHQCKY' },
@@ -11558,10 +11571,13 @@ async function sagaMint(sagaId) {
 
     <!-- SELL TAB -->
     <div id="store-tab-content-sell" style="display:none;">
-      <div style="max-width:560px;background:linear-gradient(135deg,rgba(10,6,28,0.7),rgba(4,2,16,0.85));border:1px solid rgba(0,229,204,0.2);border-radius:6px;padding:1.2rem;">
+      <!-- max-width:560px bridait ce panneau a la moitie de la largeur des
+           onglets Acquire/Sell juste au-dessus, alors que la galerie a besoin
+           de place. Pleine largeur, et le ton des autres surfaces. -->
+      <div style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:1.4rem;">
 
         <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:rgba(0,229,204,0.6);text-transform:uppercase;margin-bottom:0.7rem;">Choose a relic to sell</div>
-        <div id="store-sell-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:0.75rem;margin-bottom:1.1rem;">
+        <div id="store-sell-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.85rem;margin-bottom:1.1rem;">
           <div style="grid-column:1/-1;text-align:center;padding:1.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;font-size:0.75rem;">Connect your wallet to see your relics.</div>
         </div>
 
@@ -11735,6 +11751,24 @@ const STORE_RARITY_COLOR = {
 };
 
 async function storeResolveRelic(nftContractAddr, tokenId) {
+  // Reliques d'Ascent — la famille qui alimente l'economie des doubles.
+  // Elle n'etait PAS reconnue ici : toute relique listee retombait sur le
+  // "Unknown Relic" generique en bas de fonction, sans nom ni illustration.
+  // tokenItem() donne l'id d'item (1..12), qui indexe directement
+  // ASCENT_ITEMS pour le nom, la rarete et l'artwork.
+  if (typeof ASCENT_CONTRACT_ADDRESS !== 'undefined'
+      && nftContractAddr.toLowerCase() === ASCENT_CONTRACT_ADDRESS.toLowerCase()) {
+    try {
+      const c = await initAscentContract();
+      const itemId = Number(await c.tokenItem(tokenId));
+      const meta = ASCENT_ITEMS[itemId - 1];
+      if (meta) return { name: meta.name, rarity: meta.rarity, artUrl: meta.img, family: 'Ascent' };
+    } catch (e) {
+      console.warn('Could not resolve Ascent relic metadata:', e.message);
+    }
+    return { name: 'Ascent Relic #' + tokenId, rarity: 'common', artUrl: null, family: 'Ascent' };
+  }
+
   // Duelist Saga NFTs — read the real sagaId directly from the contract,
   // rather than guessing from tokenId (which was unreliable).
   if (nftContractAddr.toLowerCase() === SAGA_CONTRACT_ADDRESS.toLowerCase()) {
@@ -11747,9 +11781,8 @@ async function storeResolveRelic(nftContractAddr, tokenId) {
     try {
       await initSagaContract();
       const sagaId = Number(await sagaReadContract.tokenSagaId(tokenId));
-      const m = sagaMeta[sagaId] || sagaMeta[1];
-      const f = FEATS.find(x => x.id === m.feat);
-      return { name: m.name, rarity: m.rarity, artUrl: f ? f.artUrl : null, family: 'Saga' };
+      const m = SAGA_ART[sagaId] || sagaMeta[sagaId] || sagaMeta[1];
+      return { name: m.name, rarity: m.rarity, artUrl: m.img || null, family: 'Saga' };
     } catch (e) {
       console.warn('Could not resolve saga NFT metadata:', e);
       return { name: 'Duelist Saga Relic', rarity: 'common', artUrl: null, family: 'Saga' };
@@ -12050,11 +12083,12 @@ async function storeScanLegacyNFTs() {
           const tid = slice[x.id];
           try {
             const sagaId = Number(await sagaReadContract.tokenSagaId(tid));
-            const f = FEATS.find(y => y.id === sagaFeatIds[sagaId - 1]);
+            const m = SAGA_ART[sagaId];
             extra.push({
               contract: SAGA_CONTRACT_ADDRESS, tokenId: tid,
-              name: sagaNames[sagaId - 1] || ('Saga #' + sagaId),
-              artUrl: f ? f.artUrl : null, rarity: 'rare', copies: 1, kind: 'saga'
+              name: (m && m.name) || sagaNames[sagaId - 1] || ('Saga #' + sagaId),
+              artUrl: m ? m.img : null, rarity: (m && m.rarity) || 'rare',
+              copies: 1, kind: 'saga'
             });
           } catch (e) {}
         }
