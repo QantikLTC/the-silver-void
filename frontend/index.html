@@ -702,6 +702,12 @@ footer {
   clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);
   z-index:9999; opacity:0; transition:opacity 0.3s;
   backdrop-filter:blur(10px); text-align:center;
+  /* Le toast s'efface avec opacity:0 mais reste PRESENT : invisible, il
+     couvrait quand meme tout le bas de l'ecran (left:1rem/right:1rem) en
+     z-index 9999 et avalait les clics des liens 𝕏 et Terms of use du rail.
+     Diagnostique via document.elementFromPoint : c'est lui qui remontait,
+     pas le lien. Un calque transparent reste cliquable — d'ou cette regle. */
+  pointer-events:none;
 }
 
 /* ── LIVE DOT ── */
@@ -2215,14 +2221,15 @@ body::after {
 
 
 .rcc-lor-icon {
-  /* Les badges d'ORDER_BADGES sont des illustrations CARREES. Le cadre etait
-     en 3/4 avec object-fit:cover cote image : le bas etait donc rogne, et le
-     mot SOULBOUND grave sous le personnage disparaissait. Cadre carre +
-     contain : l'illustration entiere tient, quelles que soient ses
-     proportions. */
-  width:100%; aspect-ratio:1/1; overflow:hidden; border-radius:6px;
+  /* Les badges d'ORDER_BADGES sont des illustrations carrees a fond circulaire.
+     Le cadre etait en 3/4 avec object-fit:cover : le bas etait rogne et le mot
+     SOULBOUND grave sous le personnage disparaissait. Carre + contain corrige
+     ca — mais le fond opaque que portait ce cadre dessinait un carre visible
+     derriere le badge rond. Aucun fond : l'illustration se pose directement
+     sur la carte. */
+  width:100%; aspect-ratio:1/1; overflow:hidden;
   display:flex; align-items:center; justify-content:center;
-  background:rgba(6,4,28,0.6);
+  background:transparent;
   margin-bottom:0.6rem;
 }
 .rcc-lor-icon img {
@@ -3236,7 +3243,7 @@ function svIntroParticles() {
         <div class="rcc-badge-box">
           <div class="rcc-icon-container">
             <!-- Vide a l'etat deconnecte : l'image etait codee en dur sur l'artwork du rang 1, ce qui suggerait un rang que le visiteur n'a pas. Rempli par rankBadgeArt() une fois le wallet connecte. -->
-            <div id="rcc-lor-icon" style="width:100%;aspect-ratio:1/1;overflow:hidden;border-radius:6px;background:rgba(6,4,28,0.6);display:flex;align-items:center;justify-content:center;margin-bottom:0.6rem;opacity:0.25;font-family:'Cinzel',serif;font-size:1.6rem;color:rgba(255,255,255,0.18);">⬡</div>
+            <div id="rcc-lor-icon" style="width:100%;aspect-ratio:1/1;overflow:hidden;background:transparent;display:flex;align-items:center;justify-content:center;margin-bottom:0.6rem;opacity:0.25;font-family:'Cinzel',serif;font-size:1.6rem;color:rgba(255,255,255,0.18);">⬡</div>
           </div>
           <div class="rcc-info">
             <div id="rcc-rank-name" style="color:rgba(255,255,255,0.25);font-weight:bold;font-family:'Cinzel',serif;">— Not connected —</div>
@@ -14728,6 +14735,58 @@ body.sv-rail-on #ritual .ritual-split{
 body.sv-rail-on #ritual .ritual-split > *{ min-width:0 }
 @media (max-width:1100px){
   body.sv-rail-on #ritual .ritual-split{ grid-template-columns:1fr !important }
+}
+
+/* ═══ Ritual — la console au ton de la case "New here?" ═══════════════
+   La carte centrale etait plus CLAIRE que le fond, alors que partout
+   ailleurs les surfaces sont plus sombres que lui : c'est ce qui la faisait
+   sortir du reste du design. On reprend exactement le ton de .ob-head —
+   rgba(255,255,255,0.02) sur bordure 0.09 — pour qu'elle appartienne a la
+   meme famille que le bandeau d'onboarding juste au-dessus.
+   La disposition en trois colonnes est INCHANGEE. */
+/* La classe reelle est .burn-card, pas .ritual-center : la regle precedente
+   ne s'appliquait a rien. */
+body.sv-rail-on #ritual .burn-card,
+body.sv-rail-on #ritual .rank-col-card{
+  /* rgba(6,4,32,0.72) etait un bleu-nuit quasi opaque, plus CLAIR que le fond
+     de section : la carte se detachait comme une fenetre collee par-dessus.
+     Le ton de .ob-head est un simple voile blanc a 2%, qui laisse le fond
+     etoile transparaitre — c'est ce qui fait qu'une surface appartient a la
+     page au lieu de flotter dessus. */
+  background:rgba(255,255,255,0.02) !important;
+  border:1px solid rgba(255,255,255,0.09) !important;
+  /* Les ombres portees profondes accentuaient l'effet "fenetre". */
+  box-shadow:none !important;
+  backdrop-filter:blur(10px) !important;
+  -webkit-backdrop-filter:blur(10px) !important;
+}
+
+/* Le liseré coloré du haut, trop marqué sur une surface aussi légère. */
+body.sv-rail-on #ritual .burn-card::before,
+body.sv-rail-on #ritual .rank-col-card::before{ opacity:0.25 !important }
+
+/* La colonne de rang portait padding-top:2rem, ce qui la faisait demarrer
+   plus bas que la console alors que la grille est deja en align-items:start.
+   Les deux colonnes s'alignent maintenant sur la meme ligne haute. */
+body.sv-rail-on #ritual .ritual-rank-col{ padding-top:0 !important }
+body.sv-rail-on #ritual .ritual-left-visual{ padding-top:0 !important }
+
+/* Le bouton orange plein etait le dernier aplat sature de la page : sur une
+   carte devenue translucide il ecrasait tout le reste. Contour + halo au
+   survol, comme les autres actions du site. L'orange reste la couleur du
+   Rituel, il n'occupe simplement plus toute la surface. */
+body.sv-rail-on #ritual .btn-transmute-main{
+  background:transparent !important;
+  border:1px solid rgba(255,106,61,0.5) !important;
+  color:#ff9d6e !important;
+  box-shadow:none !important;
+  transition:all 0.2s !important;
+}
+body.sv-rail-on #ritual .btn-transmute-main:hover{
+  background:rgba(255,106,61,0.1) !important;
+  border-color:rgba(255,106,61,0.8) !important;
+  color:#ffb897 !important;
+  box-shadow:0 0 24px rgba(255,106,61,0.16) !important;
 }
 
 /* ═══ Records — one row per pillar ═══ */
