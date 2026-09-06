@@ -8381,6 +8381,10 @@ const ASCENT_ABI = [
   'function burnRankOf(address player) external view returns (uint8)',
   'function poolOf(address player) external view returns (uint8[])',
   'function inventoryOf(address player) external view returns (uint256[12])',
+  // Ces deux-la existaient dans le contrat mais pas dans cet ABI : sans elles
+  // le Store etait oblige de sonder les tokenId un par un.
+  'function tokensOfOwner(address player, uint256 cursor, uint256 count) external view returns (uint256[] ids, uint256 nextCursor)',
+  'function tokenItem(uint256 tokenId) external view returns (uint8)',
   'function mintedPerItem(uint8) external view returns (uint256)',
   'function totalPulls() external view returns (uint256)',
   'function itemRarity(uint8 id) external pure returns (uint8)',
@@ -11919,105 +11923,201 @@ async function storeRefreshListings() {
 // address / tokenId manually — clicking a relic fills the hidden fields.
 let _storeMyNFTs = [];
 
+/// Inventaire vendable du joueur.
+///
+/// ANCIENNE VERSION : ~340 appels RPC SEQUENTIELS, soit ~50 secondes.
+/// Elle sondait `ownerOf` sur 300 tokenId "au cas ou", plus hasClaimed +
+/// mintedNFT pour chaque entree de chaque pool, un appel a la fois. Sur une
+/// page dont tout l'interet est d'echanger ses doubles, personne n'attend.
+///
+/// MAINTENANT : les reliques d'Ascent — le coeur de l'economie — sont lues en
+/// 3 appels. `tokensOfOwner` donne tous les tokenId d'un coup, `inventoryOf`
+/// donne les 12 compteurs de doublons en UN appel, et le mappage tokenId ->
+/// item se fait en requetes JSON-RPC groupees.
+///
+/// Les anciens NFT (rangs, saga) restent scannes, mais en arriere-plan et
+/// SANS bloquer l'affichage des reliques.
+// STORE_RARITY_COLOR est deja defini plus haut : on le reutilise.
+
+async function storeRpcBatch(reqs) {
+  const r = await fetch(RPC, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(reqs)
+  });
+  const j = await r.json();
+  if (!Array.isArray(j)) throw new Error('BATCH_UNSUPPORTED');
+  return j;
+}
+
 async function storeScanMyNFTs() {
   const gallery = document.getElementById('store-sell-gallery');
+  if (!gallery) return;
   if (!connectedAddress) {
-    gallery.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;font-size:0.75rem;">Connect your wallet to see your relics.</div>';
+    gallery.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;font-size:0.75rem;">Connect your wallet to see what you hold.</div>';
     return;
   }
-  gallery.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;font-size:0.75rem;">Scanning your relics...</div>';
+  gallery.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;font-size:0.75rem;">Reading your relics…</div>';
 
   const owned = [];
-  const sagaNames = ['The Awakening', 'Lightning Adept', 'Sanctuary Glimpse', 'Guardian Ascended'];
-  const sagaFeatIds = ['saga_1', 'saga_2', 'saga_3', 'saga_4'];
 
-  // Saga NFTs — check each of the 4 possible sagaIds via hasMinted, then
-  // find the matching tokenId by scanning ownerOf (small, bounded loop).
+  // ── RELIQUES ASCENT — 3 appels ────────────────────────────────────
   try {
-    await initSagaContract();
-    if (sagaReadContract) {
-      const total = Number(await sagaReadContract.totalSupply().catch(() => 0));
-      for (let tid = 1; tid <= total; tid++) {
-        try {
-          const owner = await sagaReadContract.ownerOf(tid);
-          if (owner.toLowerCase() !== connectedAddress.toLowerCase()) continue;
-          const sagaId = Number(await sagaReadContract.tokenSagaId(tid));
-          const featId = sagaFeatIds[sagaId - 1];
-          const f = FEATS.find(x => x.id === featId);
-          owned.push({
-            contract: SAGA_CONTRACT_ADDRESS, tokenId: tid,
-            name: sagaNames[sagaId - 1] || ('Saga #' + sagaId),
-            artUrl: f ? f.artUrl : null
-          });
-        } catch (e) {}
-      }
-    }
-  } catch (e) { console.warn('Saga NFT scan failed:', e); }
+    const c = (typeof initAscentContract === 'function') ? await initAscentContract() : null;
+    if (c) {
+      const [ids] = await c.tokensOfOwner(connectedAddress, 0, 200);
+      const tokenIds = Array.from(ids).map(Number).filter(Boolean);
 
-  // Rank NFTs — probe tokenIds 1..N via ownerOf() to find EVERY token this
-  // wallet owns (including old duplicate mints from before pool changes),
-  // not just one per (rank, nftId) like mintedNFT() alone would give.
-  // Then map each owned tokenId back to its (rank, nftId) via mintedNFT()
-  // so we know which name/art to show.
-  try {
-    await initNFTContract();
-    if (nftContract && typeof POOL_DATA !== 'undefined') {
-      const rankNames = ['Simple Holder', 'Apprentice Litecoiner', 'Devoted Litecoiner', 'Silver Maximalist'];
-
-      // Step 1: build a lookup of tokenId -> {rankIdx, nftId} by checking
-      // every (rank, nftId) this wallet has claimed at least once.
-      const tokenMeta = {}; // tokenId -> { rankIdx, nftId }
-      for (let rankIdx = 0; rankIdx < 4; rankIdx++) {
-        const pool = POOL_DATA[rankIdx] || [];
-        for (let nftId = 0; nftId < pool.length; nftId++) {
+      if (tokenIds.length) {
+        // tokenId -> itemType, en requetes groupees plutot qu'une par une.
+        const itemOf = {};
+        for (let k = 0; k < tokenIds.length; k += 40) {
+          const slice = tokenIds.slice(k, k + 40);
+          const reqs = slice.map((tid, n) => ({
+            jsonrpc:'2.0', id:n, method:'eth_call',
+            params:[{ to: ASCENT_CONTRACT_ADDRESS,
+                      data: '0x27780974' + BigInt(tid).toString(16).padStart(64,'0') }, 'latest']
+          }));
           try {
-            const has = await nftContract.hasClaimed(connectedAddress, rankIdx + 1, nftId);
-            if (!has) continue;
-            const tid = Number(await nftContract.mintedNFT(connectedAddress, rankIdx + 1, nftId));
-            if (tid > 0) tokenMeta[tid] = { rankIdx, nftId };
-          } catch (e) {}
+            const res = await storeRpcBatch(reqs);
+            res.forEach(x => {
+              if (!x.error && x.result) itemOf[slice[x.id]] = Number(BigInt(x.result));
+            });
+          } catch (e) {
+            // Repli : une lecture a la fois, seulement si le batch est refuse.
+            for (const tid of slice) {
+              try { itemOf[tid] = Number(await c.tokenItem(tid)); } catch (e2) {}
+            }
+          }
         }
-      }
 
-      // Step 2: probe a range of tokenIds via ownerOf to catch every token
-      // actually held by this wallet — including old duplicate mints whose
-      // tokenId might not be the "latest" one mintedNFT() would report.
-      const MAX_PROBE = 300; // generous for current + near-future mint volume
-      let misses = 0;
-      for (let tid = 1; tid <= MAX_PROBE && misses < 5; tid++) {
-        let owner;
-        try { owner = await nftContract.ownerOf(tid); }
-        catch { misses++; continue; }
-        misses = 0;
-        if (!owner || owner.toLowerCase() !== connectedAddress.toLowerCase()) continue;
+        // Compteur de doublons : combien de copies de chaque item.
+        const copies = {};
+        tokenIds.forEach(tid => {
+          const it = itemOf[tid];
+          if (it) copies[it] = (copies[it] || 0) + 1;
+        });
 
-        const meta = tokenMeta[tid];
-        const rankIdx = meta ? meta.rankIdx : 0; // fallback to rank 0 if we couldn't map it
-        const pool = POOL_DATA[rankIdx] || [];
-        const poolEntry = meta ? pool[meta.nftId] : null;
-        owned.push({
-          contract: NFT_CONTRACT_ADDRESS, tokenId: tid,
-          name: poolEntry ? poolEntry.name : (rankNames[rankIdx] + ' (#' + tid + ')'),
-          artUrl: poolEntry ? poolEntry.artUrl : rankArtUrl('rank_' + (rankIdx + 1))
+        tokenIds.forEach(tid => {
+          const it = itemOf[tid];
+          const meta = it ? ASCENT_ITEMS[it - 1] : null;
+          owned.push({
+            contract: ASCENT_CONTRACT_ADDRESS, tokenId: tid,
+            name: meta ? meta.name : ('Relic #' + tid),
+            artUrl: meta ? meta.img : null,
+            rarity: meta ? meta.rarity : 'common',
+            copies: it ? copies[it] : 1,
+            kind: 'relic'
+          });
         });
       }
     }
-  } catch (e) { console.warn('Rank NFT scan failed:', e); }
+  } catch (e) { console.warn('Ascent relic scan:', e.message); }
 
   _storeMyNFTs = owned;
+  storeRenderMyNFTs();
+
+  // ── ANCIENS NFT (rangs + saga) — en arriere-plan ──────────────────
+  // Ils ne bloquent plus l'affichage : les reliques sont deja a l'ecran.
+  storeScanLegacyNFTs().catch(e => console.warn('legacy scan:', e.message));
+}
+
+/// Anciens NFT de rang et de saga. Lecture groupee : l'ancienne boucle
+/// sequentielle etait a elle seule responsable de la quasi-totalite des
+/// 50 secondes d'attente.
+async function storeScanLegacyNFTs() {
+  const extra = [];
+
+  try {
+    await initSagaContract();
+    if (sagaReadContract) {
+      const sagaNames = ['The Awakening', 'Lightning Adept', 'Sanctuary Glimpse', 'Guardian Ascended'];
+      const sagaFeatIds = ['saga_1', 'saga_2', 'saga_3', 'saga_4'];
+      const total = Math.min(Number(await sagaReadContract.totalSupply().catch(() => 0)), 200);
+      for (let k = 1; k <= total; k += 40) {
+        const slice = [];
+        for (let t = k; t < Math.min(k + 40, total + 1); t++) slice.push(t);
+        const reqs = slice.map((tid, n) => ({
+          jsonrpc:'2.0', id:n, method:'eth_call',
+          params:[{ to: SAGA_CONTRACT_ADDRESS,
+                    data: '0x6352211e' + BigInt(tid).toString(16).padStart(64,'0') }, 'latest']
+        }));
+        let res;
+        try { res = await storeRpcBatch(reqs); } catch (e) { break; }
+        for (const x of res) {
+          if (x.error || !x.result || x.result.length < 66) continue;
+          const owner = '0x' + x.result.slice(-40);
+          if (owner.toLowerCase() !== connectedAddress.toLowerCase()) continue;
+          const tid = slice[x.id];
+          try {
+            const sagaId = Number(await sagaReadContract.tokenSagaId(tid));
+            const f = FEATS.find(y => y.id === sagaFeatIds[sagaId - 1]);
+            extra.push({
+              contract: SAGA_CONTRACT_ADDRESS, tokenId: tid,
+              name: sagaNames[sagaId - 1] || ('Saga #' + sagaId),
+              artUrl: f ? f.artUrl : null, rarity: 'rare', copies: 1, kind: 'saga'
+            });
+          } catch (e) {}
+        }
+      }
+    }
+  } catch (e) { console.warn('Saga scan:', e.message); }
+
+  if (extra.length) {
+    _storeMyNFTs = _storeMyNFTs.concat(extra);
+    storeRenderMyNFTs();
+  }
+}
+
+/// Rendu de la galerie. Les doublons sont annonces explicitement : c'est
+/// toute la raison d'etre du Store, autant que le joueur les voie.
+function storeRenderMyNFTs() {
+  const gallery = document.getElementById('store-sell-gallery');
+  if (!gallery) return;
+  const owned = _storeMyNFTs || [];
 
   if (owned.length === 0) {
-    gallery.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;font-size:0.75rem;">You don\'t own any listable relics yet.</div>';
+    gallery.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem 0;color:rgba(255,255,255,0.35);font-style:italic;font-size:0.8rem;line-height:1.6;">No relics yet.<br><span style="font-size:0.72rem;color:rgba(255,255,255,0.25);">Fight in the Arena to earn draws.</span></div>';
     return;
   }
 
-  gallery.innerHTML = owned.map((nft, i) => {
+  // Une seule vignette par item, avec le nombre de copies : quarante jetons
+  // identiques n'ont pas a occuper quarante cases.
+  const seen = {};
+  const uniq = [];
+  owned.forEach(n => {
+    const key = n.contract + ':' + n.name;
+    if (seen[key]) return;
+    seen[key] = true;
+    uniq.push(n);
+  });
+
+  gallery.innerHTML = uniq.map(nft => {
+    const i = owned.indexOf(nft);
+    const col = STORE_RARITY_COLOR[nft.rarity] || '#9aa8b8';
+    const spare = (nft.copies || 1) - 1;
     const img = nft.artUrl
-      ? `<img src="${nft.artUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='🖼';" />`
-      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;">🖼</div>`;
+      ? `<img src="${nft.artUrl}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';" />`
+      : '';
     return `
-    <div onclick="storeSelectMyNFT(${i})" title="${nft.name}" style="aspect-ratio:1;border-radius:4px;overflow:hidden;cursor:pointer;border:2px solid rgba(0,229,204,0.2);transition:border-color 0.15s;" onmouseover="this.style.borderColor='rgba(0,229,204,0.6)'" onmouseout="this.style.borderColor='rgba(0,229,204,0.2)'">
-      ${img}
+    <div onclick="storeSelectMyNFT(${i})" title="${nft.name}"
+         style="cursor:pointer;border-radius:8px;overflow:hidden;
+                border:1px solid ${col}33;background:rgba(255,255,255,0.02);
+                transition:all 0.18s;"
+         onmouseover="this.style.borderColor='${col}88';this.style.background='rgba(255,255,255,0.05)'"
+         onmouseout="this.style.borderColor='${col}33';this.style.background='rgba(255,255,255,0.02)'">
+      <div style="position:relative;aspect-ratio:1;background:rgba(4,2,18,0.5);">
+        ${img}
+        ${spare > 0 ? `<div style="position:absolute;top:5px;right:5px;padding:2px 7px;border-radius:20px;
+             background:rgba(4,2,18,0.85);border:1px solid ${col}66;color:${col};
+             font-family:'Cinzel',serif;font-size:0.6rem;">×${nft.copies}</div>` : ''}
+      </div>
+      <div style="padding:0.5rem 0.6rem;">
+        <div style="font-family:'Cinzel',serif;font-size:0.62rem;color:#fff;line-height:1.25;
+                    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nft.name}</div>
+        <div style="margin-top:0.2rem;font-size:0.55rem;letter-spacing:0.1em;text-transform:uppercase;color:${col};">
+          ${nft.rarity}${spare > 0 ? ` · ${spare} spare` : ''}
+        </div>
+      </div>
     </div>`;
   }).join('');
 }
