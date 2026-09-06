@@ -11561,7 +11561,7 @@ async function sagaMint(sagaId) {
       <div style="max-width:560px;background:linear-gradient(135deg,rgba(10,6,28,0.7),rgba(4,2,16,0.85));border:1px solid rgba(0,229,204,0.2);border-radius:6px;padding:1.2rem;">
 
         <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:rgba(0,229,204,0.6);text-transform:uppercase;margin-bottom:0.7rem;">Choose a relic to sell</div>
-        <div id="store-sell-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:0.5rem;margin-bottom:1.1rem;">
+        <div id="store-sell-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:0.75rem;margin-bottom:1.1rem;">
           <div style="grid-column:1/-1;text-align:center;padding:1.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;font-size:0.75rem;">Connect your wallet to see your relics.</div>
         </div>
 
@@ -12109,12 +12109,12 @@ function storeRenderMyNFTs() {
         ${img}
         ${spare > 0 ? `<div style="position:absolute;top:5px;right:5px;padding:2px 7px;border-radius:20px;
              background:rgba(4,2,18,0.85);border:1px solid ${col}66;color:${col};
-             font-family:'Cinzel',serif;font-size:0.6rem;">×${nft.copies}</div>` : ''}
+             font-family:'Cinzel',serif;font-size:0.72rem;">×${nft.copies}</div>` : ''}
       </div>
-      <div style="padding:0.5rem 0.6rem;">
-        <div style="font-family:'Cinzel',serif;font-size:0.62rem;color:#fff;line-height:1.25;
-                    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nft.name}</div>
-        <div style="margin-top:0.2rem;font-size:0.55rem;letter-spacing:0.1em;text-transform:uppercase;color:${col};">
+      <div style="padding:0.65rem 0.75rem;">
+        <div style="font-family:'Cinzel',serif;font-size:0.78rem;color:#fff;line-height:1.3;
+                    min-height:2.1em;">${nft.name}</div>
+        <div style="margin-top:0.3rem;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:${col};">
           ${nft.rarity}${spare > 0 ? ` · ${spare} spare` : ''}
         </div>
       </div>
@@ -14882,6 +14882,34 @@ body.sv-rail-on #ritual .btn-transmute-main{
   box-shadow:none !important;
   transition:all 0.2s !important;
 }
+/* ═══ Arena — meme traitement que le Rituel ═══════════════════════════
+   Les panneaux "Challenge Someone" et "My Duels" portaient un degrade
+   rgba(8,4,40,0.9) -> rgba(4,2,26,0.95), quasi opaque et plus clair que le
+   fond de section : ils flottaient au-dessus de la page au lieu d'y
+   appartenir. Meme voile blanc a 2% que .ob-head et que la console du
+   Rituel. Le degrade etant en style inline, il faut !important. */
+/* Le degrade est pose en style inline sur des div sans classe : on cible
+   donc l'attribut lui-meme, ce qui attrape les quatre panneaux d'un coup
+   sans avoir a leur ajouter des classes. */
+body.sv-rail-on #duel [style*="rgba(8,4,40,0.9)"],
+body.sv-rail-on #duel .duel-main-grid > div,
+body.sv-rail-on #duel .duel-card,
+body.sv-rail-on #duel .arena-panel{
+  background:rgba(255,255,255,0.02) !important;
+  border:1px solid rgba(255,255,255,0.09) !important;
+  border-radius:10px !important;
+  box-shadow:none !important;
+  backdrop-filter:blur(10px) !important;
+  -webkit-backdrop-filter:blur(10px) !important;
+}
+
+/* Le panneau de tirage garde son accent violet, simplement adouci : c'est
+   le seul bloc de la page qui doit encore attirer l'oeil. */
+body.sv-rail-on #duel #arena-draw-panel{
+  background:rgba(176,117,255,0.04) !important;
+  border-color:rgba(176,117,255,0.22) !important;
+}
+
 body.sv-rail-on #ritual .btn-transmute-main:hover{
   background:rgba(255,106,61,0.1) !important;
   border-color:rgba(255,106,61,0.8) !important;
