@@ -2473,19 +2473,31 @@ body::after {
 
 .sv-foot{ margin-top:auto; padding-top:1rem; flex-shrink:0 }
 .sv-wal{
-  display:flex; align-items:center; gap:0.65rem; width:100%;
-  padding:0.6rem 0.65rem; border-radius:10px; cursor:pointer;
+  display:flex; align-items:center; gap:0.8rem; width:100%;
+  /* Plus genereux : c'est l'element le plus utilise du rail, et l'avatar
+     etait trop petit pour qu'on distingue le portrait choisi. */
+  padding:0.75rem 0.8rem; border-radius:12px; cursor:pointer;
   background:rgba(255,255,255,0.03); border:1px solid rgba(0,229,204,0.28);
   color:var(--teal); font-family:'Cinzel',serif;
   letter-spacing:0.05em; transition:all 0.18s; text-align:left;
 }
+/* Le portrait et les libelles sont dimensionnes en style inline sur
+   #sv-wal-ring / #sv-wal-txt / #sv-wal-sub, qui prime sur toute regle d'ici :
+   les tailles se changent la-bas, pas dans cette feuille. */
 .sv-wal:hover{ background:rgba(0,229,204,0.08); border-color:rgba(0,229,204,0.45) }
 .sv-legal{
   display:flex; align-items:center; justify-content:center; gap:1rem;
   padding:1rem 0.3rem 0.3rem; font-size:0.72rem;
   position:relative; z-index:5;   /* the rail's own stacking swallowed clicks */
 }
-.sv-legal a{ padding:0.3rem 0.5rem; pointer-events:auto }
+/* Cibles tactiles reelles : 0.3rem de padding donnait ~20px de haut, sous le
+   minimum confortable, et le lien 𝕏 se reduisait a la largeur du glyphe. */
+.sv-legal a{
+  padding:0.55rem 0.7rem; pointer-events:auto;
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:34px; border-radius:6px;
+}
+.sv-legal a:hover{ background:rgba(255,255,255,0.05) }
 .sv-foot{ position:relative; z-index:5 }
 .sv-legal a{
   color:rgba(255,255,255,0.4); text-decoration:none; transition:color 0.16s;
@@ -3638,6 +3650,18 @@ function svIntroParticles() {
            plutot qu'apres la perte. -->
       <div style="margin-top:0.55rem;font-size:0.68rem;color:rgba(255,193,64,0.55);line-height:1.5;">
         Two steps: seal your draw, then reveal it within the block window. Keep this tab open until the reveal.
+      </div>
+
+      <!-- ODDS — les taux n'etaient annonces NULLE PART. Un systeme de tirage
+           qui cache ses probabilites invite au soupcon, et ces chiffres sont
+           de toute facon lisibles dans le contrat : autant les afficher. Ils
+           sont NORMALISES sur le pool reel du joueur (voir arenaRenderOdds). -->
+      <div style="margin-top:1rem;padding-top:0.9rem;border-top:1px solid rgba(255,255,255,0.07);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.6rem;">
+          <span style="font-family:'Cinzel',serif;font-size:0.56rem;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.35);">Your drop rates</span>
+          <span id="arena-odds-note" style="font-size:0.62rem;font-style:italic;color:rgba(255,255,255,0.28);"></span>
+        </div>
+        <div id="arena-odds" style="display:flex;gap:0.4rem;flex-wrap:wrap;"></div>
       </div>
     </div>
 
@@ -6492,124 +6516,36 @@ async function loadLeaderboard(){
 
     console.log('Burner count:',burnerCount);
 
-    // ── SOURCE DU CLASSEMENT — lecture directe du storage ──────────────
+    // ── SOURCE DU CLASSEMENT ───────────────────────────────────────────
     //
-    // Tout le reste a ete essaye et a echoue :
-    //   • /api/leaderboard indexait les events via l'explorateur Blockscout.
-    //     Fragile de bout en bout (pages perdues, curseurs tronques, verrou
-    //     inoperant), il produisait des montants FAUX ET FIGES — un joueur
-    //     affiche a 62.195 quand la chaine disait 90.2954 — et manquait meme
-    //     des joueurs entiers. Depuis Vercel, l'explorateur ne repond plus.
-    //   • getTopBurners() : "out of gas" meme avec limit=1. Le tri parcourt
-    //     les 1841 burners quel que soit l'argument. Definitivement mort.
-    //   • eth_getLogs : timeout a 30s des 10 000 blocs sur ce RPC.
-    //   • Aucun accesseur public ne permet d'enumerer les burners.
+    // La lecture est faite CÔTÉ SERVEUR (/api/leaderboard) et mise en cache.
     //
-    // MAIS le tableau des burners existe dans le storage du contrat, au
-    // SLOT 5 (verifie : l'element 0 est l'adresse du createur). Solidity ne
-    // l'expose pas, eth_getStorageAt si. Pour un tableau dynamique, les
-    // elements vivent a keccak256(slot) + index.
+    // La version précédente lisait le storage du contrat directement depuis le
+    // navigateur. Ça marchait — puis le RPC a renvoyé des HTTP 429 : chaque
+    // visiteur déclenchait ~3700 appels, et le front s'actualise toutes les
+    // 60 s. À quelques visiteurs simultanés, le rate limit tombait et le
+    // classement disparaissait pour tout le monde.
     //
-    // On lit donc les 1841 adresses dans le storage, puis leurs montants avec
-    // getBurnerInfo, en requetes JSON-RPC groupees. ~20 aller-retours, ~10s.
-    // Les montants sont EXACTS PAR CONSTRUCTION : c'est le compteur interne du
-    // contrat, pas une somme reconstituee. Aucune indexation a maintenir.
-    const BURNERS_ARRAY_SLOT = 5;
-    const SEL_BURNER_INFO = '0x39b7a75b';   // keccak("getBurnerInfo(address)")[0:4]
-    const RPC_BATCH = 200;
-
-    async function rpcBatch(reqs) {
-      const r = await fetch(RPC, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(reqs)
-      });
-      const j = await r.json();
-      if (!Array.isArray(j)) throw new Error('BATCH_UNSUPPORTED');
-      return j;
-    }
-
-    async function readLeaderboardFromChain(count) {
-      const base = BigInt(ethers.keccak256(
-        ethers.zeroPadValue(ethers.toBeHex(BURNERS_ARRAY_SLOT), 32)));
-
-      // 1. Les adresses, depuis le storage.
-      const addrs = [];
-      for (let i = 0; i < count; i += RPC_BATCH) {
-        const reqs = [];
-        for (let k = i; k < Math.min(i + RPC_BATCH, count); k++) {
-          reqs.push({ jsonrpc:'2.0', id:k, method:'eth_getStorageAt',
-            params:[CONTRACT_ADDRESS, '0x'+(base+BigInt(k)).toString(16), 'latest'] });
-        }
-        const res = await rpcBatch(reqs);
-        for (const x of res) {
-          if (x.result && x.result.length === 66) {
-            const a = '0x' + x.result.slice(-40);
-            if (a !== '0x' + '0'.repeat(40)) addrs[x.id] = a.toLowerCase();
-          }
-        }
-      }
-
-      // 2. Les montants, depuis le compteur interne du contrat.
-      const list = [];
-      const flat = addrs.filter(Boolean);
-      for (let i = 0; i < flat.length; i += RPC_BATCH) {
-        const slice = flat.slice(i, i + RPC_BATCH);
-        const reqs = slice.map((a, k) => ({ jsonrpc:'2.0', id:k, method:'eth_call',
-          params:[{ to: CONTRACT_ADDRESS,
-                    data: SEL_BURNER_INFO + a.slice(2).padStart(64,'0') }, 'latest'] }));
-        const res = await rpcBatch(reqs);
-        for (const x of res) {
-          if (x.error || !x.result || x.result.length < 66) continue;
-          const v = BigInt('0x' + x.result.slice(2, 66));
-          if (v > 0n) list.push({ address: slice[x.id], amount: v.toString() });
-        }
-      }
-
-      // Comparateur qui renvoie bien 0 sur egalite : il y a de vrais ex aequo
-      // a 100.000, et un comparateur incoherent peut desordonner au-dela.
-      list.sort((a, b) => { const d = BigInt(b.amount) - BigInt(a.amount);
-                            return d > 0n ? 1 : d < 0n ? -1 : 0; });
-      return list.slice(0, 100);
-    }
-
-    // Cache court : la lecture coute ~20 aller-retours, inutile de la refaire
-    // a chaque bascule d'onglet. 60s suffisent pour que le classement reste
-    // vivant sans marteler le RPC.
+    // Désormais le serveur lit une fois et sert tout le monde depuis Redis :
+    // mille visiteurs coûtent autant qu'un seul. Voir api/leaderboard.js pour
+    // la méthode (tableau `burners` au slot 5 du storage + getBurnerInfo).
     let lbData = null;
-    let lbSource = null;
-    const CACHE_MS = 60000;
-
-    if (window._lbCache && (Date.now() - window._lbCache.t) < CACHE_MS) {
-      lbData = window._lbCache.d;
-      lbSource = 'chain-cache';
-    } else {
-      try {
-        const list = await readLeaderboardFromChain(burnerCount || 2000);
-        if (list.length > 0) {
-          lbData = { leaderboard: list, totalBurners: burnerCount, updatedAt: new Date().toISOString() };
-          lbSource = 'chain';
-          window._lbCache = { t: Date.now(), d: lbData };
-          console.log('Leaderboard: ' + list.length + ' entrees lues on-chain');
-        }
-      } catch (e) {
-        console.warn('Lecture on-chain du classement impossible:', e.message);
-      }
+    try {
+      const resp = await fetch('/api/leaderboard?_=' + Date.now(), { cache: 'no-store' });
+      lbData = await resp.json();
+    } catch(e) {
+      console.error('Leaderboard API:', e);
     }
 
-    // Repli sur l'ancienne API tant que la lecture on-chain n'est pas
-    // confirmee en production. Supprimable ensuite, avec /api/leaderboard.js.
-    if (!lbData) {
-      try {
-        const resp = await fetch('/api/leaderboard?_=' + Date.now(), { cache: 'no-store' });
-        lbData = await resp.json();
-        lbSource = 'api';
-      } catch(e) {
-        const wrap=document.getElementById('lb-rows');
+    if (!lbData || !Array.isArray(lbData.leaderboard) || lbData.leaderboard.length === 0) {
+      const wrap=document.getElementById('lb-rows');
+      if (lbData && lbData.building) {
+        if(wrap) wrap.innerHTML=`<div class="lb-empty"><strong>Reading the chain…</strong>The rankings are being read from the contract. This takes a moment on first load.</div>`;
+      } else {
         if(wrap) wrap.innerHTML=`<div class="lb-empty"><strong>Rankings unavailable</strong>The chain could not be reached. Your burns are safe — every one is recorded on-chain, and your exact total is shown in your Codex.</div>`;
-        return;
       }
+      return;
     }
-    window._lbSource = lbSource;
 
     const apiList = (lbData && Array.isArray(lbData.leaderboard)) ? lbData.leaderboard : [];
     if(lbData && lbData.totalBurners) _lbTotalBurners = Number(lbData.totalBurners);
@@ -6619,10 +6555,10 @@ async function loadLeaderboard(){
     // pour un bug par la personne qui vient de burn.
     const updatedEl = document.getElementById('lb-sac-updated');
     if (updatedEl) {
-      if (lbSource && lbSource.startsWith('chain')) {
-        // Lecture directe du contrat : exacte a la seconde pres, il n'y a plus
-        // de cache ni de retard a excuser.
-        updatedEl.textContent = 'Read live from the chain.';
+      if (lbData && lbData.stale) {
+        // Le serveur n'a pas pu relire : on le dit, plutot que d'afficher un
+        // chiffre date comme s'il etait frais.
+        updatedEl.textContent = 'Showing the last successful read — refreshing shortly.';
       } else if (lbData && lbData.updatedAt) {
         const secAgo = Math.max(0, Math.floor((Date.now() - new Date(lbData.updatedAt).getTime()) / 1000));
         const label = secAgo < 60 ? `${secAgo}s ago` : `${Math.floor(secAgo/60)}m ago`;
@@ -8320,6 +8256,64 @@ const ASCENT_CONTRACT_ADDRESS = '0x8FF2fbfE17Af4746DB4b3d500D34AebB3bF1Fcd8';
 // la deduit et recale l'affichage, cette constante n'etant que le defaut.
 const ASCENT_DUELS_PER_DRAW = 4;
 
+// ══ TAUX DE DROP ══════════════════════════════════════════════════════
+// Reproduit exactement _roll() du contrat AscentRelics.
+//
+// Le contrat porte des poids GLOBAUX en points de base (75 / 18 / 5 / 1.5 /
+// 0.5 %), mais ne tire que parmi les raretes PRESENTES dans le pool du
+// joueur, en renormalisant sur ce sous-ensemble. Un rang 1 n'a ni Rare, ni
+// Epic, ni Legendary : ses 75/18 deviennent donc ~80.6/19.4. Afficher les
+// poids bruts serait mensonger pour tout le monde sauf le rang 4.
+const RARITY_BP   = [7500, 1800, 500, 150, 50];
+const RARITY_NAME = ['Common','Uncommon','Rare','Epic','Legendary'];
+const RARITY_COLOR= ['#9aa8b8','#5ec8a0','#5a9fff','#b075ff','#ffc140'];
+
+// itemRank / itemRarity du contrat, item par item (1..12).
+const ITEM_RANK   = [1,1,1, 2,2,2, 3,3,3, 4,4,4];
+const ITEM_RARITY = [0,0,1, 0,1,2, 0,2,3, 0,3,4];
+
+function arenaOddsFor(burnRank) {
+  const present = [false,false,false,false,false];
+  for (let i = 0; i < 12; i++) if (ITEM_RANK[i] <= burnRank) present[ITEM_RARITY[i]] = true;
+  let total = 0;
+  for (let r = 0; r < 5; r++) if (present[r]) total += RARITY_BP[r];
+  if (total === 0) return null;
+  return present.map((p, r) => p ? (RARITY_BP[r] / total) * 100 : 0);
+}
+
+function arenaRenderOdds() {
+  const host = document.getElementById('arena-odds');
+  const note = document.getElementById('arena-odds-note');
+  if (!host) return;
+  const rank = (typeof _burnRank !== 'undefined' && _burnRank >= 0) ? _burnRank + 1 : 0;
+
+  if (rank < 1) {
+    host.innerHTML = '<span style="font-size:0.72rem;color:rgba(255,255,255,0.3);font-style:italic;">Burn 0.5 zkLTC to open your first pool.</span>';
+    if (note) note.textContent = '';
+    return;
+  }
+
+  const odds = arenaOddsFor(rank);
+  if (!odds) { host.innerHTML = ''; return; }
+
+  host.innerHTML = odds.map((pct, r) => {
+    if (pct <= 0) return '';
+    const label = pct >= 10 ? pct.toFixed(1) : pct.toFixed(2);
+    return `<div style="flex:1 1 90px;min-width:90px;padding:0.5rem 0.6rem;border-radius:6px;
+                        border:1px solid ${RARITY_COLOR[r]}33;background:${RARITY_COLOR[r]}0d;">
+      <div style="font-family:'Cinzel',serif;font-size:0.95rem;color:${RARITY_COLOR[r]};">${label}%</div>
+      <div style="font-size:0.55rem;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-top:0.15rem;">${RARITY_NAME[r]}</div>
+    </div>`;
+  }).join('');
+
+  if (note) {
+    const missing = odds.filter(p => p === 0).length;
+    note.textContent = missing > 0
+      ? ('Rank ' + rank + ' pool — burn more to unlock rarer relics')
+      : ('Rank ' + rank + ' pool — every rarity is reachable');
+  }
+}
+
 // Renseigne _arenaDuels / _arenaRank, dont dependent les echelles de rang
 // Arena (page Ranks et Codex).
 //
@@ -9560,6 +9554,7 @@ async function arenaRefreshDraws() {
   // Met a jour l'echelle de rang Arena en meme temps : meme source, meme
   // moment, une seule lecture de plus.
   svRefreshArenaRank();
+  arenaRenderOdds();
 
   try {
     const c = await initAscentContract();
@@ -13977,24 +13972,28 @@ window.addEventListener('load', function () {
 
   <div class="sv-foot">
     <button class="sv-wal" id="sv-wallet-btn" onclick="svRailWallet()">
-      <span id="sv-wal-ring" style="position:relative;width:38px;height:38px;flex-shrink:0;"></span>
+      <!-- 38px -> 48px : le portrait etait trop petit pour qu'on distingue l'avatar choisi. -->
+      <span id="sv-wal-ring" style="position:relative;width:48px;height:48px;flex-shrink:0;"></span>
       <span style="min-width:0;text-align:left;">
-        <span id="sv-wal-txt" style="display:block;font-size:0.78rem;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Connect</span>
-        <span id="sv-wal-sub" style="display:block;font-size:0.58rem;letter-spacing:0.1em;color:rgba(255,255,255,0.35);margin-top:1px;font-family:'Inter',sans-serif;">Wallet</span>
+        <span id="sv-wal-txt" style="display:block;font-size:0.88rem;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Connect</span>
+        <span id="sv-wal-sub" style="display:block;font-size:0.66rem;letter-spacing:0.1em;color:rgba(255,255,255,0.35);margin-top:1px;font-family:'Inter',sans-serif;">Wallet</span>
       </span>
     </button>
 
     <!-- Disconnect went missing when the profile panel was rebuilt; it belongs
          next to the wallet button anyway. -->
     <button id="sv-disconnect" onclick="event.stopPropagation();if(typeof disconnectWallet==='function')disconnectWallet();"
-      style="display:none;width:100%;margin-top:0.45rem;padding:0.42rem;border-radius:7px;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.12em;text-transform:uppercase;transition:all 0.18s;"
+      style="display:none;width:100%;margin-top:0.55rem;padding:0.6rem;border-radius:8px;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.12em;text-transform:uppercase;transition:all 0.18s;"
       onmouseover="this.style.color='#ff8b8b';this.style.borderColor='rgba(255,139,139,0.35)'"
       onmouseout="this.style.color='rgba(255,255,255,0.4)';this.style.borderColor='rgba(255,255,255,0.12)'">Disconnect</button>
 
     <!-- Terms + socials, lost with the old top nav and its footer. -->
     <div class="sv-legal">
+      <!-- Le lien appelait openTerms(), qui n'existe pas : la fonction reelle
+           s'appelle openTermsReader(). Le garde `typeof === 'function'` avalait
+           l'erreur en silence, donc le clic ne faisait simplement rien. -->
       <a href="https://x.com/The_SilverVoid" target="_blank" rel="noopener" title="X">𝕏</a>
-      <a href="#" onclick="if(typeof openTerms==='function')openTerms();return false;">Terms of use</a>
+      <a href="#" onclick="if(typeof openTermsReader==='function')openTermsReader();return false;">Terms of use</a>
     </div>
   </div>
 </div>
