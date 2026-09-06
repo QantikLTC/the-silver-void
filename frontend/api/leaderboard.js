@@ -1,163 +1,88 @@
 // /api/leaderboard — classement des sacrifiants.
 //
 // ══════════════════════════════════════════════════════════════════════
-// v8 — ARCHITECTURE INCRÉMENTALE (conçue pour ~1800+ sacrifiants)
+// v12 — LECTURE DIRECTE DU STORAGE, CÔTÉ SERVEUR
 // ══════════════════════════════════════════════════════════════════════
 //
-// CE QUI A MOTIVÉ CETTE RÉVISION
-// Un joueur affiché à 62.195 zkLTC avait en réalité 90.2954 zkLTC selon
-// getBurnerInfo(). Vérifié à la main sur la chaîne. ~28 zkLTC d'events
-// perdus, pour LUI seul — les autres lignes étaient justes. Signature
-// typique d'une plage de pages sautée pendant un cycle.
+// TOUT LE RESTE A ÉTÉ ESSAYÉ ET A ÉCHOUÉ :
 //
-// LEÇON DE FOND : tant que les MONTANTS sont obtenus en sommant des
-// events, la moindre page perdue ou rejouée fausse un total de façon
-// invisible et DURABLE. Un scan d'events est fragile par nature
-// (pagination, curseurs, timeouts, invocations concurrentes). Le contrat,
-// lui, maintient déjà le cumul exact : c'est lui qu'il faut lire.
+//   • Indexation des events via l'explorateur Blockscout (v5→v10). Fragile de
+//     bout en bout — pages perdues, curseurs tronqués, verrou inopérant — elle
+//     produisait des montants FAUX ET FIGÉS : un joueur affiché à 62.195 quand
+//     la chaîne disait 90.2954, et des joueurs entiers absents du classement.
+//     Depuis Vercel, l'explorateur part en TIMEOUT à chaque appel.
 //
-// LE PROBLÈME D'ÉCHELLE
-// Avec 1833 sacrifiants, relire getBurnerInfo() pour tout le monde à
-// chaque cycle est intenable. Mais ce n'est PAS NÉCESSAIRE :
+//   • getTopBurners() du contrat : "out of gas" même avec limit=1. Le tri
+//     parcourt les 1841 burners quel que soit l'argument. Définitivement mort.
 //
-//   getBurnerInfo(X) ne change QUE si X émet un nouvel event Burned.
+//   • eth_getLogs : timeout à 30 s dès 10 000 blocs sur ce RPC, et la chaîne
+//     compte 33 M de blocs depuis le déploiement (bloc 15 063 366).
 //
-// D'où la stratégie : l'état est PERSISTANT et on ne relit que ce qui a
-// bougé. En régime établi, c'est une poignée d'adresses par cycle.
+//   • Aucun accesseur public ne permet d'énumérer les burners.
 //
-// ── LES TROIS ÉTAGES ──────────────────────────────────────────────────
+// CE QUI MARCHE : le tableau des burners vit dans le storage du contrat, au
+// SLOT 5 — vérifié, l'élément 0 est l'adresse du créateur. Solidity ne
+// l'expose pas, eth_getStorageAt si. Pour un tableau dynamique, les éléments
+// sont à keccak256(slot) + index.
 //
-//  1. DÉCOUVERTE INCRÉMENTALE
-//     Blockscout renvoie les logs du plus RÉCENT au plus ancien. On garde
-//     un high-water mark (dernier bloc traité) et on s'arrête dès qu'on
-//     redescend dessous. En régime établi : 1 page, ~200 ms. Le scan
-//     complet n'a lieu qu'au bootstrap (ou via ?full=1).
+// On lit donc les N adresses dans le storage, puis leurs montants avec
+// getBurnerInfo. Les montants sont EXACTS PAR CONSTRUCTION : c'est le
+// compteur interne du contrat, pas une somme reconstituée. Rien à indexer,
+// rien qui puisse dériver.
 //
-//  2. RAFRAÎCHISSEMENT CIBLÉ
-//     Toute adresse vue dans un event récent entre dans une file. On la
-//     relit on-chain via getBurnerInfo, en BATCH JSON-RPC (100 eth_call
-//     par requête HTTP). La file est drainée sous budget ; ce qui reste
-//     passe au cycle suivant. Aucun montant n'est jamais perdu.
+// ── POURQUOI CÔTÉ SERVEUR ─────────────────────────────────────────────
 //
-//  3. BALAYAGE DE FOND (auto-réparation)
-//     Quand la file est vide, on relit SWEEP_SIZE adresses en rotation.
-//     Filet de sécurité : même si un event échappait définitivement à la
-//     découverte, la valeur serait corrigée au passage du balayage.
-//     Couverture complète des 1833 adresses en ~10 min.
+// La v11 faisait cette lecture dans le navigateur. Ça marchait — puis le RPC
+// a renvoyé des HTTP 429. Chaque visiteur déclenchait ~3700 appels, et le
+// front s'actualise toutes les 60 s : à quelques visiteurs simultanés, le
+// rate limit tombe et le classement disparaît pour tout le monde.
 //
-// CONSÉQUENCE : une page d'events manquée ne coûte plus qu'un RETARD de
-// correction (quelques minutes au pire, via le balayage). Elle ne peut
-// plus produire un montant faux et figé. C'est le point important.
+// Ici la lecture est faite UNE FOIS et mise en cache dans Redis. Mille
+// visiteurs coûtent donc autant qu'un seul. C'est la seule forme viable.
 //
-// NOTE : getTopBurners() du contrat reste INUTILISABLE (tri on-chain
-// O(n²) qui dépasse la limite de gas et revert). Ce sont les lectures
-// INDIVIDUELLES getBurnerInfo() qui sont fiables — ne pas confondre.
+// ── RÈGLES DE ROBUSTESSE ──────────────────────────────────────────────
 //
-// ── CORRECTIFS PONCTUELS ÉGALEMENT APPLIQUÉS ──────────────────────────
-//
-// (a) VERROU QUI NE VERROUILLAIT PAS. `?NX=true&EX=55` n'est pas la
-//     syntaxe Upstash : NX est un FLAG. Passé sous cette forme il pouvait
-//     être ignoré → le SET réussissait toujours → tous les appels
-//     concurrents obtenaient le "verrou". Le front appelant cet endpoint
-//     toutes les 60 s PAR VISITEUR avec cache-buster, plusieurs advance()
-//     tournaient en parallèle, lisaient le même curseur et s'écrasaient :
-//     selon l'ordre d'écriture, pages rejouées (double comptage) ou
-//     sautées (montants perdus). `catch { return true; }` aggravait tout.
-//     Désormais `?NX&EX=55`, et en cas d'erreur on N'AVANCE PAS.
-//
-// (b) ÉCRITURE REDIS PAR URL. `/set/<key>/<encodeURIComponent(JSON)>`
-//     produit une URL de ~172 KB pour 1833 adresses. Au-delà des limites,
-//     le SET échoue et le cycle entier est perdu. Le payload passe
-//     désormais en BODY.
-//
-// (c) CURSEUR TRONQUÉ. Seules 3 clés de next_page_params étaient
-//     réinjectées. Blockscout en ajoute d'autres selon les versions. Une
-//     clé manquante = page suivante mal bornée = events sautés. On renvoie
-//     l'objet TEL QUEL.
-//
-// (d) FILTRE topic0 NON GARANTI. Le contrat n'étant pas vérifié,
-//     it.decoded est TOUJOURS null : on passe toujours par le décodage
-//     brut, sans garde-fou. Or l'endpoint attend selon les versions
-//     `topic` ou `topic0` : si le paramètre est ignoré, on ingère TOUS les
-//     logs et on les prend pour des burns. On envoie les deux formes ET on
-//     refiltre sur topics[0].
-//
-// (e) COMPARATEUR DE TRI INVALIDE. `(a,b) => (B > A ? 1 : -1)` ne renvoie
-//     jamais 0 : sur égalité il retourne -1, ce qui viole le contrat de
-//     Array.prototype.sort. Il y a de vrais ex æquo (plusieurs à 100.000).
-//
-// ── CLÉS REDIS ────────────────────────────────────────────────────────
-//   leaderboard:<tag>:state -> { amounts, highWater, queue, sweep, ... }
-//                              état PERSISTANT, seule source servie
-//   leaderboard:<tag>:scan  -> { cursor, dirty, newHigh, seed } scan de
-//                              bootstrap en cours (multi-invocations)
-//   leaderboard:<tag>:lock  -> verrou anti-invocations concurrentes
-//
-// Passage mainnet : changer EXPLORER_BASE / RPC_URL / CONTRACT_ADDRESS /
-// NETWORK_TAG et tout repart sur des clés fraîches.
+// 1. Lots de 40, pas 200 : un lot de 200 était refusé d'un bloc par le RPC.
+// 2. Pause entre les lots, et reprises avec attente progressive sur 429.
+// 3. Le dernier classement RÉUSSI est conservé et servi si un cycle échoue.
+//    Un classement d'il y a dix minutes vaut infiniment mieux qu'un tableau
+//    vide — c'était le défaut majeur de toutes les versions précédentes.
 
 // ─── CONFIG — à modifier au moment du passage au mainnet ───────────────
-const EXPLORER_BASE = 'https://liteforge.explorer.caldera.xyz';
 const RPC_URL = 'https://liteforge.rpc.caldera.xyz/http';
 const CONTRACT_ADDRESS = '0x0AD3f776C45FF457d2d8e211A3174A4Db201b656';
-const NETWORK_TAG = 'liteforge-testnet-v11';
+const NETWORK_TAG = 'liteforge-v12';
+
+/// Slot du tableau `burners` dans le storage. VÉRIFIÉ en lisant
+/// keccak256(5)+0, qui renvoie l'adresse du créateur.
+/// ⚠️ C'est une donnée d'IMPLÉMENTATION, pas une interface publique : un
+/// redéploiement du contrat rituel avec les variables déclarées dans un autre
+/// ordre changerait ce slot et casserait le classement. La correction durable
+/// serait un getter public `burnerAt(uint256)` sur le contrat.
+const BURNERS_ARRAY_SLOT = 5n;
 // ─────────────────────────────────────────────────────────────────────
 
-// keccak256("Burned(address,uint256,uint256,uint256,uint256)")
-const BURN_TOPIC = '0xf1b8071d85a68dbc6b0a9b8ff17e44602315ec457cdf743f3eee37cf4a6dd38e';
+const SEL_BURNER_INFO = '0x39b7a75b';   // keccak("getBurnerInfo(address)")[0:4]
+const SEL_BURNER_COUNT = '0xba8e15f1';  // keccak("getBurnerCount()")[0:4]
 
-// keccak256("getBurnerInfo(address)")[0:4]. Codé en dur : aucune
-// dépendance serveur (pas d'ethers), et le retour se décode à la main
-// (le premier mot de 32 octets est `amount`).
-const SEL_BURNER_INFO = '0x39b7a75b';
-
+const BATCH_SIZE = 40;          // un lot de 200 se faisait refuser en bloc
+const BATCH_PAUSE_MS = 120;     // respiration entre deux lots
+const MAX_RETRIES = 4;
+const RPC_TIMEOUT_MS = 15000;
 const LEADERBOARD_SIZE = 100;
 
-const PAGES_PER_INVOCATION = 40;     // plafond de pages par appel
-const FETCH_TIMEOUT_MS = 12000;      // par requête à l'explorateur
-const RPC_TIMEOUT_MS = 15000;        // par requête RPC (batch de 100)
-const RPC_BATCH_SIZE = 100;          // eth_call par requête HTTP groupée
-const RPC_CONCURRENCY = 3;           // requêtes groupées en parallèle
-const SWEEP_SIZE = 200;              // adresses relues par cycle au repos
-const REORG_MARGIN = 200;            // blocs de recouvrement (sécurité réorg)
-const LOG_CHUNK = 50000;             // blocs par eth_getLogs (réduit tout seul si refus)
-const MIN_LOG_CHUNK = 1000;          // plancher de réduction
+const FRESH_MS = 90000;         // au-delà, on relance une lecture
+const INVOCATION_BUDGET_MS = 45000;
 
-const INVOCATION_BUDGET_MS = 45000;  // marge sous maxDuration=60
-const DISCOVERY_BUDGET_MS = 20000;   // part réservée au scan d'events
-const SAVE_RESERVE_MS = 4000;        // marge pour l'écriture Redis finale
-
-const KEY_STATE = `leaderboard:${NETWORK_TAG}:state`;
+const KEY_DATA = `leaderboard:${NETWORK_TAG}:data`;
 const KEY_LOCK = `leaderboard:${NETWORK_TAG}:lock`;
 
 export const config = { maxDuration: 60 };
 
-// L'explorateur Caldera est derriere une protection anti-bot : la meme
-// requete passe depuis un navigateur et echoue depuis un serveur Vercel
-// (aucune page lue, scanPagesLues=0). On se presente donc avec des en-tetes
-// de navigateur ordinaire. Ce n'est pas un contournement de securite : c'est
-// une lecture publique de donnees publiques, deja accessible a tous.
-const BROWSER_HEADERS = {
-  Accept: 'application/json, text/plain, */*',
-  'Accept-Language': 'en-US,en;q=0.9',
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-  Referer: EXPLORER_BASE + '/',
-  Origin: EXPLORER_BASE,
-};
-
 // ═══════════════════════════════════════════════════════════════════════
-// Redis (Upstash REST)
+// Redis (Upstash REST) — format commande, sans rien à encoder dans l'URL
 // ═══════════════════════════════════════════════════════════════════════
 
-// Toutes les commandes passent par le format tableau ["SET", cle, valeur].
-// C'est la forme native de Redis : les flags (NX, EX) sont de simples
-// elements du tableau, et le payload voyage dans le BODY.
-//
-// L'ancienne approche construisait des URL du type /set/<cle>/<valeur> :
-//   - un flag sans valeur (?NX) pouvait etre rejete en HTTP 400, ce qui
-//     bloquait l'acquisition du verrou et empechait TOUT scan de demarrer ;
-//   - l'etat des 1833 adresses encode dans l'URL fait ~172 KB, au-dela des
-//     limites : l'ecriture echouait et le cycle entier etait perdu.
 async function redisCmd(cmd) {
   const res = await fetch(process.env.KV_REST_API_URL, {
     method: 'POST',
@@ -169,17 +94,9 @@ async function redisCmd(cmd) {
   });
   const json = await res.json().catch(() => null);
   if (!res.ok || (json && json.error)) {
-    throw new Error(`Redis ${cmd[0]} a echoue: HTTP ${res.status} ${json && json.error ? json.error : ''}`);
+    throw new Error(`Redis ${cmd[0]}: HTTP ${res.status} ${json && json.error ? json.error : ''}`);
   }
   return json ? json.result : null;
-}
-
-function withTimeout(promise, ms, label = 'TIMEOUT') {
-  let t;
-  return Promise.race([
-    promise.finally(() => clearTimeout(t)),
-    new Promise((_, reject) => { t = setTimeout(() => reject(new Error(label)), ms); }),
-  ]);
 }
 
 async function redisGet(key) {
@@ -187,7 +104,7 @@ async function redisGet(key) {
     const r = await redisCmd(['GET', key]);
     return r ? JSON.parse(r) : null;
   } catch (e) {
-    console.warn(`redisGet(${key}) a echoue:`, e.message);
+    console.warn(`redisGet(${key}):`, e.message);
     return null;
   }
 }
@@ -196,329 +113,203 @@ async function redisSet(key, value) {
   return redisCmd(['SET', key, JSON.stringify(value)]);
 }
 
-async function redisDel(key) {
-  try { await redisCmd(['DEL', key]); } catch {}
-}
-
-// NX et EX sont des elements du tableau : plus rien a encoder dans une URL.
-// En cas d'echec on REFUSE le verrou : ne pas avancer vaut mieux que faire
-// tourner deux cycles en parallele (c'etait la cause des montants faux).
-async function tryAcquireLock() {
+async function tryLock() {
   try {
     return (await redisCmd(['SET', KEY_LOCK, '1', 'NX', 'EX', '55'])) === 'OK';
   } catch (e) {
-    console.warn('leaderboard: verrou indisponible, on n\'avance pas:', e.message);
+    console.warn('verrou indisponible:', e.message);
     return false;
   }
 }
 
-async function releaseLock() {
+async function unlock() {
   try { await redisCmd(['DEL', KEY_LOCK]); } catch {}
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// ÉTAGE 2 — Lecture on-chain groupée (source de vérité des montants)
+// RPC
 // ═══════════════════════════════════════════════════════════════════════
 
-function callDataFor(address) {
-  return SEL_BURNER_INFO + address.toLowerCase().replace(/^0x/, '').padStart(64, '0');
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+function withTimeout(promise, ms) {
+  let t;
+  return Promise.race([
+    promise.finally(() => clearTimeout(t)),
+    new Promise((_, rej) => { t = setTimeout(() => rej(new Error('RPC_TIMEOUT')), ms); }),
+  ]);
 }
 
-// getBurnerInfo renvoie (uint256 amount, uint8 rank, string name).
-// `amount` est le PREMIER mot de 32 octets : décodable sans ABI.
-function decodeAmount(raw) {
-  if (typeof raw !== 'string' || raw.length < 66) return null;
-  try { return BigInt('0x' + raw.slice(2, 66)); } catch { return null; }
-}
+/// Un lot de requêtes JSON-RPC, avec reprises sur 429.
+/// L'attente double à chaque tentative : c'est ce qui laisse au rate limit le
+/// temps de se réarmer au lieu de le marteler.
+async function rpcBatch(reqs) {
+  let wait = 400;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const res = await withTimeout(fetch(RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reqs),
+      }), RPC_TIMEOUT_MS);
 
-// Un seul POST HTTP pour jusqu'à RPC_BATCH_SIZE eth_call (JSON-RPC batch).
-// C'est ce qui rend l'échelle tenable : 200 adresses = 2 requêtes, pas 200.
-// Repli automatique en séquentiel si le noeud refuse les requêtes groupées.
-async function rpcBatchRead(addresses) {
-  const payload = addresses.map((addr, i) => ({
-    jsonrpc: '2.0', id: i, method: 'eth_call',
-    params: [{ to: CONTRACT_ADDRESS, data: callDataFor(addr) }, 'latest'],
-  }));
+      if (res.status === 429) {
+        if (attempt === MAX_RETRIES) throw new Error('RATE_LIMITED');
+        await sleep(wait); wait *= 2;
+        continue;
+      }
+      if (!res.ok) throw new Error(`RPC HTTP ${res.status}`);
 
-  const res = await withTimeout(fetch(RPC_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  }), RPC_TIMEOUT_MS, 'RPC_TIMEOUT');
-
-  if (!res.ok) throw new Error(`RPC HTTP ${res.status}`);
-  const json = await res.json();
-
-  if (!Array.isArray(json)) {
-    // Noeud sans support du batch : on retombe sur des appels unitaires.
-    throw new Error('BATCH_UNSUPPORTED');
+      const json = await res.json();
+      if (!Array.isArray(json)) throw new Error('BATCH_UNSUPPORTED');
+      return json;
+    } catch (e) {
+      if (attempt === MAX_RETRIES) throw e;
+      await sleep(wait); wait *= 2;
+    }
   }
+  throw new Error('unreachable');
+}
 
-  const out = new Array(addresses.length).fill(null);
-  for (const r of json) {
-    if (r && typeof r.id === 'number' && !r.error) out[r.id] = decodeAmount(r.result);
+async function rpcSingle(method, params) {
+  const [r] = await rpcBatch([{ jsonrpc: '2.0', id: 0, method, params }]);
+  if (r.error) throw new Error(r.error.message);
+  return r.result;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Lecture du classement
+// ═══════════════════════════════════════════════════════════════════════
+
+/// keccak256(slot) — début du tableau dynamique dans le storage.
+/// Calculé sans dépendance : keccak est réimplémenté ci-dessous, ce qui évite
+/// d'embarquer ethers côté serveur pour une seule opération.
+function arrayBase(slot) {
+  const buf = new Uint8Array(32);
+  let v = slot;
+  for (let i = 31; i >= 0 && v > 0n; i--) { buf[i] = Number(v & 0xffn); v >>= 8n; }
+  return BigInt('0x' + keccak256(buf));
+}
+
+// ─── keccak256 minimal (suffisant pour 32 octets) ─────────────────────
+const KECCAK_RC = [
+  0x0000000000000001n, 0x0000000000008082n, 0x800000000000808an, 0x8000000080008000n,
+  0x000000000000808bn, 0x0000000080000001n, 0x8000000080008081n, 0x8000000000008009n,
+  0x000000000000008an, 0x0000000000000088n, 0x0000000080008009n, 0x000000008000000an,
+  0x000000008000808bn, 0x800000000000008bn, 0x8000000000008089n, 0x8000000000008003n,
+  0x8000000000008002n, 0x8000000000000080n, 0x000000000000800an, 0x800000008000000an,
+  0x8000000080008081n, 0x8000000000008080n, 0x0000000080000001n, 0x8000000080008008n,
+];
+const KECCAK_ROT = [
+   0n, 1n, 62n, 28n, 27n, 36n, 44n,  6n, 55n, 20n,  3n, 10n, 43n,
+  25n, 39n, 41n, 45n, 15n, 21n,  8n, 18n,  2n, 61n, 56n, 14n,
+];
+const M64 = 0xffffffffffffffffn;
+const rotl = (x, n) => ((x << n) | (x >> (64n - n))) & M64;
+
+function keccakF(S) {
+  for (let r = 0; r < 24; r++) {
+    const C = new Array(5);
+    for (let x = 0; x < 5; x++) C[x] = S[x] ^ S[x+5] ^ S[x+10] ^ S[x+15] ^ S[x+20];
+    for (let x = 0; x < 5; x++) {
+      const D = C[(x+4)%5] ^ rotl(C[(x+1)%5], 1n);
+      for (let y = 0; y < 25; y += 5) S[x+y] ^= D;
+    }
+    const B = new Array(25);
+    for (let x = 0; x < 5; x++) for (let y = 0; y < 5; y++) {
+      B[y + 5*((2*x + 3*y) % 5)] = rotl(S[x + 5*y], KECCAK_ROT[x + 5*y]);
+    }
+    for (let x = 0; x < 5; x++) for (let y = 0; y < 5; y++) {
+      S[x + 5*y] = B[x + 5*y] ^ ((~B[(x+1)%5 + 5*y] & M64) & B[(x+2)%5 + 5*y]);
+    }
+    S[0] ^= KECCAK_RC[r];
+  }
+}
+
+function keccak256(bytes) {
+  const rate = 136;
+  const padded = new Uint8Array(rate);
+  padded.set(bytes.slice(0, rate));
+  padded[bytes.length] = 0x01;
+  padded[rate - 1] |= 0x80;
+
+  const S = new Array(25).fill(0n);
+  for (let i = 0; i < rate / 8; i++) {
+    let lane = 0n;
+    for (let b = 7; b >= 0; b--) lane = (lane << 8n) | BigInt(padded[i*8 + b]);
+    S[i] ^= lane;
+  }
+  keccakF(S);
+
+  let out = '';
+  for (let i = 0; i < 4; i++) {
+    let lane = S[i];
+    for (let b = 0; b < 8; b++) {
+      out += (Number(lane & 0xffn)).toString(16).padStart(2, '0');
+      lane >>= 8n;
+    }
   }
   return out;
 }
+// ──────────────────────────────────────────────────────────────────────
 
-async function rpcSingleRead(address) {
-  const res = await withTimeout(fetch(RPC_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0', id: 1, method: 'eth_call',
-      params: [{ to: CONTRACT_ADDRESS, data: callDataFor(address) }, 'latest'],
-    }),
-  }), RPC_TIMEOUT_MS, 'RPC_TIMEOUT');
-  if (!res.ok) throw new Error(`RPC HTTP ${res.status}`);
-  const json = await res.json();
-  if (json.error) throw new Error(json.error.message);
-  return decodeAmount(json.result);
-}
+async function readLeaderboard(deadline) {
+  // 1. Combien de burners ?
+  const cntHex = await rpcSingle('eth_call',
+    [{ to: CONTRACT_ADDRESS, data: SEL_BURNER_COUNT }, 'latest']);
+  const count = Number(BigInt(cntHex));
+  if (!count) return { list: [], count: 0 };
 
-// Relit une liste d'adresses sous contrainte de temps.
-// Renvoie { amounts, done, failed } — `done` = adresses effectivement
-// traitées (à retirer de la file), le reste y demeure pour le cycle suivant.
-async function refreshAmounts(addresses, deadline) {
-  const amounts = {};
-  const done = [];
-  let failed = 0;
+  const base = arrayBase(BURNERS_ARRAY_SLOT);
 
-  const chunks = [];
-  for (let i = 0; i < addresses.length; i += RPC_BATCH_SIZE) {
-    chunks.push(addresses.slice(i, i + RPC_BATCH_SIZE));
-  }
-
-  for (let i = 0; i < chunks.length; i += RPC_CONCURRENCY) {
-    if (Date.now() > deadline) break;
-
-    const wave = chunks.slice(i, i + RPC_CONCURRENCY);
-    const results = await Promise.all(wave.map(async chunk => {
-      try {
-        return await rpcBatchRead(chunk);
-      } catch (e) {
-        if (e.message === 'BATCH_UNSUPPORTED') {
-          console.warn('leaderboard: RPC sans batch, repli séquentiel (lent)');
-          const out = [];
-          for (const a of chunk) {
-            if (Date.now() > deadline) { out.push(undefined); continue; }
-            out.push(await rpcSingleRead(a).catch(() => null));
-          }
-          return out;
-        }
-        console.warn('leaderboard: batch RPC échoué:', e.message);
-        return chunk.map(() => null);
-      }
-    }));
-
-    wave.forEach((chunk, w) => {
-      chunk.forEach((addr, j) => {
-        const v = results[w][j];
-        if (v === undefined) return;      // non traité : reste en file
-        if (v === null) { failed++; done.push(addr); return; } // échec: on n'insiste pas ce cycle
-        amounts[addr] = v.toString();
-        done.push(addr);
-      });
-    });
-  }
-
-  return { amounts, done, failed };
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// ÉTAGE 1 — Découverte des adresses via eth_getLogs (RPC)
-// ═══════════════════════════════════════════════════════════════════════
-//
-// POURQUOI PLUS L'EXPLORATEUR : depuis Vercel, chaque appel à Blockscout
-// part en TIMEOUT (constaté via ?debug=1 : explorateurErreur "TIMEOUT",
-// scanPagesLues 0). Les mêmes URL fonctionnent pourtant depuis un
-// navigateur. Le serveur ne joint tout simplement pas l'explorateur de
-// façon fiable — alors que le RPC, lui, répond parfaitement (c'est déjà
-// par lui que passent toutes les lectures getBurnerInfo).
-//
-// On lit donc les events directement par eth_getLogs, PAR PLAGES DE BLOCS.
-// Le découpage est indispensable : un getLogs sur toute la chaîne est
-// refusé ou expire. La taille de plage s'ajuste toute seule si le noeud
-// se plaint (voir adaptiveChunk).
-//
-// L'explorateur reste utilisable en secours (?source=explorer) mais n'est
-// plus sur le chemin critique.
-
-function hexToInt(h) { return typeof h === 'string' ? parseInt(h, 16) : Number(h || 0); }
-
-async function rpcCall(method, params) {
-  const res = await withTimeout(fetch(RPC_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
-  }), RPC_TIMEOUT_MS, 'RPC_TIMEOUT');
-  if (!res.ok) throw new Error(`RPC HTTP ${res.status}`);
-  const json = await res.json();
-  if (json.error) throw new Error(`RPC ${method}: ${json.error.message}`);
-  return json.result;
-}
-
-async function getLatestBlock() {
-  return hexToInt(await rpcCall('eth_blockNumber', []));
-}
-
-// Une plage de blocs. Renvoie les adresses trouvées, ou lève si le noeud
-// refuse la plage (trop large / trop de résultats) pour qu'on la réduise.
-async function getLogsRange(fromBlock, toBlock) {
-  const logs = await rpcCall('eth_getLogs', [{
-    address: CONTRACT_ADDRESS,
-    topics: [BURN_TOPIC],
-    fromBlock: '0x' + fromBlock.toString(16),
-    toBlock: '0x' + toBlock.toString(16),
-  }]);
-  const addrs = new Set();
-  if (Array.isArray(logs)) {
-    for (const lg of logs) {
-      // Le filtre `topics` est appliqué par le noeud, mais on revérifie :
-      // le contrat n'étant pas vérifié, rien d'autre ne distingue un Burned.
-      if (!Array.isArray(lg.topics) || String(lg.topics[0]).toLowerCase() !== BURN_TOPIC) continue;
-      if (!lg.topics[1]) continue;
-      addrs.add(('0x' + String(lg.topics[1]).slice(26)).toLowerCase());
+  // 2. Les adresses, depuis le storage.
+  const addrs = [];
+  for (let i = 0; i < count; i += BATCH_SIZE) {
+    if (Date.now() > deadline) throw new Error('BUDGET_EPUISE');
+    const reqs = [];
+    for (let k = i; k < Math.min(i + BATCH_SIZE, count); k++) {
+      reqs.push({ jsonrpc: '2.0', id: k, method: 'eth_getStorageAt',
+        params: [CONTRACT_ADDRESS, '0x' + (base + BigInt(k)).toString(16), 'latest'] });
     }
-  }
-  return [...addrs];
-}
-
-// Parcourt [from, to] en réduisant automatiquement la plage si le noeud
-// refuse. Sauvegarde sa progression : un bootstrap sur une longue chaîne
-// s'étale sur plusieurs invocations sans jamais repartir de zéro.
-async function scanBlockRange(from, to, chunkSize, deadline, onAddrs) {
-  let cursor = from;
-  let chunk = chunkSize;
-  let calls = 0;
-
-  while (cursor <= to) {
-    if (Date.now() > deadline) break;
-
-    const end = Math.min(cursor + chunk - 1, to);
-    try {
-      const addrs = await getLogsRange(cursor, end);
-      calls++;
-      if (addrs.length) onAddrs(addrs);
-      cursor = end + 1;
-      // Plage acceptée : on ré-élargit prudemment vers la taille nominale.
-      if (chunk < chunkSize) chunk = Math.min(chunkSize, chunk * 2);
-    } catch (e) {
-      if (chunk > MIN_LOG_CHUNK) {
-        // Typiquement "query returned more than N results" ou timeout.
-        chunk = Math.max(MIN_LOG_CHUNK, Math.floor(chunk / 4));
-        console.warn(`leaderboard: plage réduite à ${chunk} blocs (${e.message})`);
-        continue;
-      }
-      console.warn(`leaderboard: plage [${cursor}, ${end}] abandonnée:`, e.message);
-      cursor = end + 1; // on n'insiste pas : le balayage de fond rattrapera
+    const res = await rpcBatch(reqs);
+    for (const x of res) {
+      if (x.error || !x.result || x.result.length !== 66) continue;
+      const a = '0x' + x.result.slice(-40);
+      if (a !== '0x' + '0'.repeat(40)) addrs.push(a.toLowerCase());
     }
+    await sleep(BATCH_PAUSE_MS);
   }
 
-  return { cursor, calls, done: cursor > to };
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// Cycle
-// ═══════════════════════════════════════════════════════════════════════
-
-function emptyState() {
-  return { amounts: {}, highWater: 0, scanFrom: 0, queue: [], sweep: 0, bootstrapped: false, updatedAt: null };
-}
-
-async function advance(forceFull) {
-  const started = Date.now();
-  const state = (await redisGet(KEY_STATE)) || emptyState();
-  if (forceFull) { state.bootstrapped = false; state.scanFrom = 0; state.highWater = 0; }
-
-  const discoveryDeadline = started + DISCOVERY_BUDGET_MS;
-  const discovered = new Set();
-  let note = '';
-
-  const latest = await getLatestBlock();
-
-  if (!state.bootstrapped) {
-    // ── Bootstrap : balayage complet, étalé sur plusieurs invocations ──
-    const from = state.scanFrom || 0;
-    const r = await scanBlockRange(from, latest, LOG_CHUNK, discoveryDeadline,
-      addrs => addrs.forEach(a => discovered.add(a)));
-    state.scanFrom = r.cursor;
-    if (r.done) {
-      state.bootstrapped = true;
-      state.highWater = latest;
-      note = `bootstrap TERMINÉ jusqu'au bloc ${latest}`;
-    } else {
-      const pct = latest > 0 ? ((r.cursor / latest) * 100).toFixed(1) : '0';
-      note = `bootstrap ${pct}% (bloc ${r.cursor}/${latest}, ${r.calls} appels)`;
+  // 3. Les montants, depuis le compteur interne du contrat.
+  const list = [];
+  for (let i = 0; i < addrs.length; i += BATCH_SIZE) {
+    if (Date.now() > deadline) throw new Error('BUDGET_EPUISE');
+    const slice = addrs.slice(i, i + BATCH_SIZE);
+    const reqs = slice.map((a, k) => ({ jsonrpc: '2.0', id: k, method: 'eth_call',
+      params: [{ to: CONTRACT_ADDRESS,
+                 data: SEL_BURNER_INFO + a.slice(2).padStart(64, '0') }, 'latest'] }));
+    const res = await rpcBatch(reqs);
+    for (const x of res) {
+      if (x.error || !x.result || x.result.length < 66) continue;
+      const v = BigInt('0x' + x.result.slice(2, 66));
+      if (v > 0n) list.push({ address: slice[x.id], amount: v.toString() });
     }
-  } else {
-    // ── Régime établi : uniquement les blocs nouveaux ──
-    const from = Math.max(0, (state.highWater || 0) - REORG_MARGIN);
-    const r = await scanBlockRange(from, latest, LOG_CHUNK, discoveryDeadline,
-      addrs => addrs.forEach(a => discovered.add(a)));
-    if (r.done) state.highWater = latest;
-    note = `incrémental blocs ${from}→${latest} (${r.calls} appels)`;
+    await sleep(BATCH_PAUSE_MS);
   }
 
-  // ── File de rafraîchissement : nouveautés en TÊTE (priorité) ──
-  const queue = Array.isArray(state.queue) ? state.queue : [];
-  const qSet = new Set(queue);
-  const fresh = [...discovered].filter(a => !qSet.has(a));
-  let pending = [...fresh, ...queue];
+  // Comparateur qui renvoie bien 0 sur égalité : il y a de vrais ex æquo à
+  // 100.000, et un comparateur incohérent peut désordonner au-delà.
+  list.sort((a, b) => {
+    const d = BigInt(b.amount) - BigInt(a.amount);
+    return d > 0n ? 1 : d < 0n ? -1 : 0;
+  });
 
-  // ── ÉTAGE 3 : balayage de fond si rien d'urgent ──
-  let swept = 0;
-  const known = Object.keys(state.amounts).sort();
-  if (pending.length === 0 && known.length > 0) {
-    const start = (state.sweep || 0) % known.length;
-    const slice = known.slice(start, start + SWEEP_SIZE);
-    if (slice.length < SWEEP_SIZE) slice.push(...known.slice(0, SWEEP_SIZE - slice.length));
-    pending = slice;
-    swept = slice.length;
-    state.sweep = (start + SWEEP_SIZE) % known.length;
-  }
-
-  // ── ÉTAGE 2 : lecture on-chain des montants ──
-  const refreshDeadline = started + INVOCATION_BUDGET_MS - SAVE_RESERVE_MS;
-  const { amounts, done, failed } = await refreshAmounts(pending, refreshDeadline);
-
-  Object.assign(state.amounts, amounts);
-  const doneSet = new Set(done);
-  state.queue = swept ? [] : pending.filter(a => !doneSet.has(a));
-  state.updatedAt = new Date().toISOString();
-
-  await redisSet(KEY_STATE, state);
-
-  console.log(`leaderboard: ${note} | ${discovered.size} adresse(s) touchée(s)`
-    + ` | ${done.length} relues on-chain` + (swept ? ` (balayage ${swept})` : '')
-    + ` | ${state.queue.length} en attente | ${failed} échecs`
-    + ` | ${Object.keys(state.amounts).length} sacrifiants | ${Date.now() - started} ms`);
-
-  return state;
+  return { list: list.slice(0, LEADERBOARD_SIZE), count };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// Sortie
+// Handler
 // ═══════════════════════════════════════════════════════════════════════
-
-function buildLeaderboard(state) {
-  const sorted = Object.entries(state.amounts)
-    .map(([address, amount]) => ({ address, amount: String(amount) }))
-    .filter(e => { try { return BigInt(e.amount) > 0n; } catch { return false; } })
-    // (e) Comparateur correct : renvoie 0 sur égalité. L'ancien renvoyait
-    // -1, ce qui pouvait désordonner arbitrairement les ex æquo (100.000).
-    .sort((a, b) => {
-      const d = BigInt(b.amount) - BigInt(a.amount);
-      return d > 0n ? 1 : d < 0n ? -1 : 0;
-    })
-    .slice(0, LEADERBOARD_SIZE);
-
-  return {
-    leaderboard: sorted,
-    totalBurners: Object.keys(state.amounts).length,
-    updatedAt: state.updatedAt,
-  };
-}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -529,67 +320,74 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
   try {
-    const forceFull = req.query && (req.query.full === '1' || req.query.full === 'true');
+    const cached = await redisGet(KEY_DATA);
+    const age = cached ? Date.now() - cached.t : Infinity;
 
-    // ── MODE DIAGNOSTIC : /api/leaderboard?debug=1 ──
-    // Affiche l'etat reel du systeme au lieu d'echouer en silence.
+    // Diagnostic : /api/leaderboard?debug=1
     if (req.query && req.query.debug === '1') {
       const out = {
-        variablesEnv: {
-          KV_REST_API_URL: !!process.env.KV_REST_API_URL,
-          KV_REST_API_TOKEN: !!process.env.KV_REST_API_TOKEN,
-        },
+        env: { url: !!process.env.KV_REST_API_URL, token: !!process.env.KV_REST_API_TOKEN },
+        cacheAgeSec: cached ? Math.round(age / 1000) : null,
+        cacheEntries: cached ? cached.leaderboard.length : 0,
+        slotBase: '0x' + arrayBase(BURNERS_ARRAY_SLOT).toString(16),
       };
-      try { out.redisPing = await redisCmd(['PING']); }
-      catch (e) { out.redisErreur = e.message; }
-
-      // Test du RPC : c'est lui, désormais, le chemin critique.
+      try { out.redis = await redisCmd(['PING']); } catch (e) { out.redisErr = e.message; }
       try {
-        const latest = await getLatestBlock();
-        out.rpcDernierBloc = latest;
-        const t0 = Date.now();
-        const a = await getLogsRange(Math.max(0, latest - 5000), latest);
-        out.rpcGetLogsOk = true;
-        out.rpcAdressesRecentes = a.length;
-        out.rpcDureeMs = Date.now() - t0;
-      } catch (e) { out.rpcErreur = e.message; }
-      try {
-        const l = await tryAcquireLock();
-        out.verrouObtenu = l;
-        if (l) await releaseLock();
-      } catch (e) { out.verrouErreur = e.message; }
-      try { await advance(forceFull); out.scanExecute = 'ok'; }
-      catch (e) { out.scanErreur = e.message; out.scanStack = String(e.stack || '').split('\n').slice(0, 4); }
-      const st = await redisGet(KEY_STATE);
-      out.adressesEnregistrees = st && st.amounts ? Object.keys(st.amounts).length : 0;
-      out.bootstrapTermine = st ? !!st.bootstrapped : false;
-      out.scanBlocAtteint = st ? (st.scanFrom || 0) : 0;
-      out.fileEnAttente = st && st.queue ? st.queue.length : 0;
+        const r = await readLeaderboard(Date.now() + 40000);
+        out.readOk = true; out.readCount = r.list.length; out.burners = r.count;
+        out.top3 = r.list.slice(0, 3).map(e => e.address + ' = ' + e.amount);
+      } catch (e) { out.readErr = e.message; }
       res.status(200).json(out);
       return;
     }
 
-    let state = null;
-    // Un seul advance() à la fois, réellement garanti cette fois (a).
-    const gotLock = await tryAcquireLock();
-    if (gotLock) {
-      try { state = await advance(forceFull); }
-      catch (err) { console.error('leaderboard advance error:', err); }
-      finally { await releaseLock(); }
+    // Cache frais : on sert directement, sans toucher au RPC.
+    if (cached && age < FRESH_MS) {
+      res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
+      res.status(200).json({
+        leaderboard: cached.leaderboard,
+        totalBurners: cached.totalBurners,
+        updatedAt: new Date(cached.t).toISOString(),
+      });
+      return;
     }
 
-    if (!state) state = await redisGet(KEY_STATE);
+    // Une seule invocation relit à la fois : sans ce verrou, dix visiteurs
+    // simultanés déclencheraient dix lectures et le 429 reviendrait aussitôt.
+    let fresh = null;
+    if (await tryLock()) {
+      try {
+        const started = Date.now();
+        const r = await readLeaderboard(started + INVOCATION_BUDGET_MS);
+        if (r.list.length > 0) {
+          fresh = { t: Date.now(), leaderboard: r.list, totalBurners: r.count };
+          await redisSet(KEY_DATA, fresh);
+          console.log(`leaderboard: ${r.list.length} entrées, ${r.count} burners, ${Date.now()-started}ms`);
+        }
+      } catch (e) {
+        // On NE jette PAS le cache existant : un classement daté vaut
+        // infiniment mieux qu'un tableau vide, et c'était le défaut majeur
+        // de toutes les versions précédentes.
+        console.error('lecture échouée, on garde le cache:', e.message);
+      } finally {
+        await unlock();
+      }
+    }
 
-    if (state && state.amounts && Object.keys(state.amounts).length > 0) {
-      res.setHeader('Cache-Control', 'public, s-maxage=15, stale-while-revalidate=60');
-      res.status(200).json(buildLeaderboard(state));
+    const data = fresh || cached;
+    if (data) {
+      res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
+      res.status(200).json({
+        leaderboard: data.leaderboard,
+        totalBurners: data.totalBurners,
+        updatedAt: new Date(data.t).toISOString(),
+        stale: !fresh,
+      });
     } else {
-      const partialCount = state && state.queue ? state.queue.length : 0;
-      const progress = state && state.scanFrom ? state.scanFrom : 0;
-      res.status(200).json({ leaderboard: [], totalBurners: 0, updatedAt: null, building: true, partialCount, progress });
+      res.status(200).json({ leaderboard: [], totalBurners: 0, updatedAt: null, building: true });
     }
   } catch (e) {
-    console.error('leaderboard.js error:', e);
+    console.error('leaderboard.js:', e);
     res.status(500).json({ error: 'Server error' });
   }
 }
