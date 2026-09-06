@@ -694,6 +694,35 @@ footer {
 .footer-chain { font-size:0.55rem; letter-spacing:0.15em; color:rgba(90,159,255,0.35); font-family:'Cinzel',serif; }
 
 /* ── TOAST ── */
+/* FAQ — le gris a 0.5 etait illisible sur ce fond. Reponses en blanc casse
+   a 0.88, questions en blanc plein : c'est du texte a lire, pas une legende. */
+.faq-lead{
+  font-family:'Cormorant Garamond',serif; font-size:1rem; font-style:italic;
+  line-height:1.65; color:rgba(255,255,255,0.78); margin-bottom:1.6rem;
+}
+.faq-lead b{ font-style:normal; color:#fff; font-weight:600 }
+.faq-item{
+  border:1px solid rgba(255,255,255,0.08); border-radius:8px;
+  background:rgba(255,255,255,0.02); margin-bottom:0.5rem;
+  cursor:pointer; transition:border-color 0.18s;
+}
+.faq-item:hover{ border-color:rgba(255,255,255,0.2) }
+.faq-item .q{
+  display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  padding:0.9rem 1.1rem; font-family:'Cinzel',serif; font-size:0.8rem;
+  color:#fff; line-height:1.35;
+}
+.faq-item .q i{
+  font-style:normal; color:var(--teal); font-size:1.05rem; flex-shrink:0;
+  transition:transform 0.2s;
+}
+.faq-item.open .q i{ transform:rotate(45deg) }
+.faq-item .a{
+  display:none; padding:0 1.1rem 1rem; font-size:0.88rem; line-height:1.7;
+  color:rgba(255,255,255,0.88);
+}
+.faq-item.open .a{ display:block }
+
 #sv-toast {
   position:fixed; bottom:1.5rem; left:1rem; right:1rem;
   background:rgba(4,2,14,0.95); border:1px solid rgba(0,229,204,0.3);
@@ -3642,6 +3671,10 @@ function svIntroParticles() {
         <div>
           <div style="font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.35);">Arena Draws</div>
           <div style="margin-top:0.3rem;font-size:0.78rem;color:rgba(255,255,255,0.45);">One draw every <span id="arena-cadence">4</span> duels. Earned by playing — never bought.</div>
+          <!-- La regle "le rang ouvre le pool" etait ecrite mais pas MONTREE :
+               rien ne disait qu'un rang 3 tire aussi dans les pools 1 et 2.
+               Cette echelle rend le cumul visible d'un coup d'oeil. -->
+          <div id="arena-pool-ladder" style="margin-top:0.7rem;"></div>
         </div>
         <div style="display:flex;align-items:center;gap:1.4rem;">
           <div style="text-align:center;">
@@ -5596,6 +5629,34 @@ function chroniclesRouteFromHash() {
 
 
 <!-- RANK UP OVERLAY -->
+
+<!-- FAQ — fenetre autonome, ouverte par "How it works" dans le rail.
+     Elle vivait dans le Codex : il fallait deja savoir ou chercher, et les
+     regles du jeu n'ont rien a voir avec l'inventaire d'un joueur. -->
+<div id="faq-modal" style="display:none;position:fixed;inset:0;z-index:9600;
+     background:rgba(2,4,14,0.92);backdrop-filter:blur(14px);
+     align-items:flex-start;justify-content:center;overflow-y:auto;padding:3rem 1rem;"
+     onclick="if(event.target===this)faqClose()">
+  <div style="width:100%;max-width:760px;background:rgba(255,255,255,0.02);
+              border:1px solid rgba(255,255,255,0.09);border-radius:12px;padding:2rem 1.8rem;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1.4rem;">
+      <div>
+        <div class="eyebrow">How it works</div>
+        <div style="font-family:'Cinzel',serif;font-size:1.5rem;color:#fff;margin-top:0.3rem;">The rules of the Void</div>
+      </div>
+      <button onclick="faqClose()" aria-label="Close" style="background:transparent;
+              border:1px solid rgba(255,255,255,0.18);color:#fff;width:34px;height:34px;
+              border-radius:8px;cursor:pointer;font-size:1.1rem;flex-shrink:0;">&times;</button>
+    </div>
+    <div class="faq-lead">
+      Two systems, one object. Burning zkLTC raises your <b>rank</b>, and your rank decides
+      <b>which</b> relics can reach you. Duelling earns <b>draws</b>, and a draw decides
+      <b>when</b> a relic arrives. Burning alone never yields a relic; duelling alone never
+      raises a rank.
+    </div>
+    <div id="faq-list"></div>
+  </div>
+</div>
 
 <div id="sv-toast"></div>
 
@@ -8288,6 +8349,56 @@ function arenaOddsFor(burnRank) {
   return present.map((p, r) => p ? (RARITY_BP[r] / total) * 100 : 0);
 }
 
+/// Echelle des pools : montre que les rangs se CUMULENT.
+/// Un rang 3 ne tire pas "dans le pool 3" mais dans les pools 1, 2 et 3
+/// reunis — c'est ce que la formulation seule ne faisait pas passer.
+const ARENA_POOL_TIERS = [
+  { rank:1, at:'0.5',  label:'Simple Holder',         adds:'Commons · Uncommons' },
+  { rank:2, at:'5',    label:'Apprentice Litecoiner', adds:'+ Rares' },
+  { rank:3, at:'20',   label:'Devoted Litecoiner',    adds:'+ Epics' },
+  { rank:4, at:'100',  label:'Silver Maximalist',     adds:'+ Legendary' },
+];
+
+function arenaRenderPoolLadder() {
+  const host = document.getElementById('arena-pool-ladder');
+  if (!host) return;
+  const rank = (typeof _burnRank !== 'undefined' && _burnRank >= 0) ? _burnRank + 1 : 0;
+
+  const rows = ARENA_POOL_TIERS.map(t => {
+    const open = rank >= t.rank;
+    const col = open ? '#c9b3ff' : 'rgba(255,255,255,0.22)';
+    return `<div style="display:flex;align-items:center;gap:0.6rem;padding:0.3rem 0;
+                        opacity:${open ? 1 : 0.45};">
+      <span style="width:18px;flex-shrink:0;font-family:'Cinzel',serif;font-size:0.7rem;color:${col};">
+        ${open ? '◆' : '◇'}</span>
+      <span style="width:82px;flex-shrink:0;font-family:'Cinzel',serif;font-size:0.62rem;
+                   letter-spacing:0.1em;color:${col};">Rank ${t.rank}</span>
+      <span style="flex:1;min-width:0;font-size:0.72rem;color:rgba(255,255,255,${open ? 0.9 : 0.45});">
+        ${t.adds}</span>
+      <span style="flex-shrink:0;font-size:0.64rem;color:rgba(255,255,255,0.55);">
+        ${t.at} zkLTC</span>
+    </div>`;
+  }).join('');
+
+  const note = rank >= 4
+    ? 'Every relic in the game can reach you.'
+    : rank >= 1
+      ? `You draw from ranks 1–${rank}. Burn more to widen the pool.`
+      : 'Burn 0.5 zkLTC to open your first pool.';
+
+  host.innerHTML = `
+    <div style="border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:0.7rem 0.85rem;
+                background:rgba(255,255,255,0.015);">
+      <div style="font-family:'Cinzel',serif;font-size:0.54rem;letter-spacing:0.2em;
+                  text-transform:uppercase;color:rgba(255,255,255,0.6);margin-bottom:0.4rem;">
+        Your rank opens the pool — and pools stack
+      </div>
+      ${rows}
+      <div style="margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid rgba(255,255,255,0.05);
+                  font-size:0.72rem;font-style:italic;color:rgba(255,255,255,0.75);">${note}</div>
+    </div>`;
+}
+
 function arenaRenderOdds() {
   const host = document.getElementById('arena-odds');
   const note = document.getElementById('arena-odds-note');
@@ -9566,6 +9677,7 @@ async function arenaRefreshDraws() {
   // moment, une seule lecture de plus.
   svRefreshArenaRank();
   arenaRenderOdds();
+  arenaRenderPoolLadder();
 
   try {
     const c = await initAscentContract();
@@ -11116,6 +11228,57 @@ function codexTab(which){
   if (which === 'feats' && typeof featsOpen === 'function') featsOpen();
 }
 
+/// FAQ du Codex. Repliee par defaut : une liste de questions se parcourt,
+/// un mur de texte se saute.
+const FAQ_ITEMS = [
+  { q: 'How do I get a relic?',
+    a: 'Every 4 duels earns you one draw, win or lose \u2014 only fighting counts. In the Arena you seal the draw, then reveal it, and the relic is minted to you. Burning zkLTC does not give relics directly; it decides which ones can drop.' },
+  { q: 'Why does my rank matter if duels give the relics?',
+    a: 'Your rank sets the pool, and pools stack. Rank 1 draws Commons and Uncommons. Rank 2 adds Rares, rank 3 adds Epics, and only rank 4 can ever draw The Silver Throne. A rank 3 player draws from ranks 1 to 3 together, not from rank 3 alone. At rank 4 the pool still includes every lower card \u2014 you do not stop drawing Commons.' },
+  { q: 'Does the zkLTC burned in duels raise my rank?',
+    a: 'No. Only the Ritual counts toward rank. The share burned when a duel settles, and the share burned on a Store sale, leave circulation but are not credited to your lifetime total. Opening a 5 zkLTC duel will not make you an Apprentice.' },
+  { q: 'What are the drop rates?',
+    a: 'They are shown in the Arena on the draw panel, adjusted to your own pool. At rank 1 you see roughly 81% Common and 19% Uncommon, because the rarer tiers are not in your pool at all. At rank 4 the full ladder applies: 75% Common, 18% Uncommon, 5% Rare, 1.5% Epic, 0.5% Legendary.' },
+  { q: 'I have gone 15 draws without anything rare.',
+    a: 'After 15 consecutive draws with no Rare or better, the next draw skips Commons and Uncommons entirely. It does not guarantee a Legendary \u2014 it guarantees you leave the bottom two tiers. This only applies if your pool contains Rare or better, so a rank 1 player never triggers it: there is nothing above Uncommon to fall into.' },
+  { q: 'Why does drawing take two transactions?',
+    a: 'The first seals your draw against a future block; the second reveals it. Without this, anyone could simulate the transaction, see the outcome, and only send it when the result was good \u2014 the published odds would be fiction. The trade-off is that you must send the second transaction within the reveal window, so keep the tab open.' },
+  { q: 'I missed the reveal window. Is my relic lost?',
+    a: 'That draw is, yes. The credit is spent at the seal, not at the reveal, which is what stops players from abandoning bad rolls and retrying for free. Use \u201cClear expired draw\u201d in the Arena and you can seal again as soon as you have another draw. Nothing else is affected.' },
+  { q: 'I keep drawing the same relic. Is that a bug?',
+    a: 'No \u2014 duplicates are expected, and they are the point. Take your spares to the Void Store and trade them with players who are still missing them. The Store shows a \u00d72 badge on anything you hold more than one of.' },
+  { q: 'What happens to the money when I sell?',
+    a: 'The Store contract splits every sale: 80% to you, 17% burned forever, 3% to the Order. Listing costs 0.0075 zkLTC, of which 0.005 is burned. Every sale therefore shrinks the supply a little further.' },
+  { q: 'Are the rank badges the same thing as relics?',
+    a: 'No. Badges of the Order are soulbound \u2014 they prove what you burned and can never be sold or transferred. Relics are transferable NFTs: yours to trade. A badge says who you are; a relic is something you own.' },
+  { q: 'My burn is not showing in the leaderboard.',
+    a: 'The board is read from the chain and refreshes about every minute, so a fresh burn can take a moment to appear. Your own total in the Codex is read straight from the contract and is always exact \u2014 if the two disagree, the Codex is right and the board is simply behind.' },
+];
+
+function faqOpen(){
+  const m = document.getElementById('faq-modal');
+  if (!m) return;
+  const host = document.getElementById('faq-list');
+  if (host && host.dataset.done !== '1') {
+    host.innerHTML = FAQ_ITEMS.map(f => `
+      <div class="faq-item" onclick="this.classList.toggle('open')">
+        <div class="q"><span>${f.q}</span><i>+</i></div>
+        <div class="a">${f.a}</div>
+      </div>`).join('');
+    host.dataset.done = '1';
+  }
+  m.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function faqClose(){
+  const m = document.getElementById('faq-modal');
+  if (m) m.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') faqClose(); });
+
 function cardHTML(item, owned, sealedHint, scarcity, copies) {
   // The frame carries the rarity, not the art: a locked Legendary should still
   // pull the eye across the grid — that pull is what makes reaching Maximalist
@@ -11191,7 +11354,11 @@ function codexRenderSealedPreview(){
       ${rd && rd.lore ? `<div style="font-size:0.76rem;color:rgba(255,255,255,0.24);font-style:italic;line-height:1.5;margin-top:0.3rem;max-width:62ch;">${rd.lore}</div>` : ''}
     </div>`;
     html += '<div class="cx-cards">';
-    pool.forEach(nft => { html += sealed(nft, (nft.rarity || '') + (nft.odds ? ' \u00b7 ' + nft.odds : '')); });
+    // Le hint reprenait la rarete, deja affichee par .rar-top en haut de
+    // carte : elle apparaissait donc deux fois, dont une en gris sous
+    // l'emplacement du NFT. On ne garde que la probabilite, qui elle
+    // n'est visible nulle part ailleurs.
+    pool.forEach(nft => { html += sealed(nft, nft.odds || ''); });
     html += '</div>';
   });
 
@@ -11594,7 +11761,7 @@ async function sagaMint(sagaId) {
 
         <div style="margin-bottom:0.9rem;">
           <div style="font-size:0.6rem;color:rgba(0,229,204,0.6);letter-spacing:0.05em;margin-bottom:0.3rem;">PRICE (zkLTC)</div>
-          <input id="store-sell-price" type="number" step="0.001" placeholder="e.g. 1.2" style="width:100%;padding:0.5rem 0.7rem;font-size:0.75rem;background:rgba(255,255,255,0.04);border:1px solid rgba(0,229,204,0.25);border-radius:3px;color:#fff;outline:none;box-sizing:border-box;">
+          <input id="store-sell-price" type="number" step="0.001" min="0" oninput="storeSyncApproveState()" placeholder="e.g. 1.2" style="width:100%;padding:0.5rem 0.7rem;font-size:0.75rem;background:rgba(255,255,255,0.04);border:1px solid rgba(0,229,204,0.25);border-radius:3px;color:#fff;outline:none;box-sizing:border-box;">
         </div>
 
         <div style="font-size:0.65rem;color:rgba(255,170,68,0.6);margin-bottom:1rem;font-style:italic;">⚠ Listing costs 0.0075 zkLTC (0.005 burned + 0.0025 to the order).</div>
@@ -12114,11 +12281,22 @@ function storeRenderMyNFTs() {
     return;
   }
 
+  // Les reliques d'Ascent en tete : ce sont elles qui alimentent l'economie
+  // des doubles, et le vendeur vient d'abord pour elles. Les anciens NFT de
+  // rang et de saga suivent. A famille egale, les doubles remontent : ce sont
+  // les seuls qu'on peut vendre sans perdre une piece de sa collection.
+  const familyOrder = { relic: 0, saga: 1, rank: 2 };
+  const sorted = owned.slice().sort((a, b) => {
+    const fa = familyOrder[a.kind] ?? 3, fb = familyOrder[b.kind] ?? 3;
+    if (fa !== fb) return fa - fb;
+    return (b.copies || 1) - (a.copies || 1);
+  });
+
   // Une seule vignette par item, avec le nombre de copies : quarante jetons
   // identiques n'ont pas a occuper quarante cases.
   const seen = {};
   const uniq = [];
-  owned.forEach(n => {
+  sorted.forEach(n => {
     const key = n.contract + ':' + n.name;
     if (seen[key]) return;
     seen[key] = true;
@@ -12178,6 +12356,20 @@ function storeSelectMyNFT(idx) {
   listBtn.style.color = 'rgba(255,255,255,0.25)';
 }
 
+/// Grise le bouton d'approbation tant qu'aucun prix valide n'est saisi.
+/// Le blocage reel est dans storeApprove() ; ceci ne fait que le rendre
+/// visible avant le clic plutot qu'apres.
+function storeSyncApproveState() {
+  const btn = document.getElementById('store-approve-btn');
+  const price = document.getElementById('store-sell-price');
+  if (!btn || !price) return;
+  const ok = parseFloat(price.value) > 0;
+  btn.style.opacity = ok ? '1' : '0.4';
+  btn.style.cursor = ok ? 'pointer' : 'not-allowed';
+  btn.title = ok ? '' : 'Set a price first';
+}
+document.addEventListener('DOMContentLoaded', storeSyncApproveState);
+
 async function storeApprove() {
   if (!connectedAddress) { showToast('Connect wallet first'); return; }
   const contractAddr = document.getElementById('store-sell-contract').value.trim();
@@ -12187,6 +12379,23 @@ async function storeApprove() {
 
   if (!ethers.isAddress(contractAddr)) { errBox.textContent = 'Pick a relic from the gallery above first.'; errBox.style.display = 'block'; return; }
   if (!tokenId) { errBox.textContent = 'Pick a relic from the gallery above first.'; errBox.style.display = 'block'; return; }
+
+  // Le prix n'etait verifie qu'a l'etape 2. Un vendeur pouvait donc signer et
+  // payer le gas d'une approbation on-chain, puis se voir refuser la mise en
+  // vente faute de prix : une transaction perdue pour rien. On verifie ici.
+  const priceRaw = document.getElementById('store-sell-price').value.trim();
+  if (!priceRaw) {
+    errBox.textContent = 'Set a price before approving.';
+    errBox.style.display = 'block';
+    document.getElementById('store-sell-price').focus();
+    return;
+  }
+  if (!(parseFloat(priceRaw) > 0)) {
+    errBox.textContent = 'The price must be greater than zero.';
+    errBox.style.display = 'block';
+    document.getElementById('store-sell-price').focus();
+    return;
+  }
 
   const btn = document.getElementById('store-approve-btn');
   btn.disabled = true; btn.textContent = 'Confirm in MetaMask...';
@@ -14111,6 +14320,11 @@ window.addEventListener('load', function () {
   <div class="sv-ric" data-go="store"><span>◇</span>The Store</div>
   <div class="sv-ric" data-go="story"><span>§</span>Chronicles</div>
 
+  <!-- Help, accessible depuis n'importe quelle page. La FAQ ne vivait que
+       dans le Codex : il fallait deja savoir ou chercher pour la trouver. -->
+  <div class="sv-grp">Help</div>
+  <div class="sv-ric" id="sv-help-btn" onclick="faqOpen()"><span>?</span>How it works</div>
+
   <div class="sv-foot">
     <button class="sv-wal" id="sv-wallet-btn" onclick="svRailWallet()">
       <!-- 38px -> 48px : le portrait etait trop petit pour qu'on distingue l'avatar choisi. -->
@@ -14256,6 +14470,8 @@ function svRailSyncWallet() {
 if (svRailEnabled) {
   document.body.classList.add('sv-rail-on');
   document.querySelectorAll('.sv-ric').forEach(b => {
+    // #sv-help-btn n'a pas de data-go : il porte son propre onclick.
+    if (!b.dataset.go) return;
     b.addEventListener('click', () => svRailGo(b.dataset.go));
   });
 
@@ -14275,6 +14491,10 @@ if (svRailEnabled) {
       rail.querySelectorAll('.sv-grp, .sv-ric').forEach(el => {
         if (el.classList.contains('sv-grp')) {
           html += '<div class="sv-dr-sep">' + el.textContent + '</div>';
+        } else if (el.id === 'sv-help-btn') {
+          // Cette entree n'est pas une section : elle ouvre le Codex.
+          html += '<div class="sv-dr-item" data-faq="1">'
+                + '<span class="ic">?</span><span>How it works</span></div>';
         } else {
           const icon = el.querySelector('span') ? el.querySelector('span').textContent : '';
           const label = el.textContent.replace(icon, '').trim();
@@ -14311,6 +14531,7 @@ if (svRailEnabled) {
       const it = e.target.closest('.sv-dr-item');
       if (!it) { setOpen(false); return; }   // clic dans le vide = fermeture
       setOpen(false);
+      if (it.dataset.faq === '1') { faqOpen(); return; }
       svRailGo(it.dataset.go);
     });
 
