@@ -7037,7 +7037,7 @@ let _arenaBgScanWallet = null; // wallet address for which we've already fired t
 /// stand, plus what's left to reach the next rung. The reward artwork stays in
 /// the Codex — repeating it here pushed the leaderboard off the screen and
 /// duplicated what the Codex already does better.
-function rkRenderLadder(which, hostId, compact){
+function rkRenderLadder(which, hostId, compact, state){
   const host = document.getElementById(hostId);
   if (!host) return;
   const fireSel = which === 'fire';
@@ -7057,14 +7057,23 @@ function rkRenderLadder(which, hostId, compact){
   const steps = fireSel ? FIRE : ARENA;
 
   // Both scales are 1-based for the reader; 0 means unranked.
-  const current = fireSel
-    ? ((typeof _burnRank !== 'undefined' ? _burnRank : -1) + 1)
-    : (typeof _arenaRank !== 'undefined' ? _arenaRank : 0);
+  //
+  // `state` permet de dessiner l'echelle d'un AUTRE joueur. Sans lui, la
+  // fonction lisait _burnRank / _arenaRank — les globales du wallet CONNECTE —
+  // donc inspecter le Codex de quelqu'un affichait votre propre progression
+  // sous ses badges.
+  const current = state && state.rank != null
+    ? state.rank
+    : (fireSel
+        ? ((typeof _burnRank !== 'undefined' ? _burnRank : -1) + 1)
+        : (typeof _arenaRank !== 'undefined' ? _arenaRank : 0));
 
   // Progress toward the next rung, when we know where the player stands.
-  const have = fireSel
-    ? (typeof _burnTotal !== 'undefined' ? Number(_burnTotal) : NaN)
-    : (typeof _arenaDuels !== 'undefined' ? Number(_arenaDuels) : NaN);
+  const have = state && state.have != null
+    ? Number(state.have)
+    : (fireSel
+        ? (typeof _burnTotal !== 'undefined' ? Number(_burnTotal) : NaN)
+        : (typeof _arenaDuels !== 'undefined' ? Number(_arenaDuels) : NaN));
 
   const cls = fireSel ? '' : ' rk-arena';
   // A track rather than four boxes: the filled line shows how far along the
@@ -11261,12 +11270,59 @@ function codexTab(which){
   // The header (identity + stats) is persistent — it stays put across tabs.
 
   if (which === 'paths') {
-    codexRenderBadges((window._codexTarget || connectedAddress || '').toLowerCase());
-    rkRenderLadder('fire',  'cx-ladder-fire',  true);
-    rkRenderLadder('arena', 'cx-ladder-arena', true);
+    const tgt = (window._codexTarget || connectedAddress || '').toLowerCase();
+    codexRenderBadges(tgt);
+    const isMe = tgt === (connectedAddress || '').toLowerCase();
+    if (isMe) {
+      // Son propre Codex : les globales sont deja a jour.
+      rkRenderLadder('fire',  'cx-ladder-fire',  true);
+      rkRenderLadder('arena', 'cx-ladder-arena', true);
+    } else {
+      // Profil inspecte : on lit son etat sur la chaine. En attendant, on
+      // dessine les echelles verrouillees plutot que d'afficher les siennes.
+      rkRenderLadder('fire',  'cx-ladder-fire',  true, { rank:0, have:0 });
+      rkRenderLadder('arena', 'cx-ladder-arena', true, { rank:0, have:0 });
+      codexLoadLadders(tgt);
+    }
   }
   if (which === 'forge') codexSkinsRender();
   if (which === 'feats' && typeof featsOpen === 'function') featsOpen();
+}
+
+/// Lit le rang de burn et le nombre de duels d'un joueur INSPECTE, puis
+/// redessine ses deux echelles.
+///
+/// Sans ca, rkRenderLadder retombait sur _burnRank / _arenaRank, c'est-a-dire
+/// la progression du wallet CONNECTE : on voyait sa propre echelle sous les
+/// badges de quelqu'un d'autre.
+async function codexLoadLadders(target) {
+  if (!target) return;
+  try {
+    let burnRank = 0, burned = 0;
+    try {
+      const c = new ethers.Contract(CONTRACT_ADDRESS, ABI, window.svReadProvider);
+      const [amt] = await c.getBurnerInfo(target);
+      burned = Number(ethers.formatEther(amt));
+      const floors = [0.5, 5, 20, 100];
+      for (let i = 0; i < floors.length; i++) if (burned >= floors[i]) burnRank = i + 1;
+    } catch (e) { console.warn('codexLoadLadders burn:', e.message); }
+
+    let arenaRank = 0, duels = 0;
+    try {
+      const a = (typeof initArenaContract === 'function') ? await initArenaContract() : null;
+      if (a) {
+        duels = Number(await a.duelsOf(target));
+        const tiers = (typeof ARENA_TIERS !== 'undefined') ? ARENA_TIERS : [1, 10, 30, 50];
+        for (let i = 0; i < tiers.length; i++) if (duels >= tiers[i]) arenaRank = i + 1;
+      }
+    } catch (e) { console.warn('codexLoadLadders arena:', e.message); }
+
+    // La cible a pu changer pendant les lectures : on n'ecrase pas un Codex
+    // deja rouvert sur quelqu'un d'autre.
+    if ((window._codexTarget || '').toLowerCase() !== target) return;
+    rkRenderLadder('fire',  'cx-ladder-fire',  true, { rank: burnRank,  have: burned });
+    rkRenderLadder('arena', 'cx-ladder-arena', true, { rank: arenaRank, have: duels });
+  } catch (e) { console.warn('codexLoadLadders:', e.message); }
 }
 
 /// FAQ du Codex. Repliee par defaut : une liste de questions se parcourt,
@@ -11448,7 +11504,12 @@ async function codexOpen(addr){
   const isOther = addr && connectedAddress && addr.toLowerCase() !== connectedAddress.toLowerCase();
   ['forge','feats'].forEach(k => {
     const t = document.getElementById('cx-tab-' + k);
-    if (t) t.style.display = isOther ? 'none' : '';
+    if (!t) return;
+    t.style.display = isOther ? 'none' : '';
+    // Masquer l'onglet sans son intertitre laissait "Cosmetics" et "Deeds"
+    // seuls dans la colonne, comme des rubriques vides.
+    const grp = t.previousElementSibling;
+    if (grp && grp.classList.contains('cx-grp')) grp.style.display = isOther ? 'none' : '';
   });
 
   if (!target) {
