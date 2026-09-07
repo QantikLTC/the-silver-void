@@ -10840,6 +10840,13 @@ async function featsOpen() {
     text-transform:uppercase; color:rgba(176,150,235,0.5); padding:0.9rem 0.7rem 0.4rem;
   }
   #codex-modal .cx-grp:first-child{ padding-top:0 }
+  /* Masquage des onglets personnels lors de l'inspection d'un autre profil.
+     Une classe plutot qu'un style inline : `#codex-modal .cx-cat` (id +
+     classe) l'emporte sur un display pose en JS. */
+  #codex-modal .cx-hidden,
+  #codex-modal .cx-hidden.cx-cat,
+  #codex-modal .cx-hidden.cx-grp{ display:none !important }
+
   #codex-modal .cx-cat{
     display:flex; justify-content:space-between; align-items:center; gap:0.5rem;
     padding:0.6rem 0.7rem; margin-right:0.7rem; border-radius:7px; cursor:pointer;
@@ -11501,16 +11508,26 @@ async function codexOpen(addr){
   modal.style.display = modal.classList.contains('cx-inline') ? 'block' : 'flex';
   codexTab('relics');
   // Inspecting someone else: Forge and Feats are personal, so hide those tabs.
-  const isOther = addr && connectedAddress && addr.toLowerCase() !== connectedAddress.toLowerCase();
+  //
+  // Deux corrections ici. D'abord la condition exigeait `connectedAddress` :
+  // un visiteur NON connecte qui inspectait un profil depuis le classement
+  // voyait donc les deux onglets. Ensuite le masquage se faisait par style
+  // inline, ecrase par la specificite de `#codex-modal .cx-cat` (un id +
+  // une classe) — d'ou des onglets qui restaient visibles malgre le code.
+  // On passe par une classe dediee, en !important.
+  const isOther = !!addr && addr.toLowerCase() !== (connectedAddress || '').toLowerCase();
   ['forge','feats'].forEach(k => {
     const t = document.getElementById('cx-tab-' + k);
     if (!t) return;
-    t.style.display = isOther ? 'none' : '';
+    t.classList.toggle('cx-hidden', isOther);
     // Masquer l'onglet sans son intertitre laissait "Cosmetics" et "Deeds"
     // seuls dans la colonne, comme des rubriques vides.
     const grp = t.previousElementSibling;
-    if (grp && grp.classList.contains('cx-grp')) grp.style.display = isOther ? 'none' : '';
+    if (grp && grp.classList.contains('cx-grp')) grp.classList.toggle('cx-hidden', isOther);
   });
+  // Si l'onglet courant vient d'etre masque, on retombe sur Relics plutot
+  // que de laisser un panneau ouvert sans onglet correspondant.
+  if (isOther) codexTab('relics');
 
   if (!target) {
     // Show the full collection sealed rather than a bare "connect" message —
