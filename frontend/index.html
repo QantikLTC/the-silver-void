@@ -2610,6 +2610,10 @@ body.sv-rail-on section[data-rail]:not(.sv-active){ display:none !important }
   .sv-dr-item.on{
     border-color:rgba(0,229,204,0.4); background:rgba(0,229,204,0.08); color:#fff;
   }
+  .sv-dr-wallet{
+    margin-bottom:1.1rem; padding-bottom:1.1rem;
+    border-bottom:1px solid rgba(255,255,255,0.07);
+  }
   .sv-dr-sep{
     font-family:'Cinzel',serif; font-size:0.56rem; letter-spacing:0.22em;
     text-transform:uppercase; color:rgba(255,255,255,0.28);
@@ -2945,7 +2949,7 @@ function svIntroParticles() {
       Reveal now to avoid losing the pot by timeout.
     </span>
     <span id="reveal-alert-countdown" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.06em;color:rgba(255,255,255,0.4);white-space:nowrap;">—</span>
-    <button onclick="document.getElementById('duel').scrollIntoView({behavior:'smooth'});" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.08em;color:#0a0620;background:#e24b4a;border:none;border-radius:4px;padding:0.4rem 0.7rem;text-transform:uppercase;white-space:nowrap;cursor:pointer;flex-shrink:0;">Reveal</button>
+    <button onclick="svGoToDuel()" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.08em;color:#0a0620;background:#e24b4a;border:none;border-radius:4px;padding:0.4rem 0.7rem;text-transform:uppercase;white-space:nowrap;cursor:pointer;flex-shrink:0;">Reveal</button>
   </div>
 </div>
 
@@ -3298,7 +3302,7 @@ function svIntroParticles() {
           cursor:pointer; transition:all 0.3s;
           background:transparent; color:rgba(255,255,255,0.3);
           border:1px solid rgba(255,255,255,0.1);"
-          onclick="(function(){ const rankIdx=window._currentRankIdx||0; const rankColors=['#8ab0c8','#00e5cc','#5a9fff','#7755cc']; if(typeof toggleNFTPool==='function') toggleNFTPool(null,rankIdx,rankColors[rankIdx]||'#00e5cc'); })()">
+          onclick="svClaimRankBadge()">
           ⬡ NFT · Claim
         </button>
         <div style="width:100%;margin-top:0.9rem;padding-top:0.9rem;border-top:1px solid rgba(255,255,255,0.06);">
@@ -6962,20 +6966,10 @@ async function checkNFTStatus(rankNum) {
   } catch(e) { console.error('checkNFTStatus:', e); return { canMint: false, claimed: false }; }
 }
 
-async function claimNFT(rankId) {
-  try {
-    const nc = await initNFTContract();
-    if(!nc) { showToast('Connect wallet first'); return; }
-    showToast('Claiming NFT...');
-    const tx = await nc.mint(rankId);
-    showToast('Transaction sent — waiting...');
-    await tx.wait();
-    showToast('✦ NFT Claimed! ' + (RANKS_DATA[rankId-1] ? RANKS_DATA[rankId-1].nftName : 'Rank '+rankId));
-    updateNFTButton(rankId);
-  } catch(e) {
-    showToast('Error: ' + (e.reason || e.message || 'Transaction failed'));
-  }
-}
+// claimNFT(rankId) a ete retiree ici : une SECONDE fonction du meme nom,
+// avec la signature claimNFT(rankIdx, nftId, color), etait declaree plus bas
+// dans le meme scope et l'ecrasait purement et simplement. Cette version
+// n'a donc jamais pu s'executer.
 
 async function updateNFTButton(rankNum) {
   const btn = document.getElementById('nft-claim-btn');
@@ -11165,7 +11159,7 @@ async function codexRenderBadges(target){
     if (act) {
       if (isSelf && claimable.length > 0) {
         const many = claimable.length > 1;
-        act.innerHTML = `<button onclick="orderClaimAll()" id="cx-claim-btn" class="cx-claim">
+        act.innerHTML = `<button onclick="svClaimRankBadge()" id="cx-claim-btn" class="cx-claim">
           \u2726 Claim ${many ? claimable.length + ' badges' : 'your badge'} \u00b7 0.01 zkLTC</button>
           <div class="cx-claim-note">${many
             ? 'Every rank you have already earned, in one transaction.'
@@ -11177,6 +11171,40 @@ async function codexRenderBadges(target){
   } catch (e) {
     console.warn('codexRenderBadges failed:', e);
     host.innerHTML = '';
+  }
+}
+
+/// Claim des badges depuis la carte "Your Current Rank" de l'onglet Sacrifiant.
+///
+/// CE BOUTON ETAIT CASSE. Il ouvrait toggleNFTPool(), dont les boutons
+/// appellent claimNFT() -> NFT_CONTRACT.mint() : l'ANCIEN contrat de NFT de
+/// rang, remplace depuis par SilverVoidOrder. Un joueur largement au-dessus
+/// du seuil voyait donc sa transaction echouer sans comprendre — le vrai
+/// claim, orderClaimAll(), n'etait accessible que par un bouton cache dans
+/// le Codex. Les deux chemins existaient en parallele sans se connaitre.
+///
+/// L'ancien chemin (toggleNFTPool + NFT_CONTRACT) est CONSERVE tel quel :
+/// des joueurs y ont peut-etre des NFT mintes avant la migration.
+async function svClaimRankBadge(){
+  if (!connectedAddress) { showToast('Connect your wallet first'); return; }
+  try {
+    await initOrderContract();
+    if (!orderContract || !orderReadContract) { showToast('Order contract unavailable'); return; }
+
+    const claimable = Array.from(await orderReadContract.claimableRanks(connectedAddress)).map(Number);
+    if (claimable.length === 0) {
+      // Rien a reclamer : soit tout est deja pris, soit le seuil n'est pas
+      // atteint. Les deux cas meritent des messages differents.
+      const held = Array.from(await orderReadContract.badgesOf(connectedAddress));
+      showToast(held.some(Boolean)
+        ? '\u2726 Every badge you have earned is already yours'
+        : '\u2716 Burn 0.5 zkLTC to earn your first badge');
+      return;
+    }
+    await orderClaimAll();
+  } catch (e) {
+    console.error('svClaimRankBadge:', e);
+    showToast('Error: ' + (e?.reason || e?.message || 'Transaction failed'));
   }
 }
 
@@ -11708,6 +11736,23 @@ async function sagaMint(sagaId) {
       <button id="store-filter-skins" onclick="storeAcquireFilter('skins')" style="padding:0.45rem 1.3rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;background:rgba(0,229,204,0.14);border:1px solid rgba(0,229,204,0.5);color:var(--teal);border-radius:999px;transition:all 0.2s;">⚒ Ring Skins</button>
     </div>
 
+    <!-- Les deux blocs sont visibles ensemble par defaut
+         (_storeShow = { skins:true, relics:true }). Le bloc Forge etait
+         declare EN PREMIER dans le HTML, donc les skins cosmetiques
+         s'affichaient au-dessus des NFT reellement en vente. L'ordre est
+         inverse : le marche d'abord, la boutique de skins ensuite. -->
+    <!-- BROWSE TAB -->
+    <div id="store-tab-content-browse">
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;">
+        <span style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:rgba(255,255,255,0.4);text-transform:uppercase;">All Relics — by rarity</span>
+        <button id="store-refresh-btn" onclick="storeRefreshListings()" style="background:transparent;border:1px solid rgba(0,229,204,0.3);color:rgba(0,229,204,0.7);font-size:0.6rem;padding:0.35rem 0.6rem;border-radius:3px;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:0.05em;">↻ Refresh</button>
+      </div>
+      <div id="store-listings-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:0.85rem;">
+        <div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;grid-column:1/-1;">Scanning the store...</div>
+      </div>
+    </div>
+
     <!-- FORGE TAB — cosmetic ring skins showcase -->
     <div id="store-tab-content-forge" style="display:none;">
       <div style="text-align:center;margin-bottom:1.2rem;">
@@ -11721,18 +11766,6 @@ async function sagaMint(sagaId) {
       </div>
       <div id="forge-store-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:0.85rem;">
         <div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;grid-column:1/-1;">Lighting the forge...</div>
-      </div>
-    </div>
-
-    <!-- BROWSE TAB -->
-    <div id="store-tab-content-browse">
-
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;">
-        <span style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:rgba(255,255,255,0.4);text-transform:uppercase;">All Relics — by rarity</span>
-        <button id="store-refresh-btn" onclick="storeRefreshListings()" style="background:transparent;border:1px solid rgba(0,229,204,0.3);color:rgba(0,229,204,0.7);font-size:0.6rem;padding:0.35rem 0.6rem;border-radius:3px;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:0.05em;">↻ Refresh</button>
-      </div>
-      <div id="store-listings-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:0.85rem;">
-        <div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;grid-column:1/-1;">Scanning the store...</div>
       </div>
     </div>
 
@@ -13955,6 +13988,17 @@ async function myDuelsCancel(id) {
     <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:#7a9fcc;text-transform:uppercase;margin-bottom:0.5rem;">Your message</div>
     <textarea id="fb-message" placeholder="Describe the bug or share your idea..." style="width:100%;min-height:100px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:3px;color:#fff;padding:0.7rem;font-family:inherit;font-size:0.85rem;resize:vertical;box-sizing:border-box;margin-bottom:1.2rem;"></textarea>
 
+    <!-- Champ email — sans lui, un rapport de bug arrive sans aucun moyen de
+         repondre. Optionnel pour ne pas decourager l'envoi, mais annonce
+         comme la seule facon d'avoir un retour. -->
+    <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:#7a9fcc;text-transform:uppercase;margin-bottom:0.5rem;">
+      Email <span style="color:rgba(255,255,255,0.3);letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">— optional, only used to reply to you</span>
+    </div>
+    <input id="fb-email" type="email" placeholder="you@example.com" autocomplete="email"
+      style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
+             border-radius:3px;color:#fff;padding:0.6rem 0.7rem;font-size:0.8rem;
+             font-family:'Inter',sans-serif;margin-bottom:1.2rem;outline:none;">
+
     <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:#7a9fcc;text-transform:uppercase;margin-bottom:0.5rem;">Satisfaction</div>
     <div id="fb-stars" style="display:flex;gap:0.4rem;margin-bottom:1.5rem;font-size:1.6rem;">
       <span class="fb-star" data-star="1" onclick="fbSetStars(1)" style="cursor:pointer;color:rgba(255,255,255,0.2);transition:color 0.15s;">★</span>
@@ -14002,10 +14046,24 @@ async function fbSubmit() {
   const origText = submitBtn ? submitBtn.textContent : '';
   if (submitBtn) { submitBtn.textContent = 'Sending...'; submitBtn.disabled = true; }
 
+  const emailEl = document.getElementById('fb-email');
+  const email = emailEl ? emailEl.value.trim() : '';
+  // Rejette une saisie manifestement invalide plutot que d'envoyer une
+  // adresse a laquelle on ne pourra pas repondre.
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    alert('That email address looks incomplete. Leave it blank if you prefer.');
+    emailEl.focus();
+    return;
+  }
+
   const payload = {
     access_key: '772102ad-c76b-4cb9-99cc-36eae582cad5',
     subject: '[Silver Void Feedback] ' + _fbCat,
     from_name: 'Silver Void Feedback',
+    // `replyto` est le champ que Web3Forms utilise pour le Reply-To : une
+    // reponse part alors directement vers l'expediteur.
+    replyto: email || undefined,
+    email: email || 'not provided',
     category: _fbCat,
     chronicle: _chronCtx,
     satisfaction: stars,
@@ -14026,6 +14084,7 @@ async function fbSubmit() {
       if (typeof showToast === 'function') showToast('✦ Feedback sent — thank you!');
       document.getElementById('feedback-modal').style.display = 'none';
       document.getElementById('fb-message').value = '';
+    if (emailEl) emailEl.value = '';
       var _t = document.getElementById('fb-message'); if (_t) { delete _t.dataset.chronicle; _t.placeholder = 'Describe the bug or share your idea...'; }
       fbSetStars(0);
     } else {
@@ -14418,6 +14477,25 @@ function svRailGo(key, push) {
 
 /// The rail's wallet button stands in for the old nav one: connect when
 /// disconnected, open the profile panel once connected.
+/// Emmene le joueur sur l'Arene depuis le bandeau "Reveal now".
+///
+/// LE BOUTON NE FAISAIT RIEN. Il appelait scrollIntoView() sur la section
+/// #duel — mais sous la navigation par rail, les sections inactives sont en
+/// display:none. On ne peut pas defiler vers un element masque : le clic
+/// partait dans le vide, au moment precis ou le joueur risque de perdre son
+/// pot par timeout.
+function svGoToDuel() {
+  try {
+    if (typeof storeClose === 'function') storeClose();
+    if (typeof svRailGo === 'function') { svRailGo('arena'); }
+    // Une fois la section affichee, on peut enfin y defiler.
+    setTimeout(() => {
+      const el = document.getElementById('duel');
+      if (el && el.offsetParent !== null) el.scrollIntoView({ behavior:'smooth', block:'start' });
+    }, 80);
+  } catch (e) { console.warn('svGoToDuel:', e.message); }
+}
+
 function svRailWallet() {
   if (typeof connectedAddress !== 'undefined' && connectedAddress) {
     if (typeof profileToggle === 'function') profileToggle();
@@ -14429,6 +14507,21 @@ function svRailWallet() {
 
 /// Mirrors wallet state onto the rail button — the original #wallet-btn is
 /// hidden with the top nav but still drives connection, so we follow it.
+/// Recopie l'etat du wallet du rail vers celui du panneau hamburger.
+/// Les deux boutons montrent la meme chose ; seul le rail est alimente par
+/// svRailSyncWallet(), donc on duplique apres coup plutot que de reecrire
+/// toute la logique.
+function svDrawerSyncWallet() {
+  const pairs = [['sv-wal-ring','sv-dr-wal-ring'], ['sv-wal-txt','sv-dr-wal-txt'], ['sv-wal-sub','sv-dr-wal-sub']];
+  pairs.forEach(([from, to]) => {
+    const a = document.getElementById(from), b = document.getElementById(to);
+    if (a && b) b.innerHTML = a.innerHTML;
+  });
+  const src = document.getElementById('sv-disconnect');
+  const dst = document.getElementById('sv-dr-disconnect');
+  if (dst) dst.style.display = (src && src.style.display !== 'none') ? 'block' : (connectedAddress ? 'block' : 'none');
+}
+
 function svRailSyncWallet() {
   const txt  = document.getElementById('sv-wal-txt');
   const sub  = document.getElementById('sv-wal-sub');
@@ -14487,7 +14580,25 @@ if (svRailEnabled) {
     // intertitres (.sv-grp) comme separateurs.
     const rail = document.getElementById('sv-rail');
     if (rail) {
-      let html = '';
+      // Le wallet vit dans .sv-foot, A L'INTERIEUR du rail — et le rail est
+      // masque en entier sur mobile. Depuis le passage au hamburger, le
+      // bouton de connexion avait donc purement disparu du telephone.
+      // On le reconstruit en tete du panneau.
+      let html = `
+        <div class="sv-dr-wallet">
+          <button class="sv-wal" id="sv-dr-wallet-btn" onclick="svRailWallet()">
+            <span id="sv-dr-wal-ring" style="position:relative;width:48px;height:48px;flex-shrink:0;"></span>
+            <span style="min-width:0;text-align:left;">
+              <span id="sv-dr-wal-txt" style="display:block;font-size:0.88rem;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Connect</span>
+              <span id="sv-dr-wal-sub" style="display:block;font-size:0.66rem;letter-spacing:0.1em;color:rgba(255,255,255,0.35);margin-top:1px;font-family:'Inter',sans-serif;">Wallet</span>
+            </span>
+          </button>
+          <button id="sv-dr-disconnect" onclick="event.stopPropagation();if(typeof disconnectWallet==='function')disconnectWallet();"
+                  style="display:none;width:100%;margin-top:0.55rem;padding:0.6rem;border-radius:8px;
+                         background:transparent;border:1px solid rgba(255,255,255,0.12);
+                         color:rgba(255,255,255,0.5);font-family:'Cinzel',serif;font-size:0.6rem;
+                         letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;">Disconnect</button>
+        </div>`;
       rail.querySelectorAll('.sv-grp, .sv-ric').forEach(el => {
         if (el.classList.contains('sv-grp')) {
           html += '<div class="sv-dr-sep">' + el.textContent + '</div>';
@@ -14511,7 +14622,7 @@ if (svRailEnabled) {
       burger.setAttribute('aria-expanded', open ? 'true' : 'false');
       // Bloque le defilement de la page derriere le panneau ouvert.
       document.body.style.overflow = open ? 'hidden' : '';
-      if (open) svDrawerSync();
+      if (open) { svDrawerSync(); svDrawerSyncWallet(); }
     }
 
     // Marque l'onglet courant a chaque ouverture.
@@ -14528,6 +14639,9 @@ if (svRailEnabled) {
     // Delegation : un seul ecouteur sur le panneau, valable pour tout onglet
     // ajoute plus tard.
     drawer.addEventListener('click', (e) => {
+      // Le bloc wallet vit dans le panneau : un appui dessus ne doit pas le
+      // refermer avant que MetaMask ait eu le temps de s'ouvrir.
+      if (e.target.closest('.sv-dr-wallet')) return;
       const it = e.target.closest('.sv-dr-item');
       if (!it) { setOpen(false); return; }   // clic dans le vide = fermeture
       setOpen(false);
@@ -14558,7 +14672,7 @@ if (svRailEnabled) {
   const fromHash = location.hash.slice(1);
   svRailGo(SV_RAIL_KEYS.includes(fromHash) ? fromHash : (ANCHOR_MAP[fromHash] || 'hub'), false);
 
-  setInterval(svRailSyncWallet, 1200);
+  setInterval(() => { svRailSyncWallet(); svDrawerSyncWallet(); }, 1200);
   svRailSyncWallet();
 }
 </script>
