@@ -3759,7 +3759,10 @@ function svIntroParticles() {
           </div>
         </div>
 
-        <button data-duel-action="createConfirm" style="width:100%;padding:0.75rem;font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;cursor:pointer;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);background:linear-gradient(135deg,var(--teal),#5a9fff);color:#04021a;border:none;margin-top:0.2rem;transition:filter 0.2s;" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter=''">
+        <!-- Places restantes au palier choisi. Vide tant que la lecture n'a
+             pas abouti, pour ne pas afficher un chiffre faux. -->
+        <div id="duel-stake-slots" style="text-align:center;font-size:0.7rem;font-style:italic;margin-bottom:0.6rem;min-height:1.1em;"></div>
+        <button id="duel-open-btn" data-duel-action="createConfirm" style="width:100%;padding:0.75rem;font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;cursor:pointer;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);background:linear-gradient(135deg,var(--teal),#5a9fff);color:#04021a;border:none;margin-top:0.2rem;transition:filter 0.2s;" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter=''">
           ⚔ &nbsp; Open Duel · <span id='duel-open-btn-label'>0.1</span> zkLTC
         </button>
       </div>
@@ -8875,6 +8878,9 @@ function duelSelectStake(amount) {
       el.classList.remove('on');
     }
   });
+  // Etat du palier choisi, affiche AVANT le clic : le joueur voit qu'il est
+  // plein au moment ou il choisit, pas quand on le refuse.
+  duelUpdateStakeSlots();
   const lbl = document.getElementById('duel-open-btn-label'); if(lbl) lbl.textContent = amount;
   const disp = document.getElementById('duel-stake-display'); if(disp) disp.textContent = amount+' zkLTC';
   // Update info box
@@ -8883,6 +8889,30 @@ function duelSelectStake(amount) {
   const total = parseFloat(amount)*2;
   if(winEl) winEl.textContent = '+'+(total*0.75).toFixed(3)+' zkLTC';
   if(burnEl) burnEl.textContent = (total*0.20).toFixed(3)+' zkLTC ∞';
+}
+
+/// Affiche combien de places restent au palier choisi, et desactive le bouton
+/// d'ouverture quand il est plein.
+async function duelUpdateStakeSlots() {
+  const el  = document.getElementById('duel-stake-slots');
+  const btn = document.getElementById('duel-open-btn');
+  if (!el) return;
+  const stake = duelSelectedStake;
+  el.textContent = '';
+  const n = await duelCountOpenAtStake(stake);
+  // La mise a pu changer pendant la lecture : on n'ecrase pas un affichage
+  // qui concerne desormais un autre palier.
+  if (stake !== duelSelectedStake) return;
+
+  const left = MAX_OPEN_PER_STAKE - n;
+  if (left <= 0) {
+    el.innerHTML = `<span style="color:#ffc140;">${n} duels already waiting at ${stake} zkLTC</span>
+                    <span style="color:rgba(255,255,255,0.45);"> — join one, or pick another stake</span>`;
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.4'; btn.style.cursor = 'not-allowed'; }
+  } else {
+    el.innerHTML = `<span style="color:rgba(255,255,255,0.4);">${n} open at this stake · ${left} slot${left > 1 ? 's' : ''} left</span>`;
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; }
+  }
 }
 
 // Intercepts the "Open Duel" click — shows the reveal-responsibility warning first
@@ -9016,11 +9046,51 @@ function duelCreateProceed() {
   duelCreate();
 }
 
+/// Plafond de duels ouverts SIMULTANEMENT par palier de mise, tous joueurs
+/// confondus.
+///
+/// Pourquoi : ouvrir immobilise une mise sans produire de partie. Trois
+/// offres a 0.1 qui attendent, ce sont trois mises qui auraient pu REJOINDRE
+/// les duels deja poses. Quand un palier est plein, la seule action utile est
+/// de rejoindre — c'est le but.
+///
+/// Par PALIER et non au total : un joueur qui arrive avec 0.1 trouve toujours
+/// de la place a son niveau, meme si les paliers hauts sont satures.
+///
+/// Limite de confort, cote interface uniquement : le contrat ne la connait
+/// pas, un appel direct a createDuel() passerait outre. Elle sera posee
+/// on-chain au prochain deploiement.
+const MAX_OPEN_PER_STAKE = 3;
+
+async function duelCountOpenAtStake(stakeEth) {
+  try {
+    const c = duelReadContract || duelContract;
+    if (!c) return 0;
+    const ids = await c.getOpenDuels();
+    const target = ethers.parseEther(String(stakeEth));
+    const duels = await Promise.all(
+      Array.from(ids).slice(0, 60).map(id => c.getDuel(id).catch(() => null))
+    );
+    return duels.filter(d => d && d.stake === target).length;
+  } catch (e) {
+    console.warn('duelCountOpenAtStake:', e.message);
+    return 0;   // en cas de doute on laisse passer : le contrat tranchera
+  }
+}
+
 async function duelCreate() {
   if (!connectedAddress) { showToast('Connect wallet first'); return; }
   if (!duelChoice) { showToast('Choose Rock, Paper or Scissors'); return; }
   if (!duelContract) await initDuelContract();
   if (!duelContract) { showToast('Contract not ready'); return; }
+
+  // Verifie AVANT la signature : refuser apres coup ferait payer du gas pour
+  // une transaction qu'on savait inutile.
+  const openHere = await duelCountOpenAtStake(duelSelectedStake);
+  if (openHere >= MAX_OPEN_PER_STAKE) {
+    showToast(`${openHere} duels already waiting at ${duelSelectedStake} zkLTC — join one, or pick another stake`);
+    return;
+  }
 
   try {
     duelMySecret = duelMakeSecret();
