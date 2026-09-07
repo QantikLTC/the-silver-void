@@ -7159,6 +7159,14 @@ function svRefreshWalletViews(){
   try {
     if (typeof featsOpen === 'function' && document.getElementById('feats-grid')) featsOpen();
   } catch(e) {}
+
+  // Rejoue l'amorcage des sections non visitees : le premier passage a lieu
+  // 2 s apres le chargement, souvent avant la connexion du wallet, donc tout
+  // ce qui depend de l'adresse restait a "—" jusqu'a l'ouverture de l'onglet.
+  try { if (typeof window.svPrimeStats === 'function') window.svPrimeStats(); } catch(e) {}
+
+  // Le rang d'arene alimente l'echelle des duels et le panneau de tirage.
+  try { if (typeof svRefreshArenaRank === 'function') svRefreshArenaRank(); } catch(e) {}
 }
 
 function rkRefreshLadders(){
@@ -14347,9 +14355,38 @@ function goStats(){
     if (typeof storeLoadStats === 'function') {
       try { storeLoadStats(); } catch(e) {}
     }
+
+    // ── Sections chargees UNIQUEMENT a la navigation ──────────────────
+    // Sous la navigation par rail, les sections inactives sont en
+    // display:none et leur chargeur n'est appele que par svRailGo(). Les
+    // compteurs du Hub, eux, recopient le TEXTE RENDU de ces sections : tant
+    // qu'un onglet n'avait pas ete ouvert, sa case restait a "—".
+    //
+    // Ces trois-la manquaient a l'amorcage :
+    //   • les echelles de rang (Ranks)
+    //   • le panneau de tirage, la cadence et les taux (Arena)
+    //   • le rang d'arene, dont depend l'echelle des duels
+    if (typeof rkRefreshLadders === 'function') {
+      try { rkRefreshLadders(); } catch(e) {}
+    }
+    if (connectedAddress) {
+      if (typeof svRefreshArenaRank === 'function') {
+        try { svRefreshArenaRank(); } catch(e) {}
+      }
+      if (typeof arenaRefreshDraws === 'function') {
+        try { arenaRefreshDraws(); } catch(e) {}
+      }
+    }
+
     if (!ok) setTimeout(primeDuelStats, 1500);   // pas encore prêt : on réessaie
   }
   setTimeout(primeDuelStats, 2000);       // laisse la connexion chain s'établir
+
+  // Le premier amorcage tourne 2 s apres le chargement, souvent AVANT que le
+  // wallet soit connecte : tout ce qui depend de l'adresse restait donc vide
+  // jusqu'a la visite de l'onglet. On le rejoue apres la connexion, en se
+  // greffant sur svRefreshWalletViews() qui est deja appelee a ce moment-la.
+  window.svPrimeStats = primeDuelStats;
 })();
 </script>
 
