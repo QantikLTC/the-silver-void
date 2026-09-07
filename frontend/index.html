@@ -6430,8 +6430,13 @@ function renderLB(list, page, keepPage){
     // codexOpen() masque de lui-meme Forge et Feats sur un profil tiers :
     // les feats vivent en localStorage, donc afficher les siens sur le
     // profil d'un autre serait faux.
-    return `<div class="lb-row ${numClass}" data-lb-wallet="${p.addr || ''}"
-                 ${p.addr ? `onclick="if(typeof codexOpen==='function')codexOpen('${p.addr}')" title="Open this Codex"` : ''}>
+    // `p.addr` est l'adresse TRONQUEE affichee a l'ecran (0x5489…B24E) :
+    // la passer a codexOpen() donnait une adresse invalide, et le Codex
+    // retombait sur son etat "wallet deconnecte". L'adresse complete est
+    // dans `p.fullAddr`, juste a cote.
+    const _lbAddr = p.fullAddr || '';
+    return `<div class="lb-row ${numClass}" data-lb-wallet="${_lbAddr}"
+                 ${_lbAddr ? `onclick="if(typeof codexOpen==='function')codexOpen('${_lbAddr}')" title="Open this Codex"` : ''}>
       <div class="lb-rank-num ${numClass}">${numSymbol}</div>
       <div class="lb-user">
         ${avatarCell}
