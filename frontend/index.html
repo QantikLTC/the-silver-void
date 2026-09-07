@@ -8490,13 +8490,20 @@ async function svRefreshArenaRank() {
 
 // Deduit la cadence reelle en comparant duels joues et tirages gagnes.
 // Silencieux en cas d'echec : on garde le defaut plutot que de bloquer l'UI.
+let _ascentCadenceCache = null;
+
 async function svAscentCadence(c, me) {
+  // Deux lectures on-chain a chaque rafraichissement, pour une valeur qui ne
+  // bouge jamais : le resultat est memorise apres le premier calcul reussi.
+  if (_ascentCadenceCache) return _ascentCadenceCache;
   try {
-    const duels = Number(await c.duelsOf(me));
-    const earned = Number(await c.drawsEarned(me));
+    const [duels, earned] = await Promise.all([
+      c.duelsOf(me).then(Number),
+      c.drawsEarned(me).then(Number),
+    ]);
     if (earned > 0 && duels > 0) {
       const r = Math.round(duels / earned);
-      if (r >= 1 && r <= 10) return r;
+      if (r >= 1 && r <= 10) { _ascentCadenceCache = r; return r; }
     }
   } catch (e) {}
   return ASCENT_DUELS_PER_DRAW;
@@ -9718,8 +9725,10 @@ async function arenaRefreshDraws() {
     const hint = document.getElementById('arena-draw-hint');
 
     if (pending) {
-      const left = Number(await c.blocksLeft(me).catch(() => 0));
-      const canRev = await c.canReveal(me).catch(() => false);
+      const [left, canRev] = await Promise.all([
+        c.blocksLeft(me).then(Number).catch(() => 0),
+        c.canReveal(me).catch(() => false),
+      ]);
 
       // Poll while sealed so the button flips to "Reveal" on its own — the seed
       // block is only a few blocks away, no reason to make the player reload.
@@ -9747,8 +9756,14 @@ async function arenaRefreshDraws() {
 
     // No pending commit — stop any poll, show how many draws are available.
     clearTimeout(window._ascentPoll);
-    const avail = Number(await c.drawsAvailable(me).catch(() => 0));
-    const rank = Number(await c.burnRankOf(me).catch(() => 0));
+    // Ces deux lectures ne dependent pas l'une de l'autre : les enchainer
+    // doublait l'attente pour rien. Avec commitOf/blocksLeft/canReveal plus
+    // haut et les deux appels de svAscentCadence, le panneau mettait 15 a
+    // 20 s a s'afficher.
+    const [avail, rank] = await Promise.all([
+      c.drawsAvailable(me).then(Number).catch(() => 0),
+      c.burnRankOf(me).then(Number).catch(() => 0),
+    ]);
 
     if (rank < 1) {
       panel.style.display = 'block';
@@ -12182,6 +12197,13 @@ function storeZoomImage(url) {
 // cleanup; the new contract makes it essentially free.)
 async function storeLoadStats() {
   try {
+    // Sortait en silence si le contrat n'etait pas encore initialise. Or
+    // l'amorcage des stats tourne 2 s apres le chargement, AVANT que
+    // initStoreContract() ait ete appele : "Sold" et "Volume" restaient donc
+    // a "—" jusqu'a l'ouverture de l'onglet Store. On l'initialise ici.
+    if (!storeReadContract && typeof initStoreContract === 'function') {
+      await initStoreContract();
+    }
     if (!storeReadContract) return;
     const s = await storeReadContract.getStats();
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
