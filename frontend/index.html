@@ -11779,6 +11779,15 @@ async function codexOpen(addr){
 
 
 
+    // Pseudo du joueur inspecte. L'en-tete n'affichait que l'adresse tronquee
+    // sous le rang, alors que le classement et le Store montrent deja le nom
+    // choisi : on ouvrait le Codex de "0x5489…B24E" au lieu de celui de LIT.
+    // L'adresse reste en repli pour les wallets sans pseudo.
+    let cxDisplayName = null;
+    try {
+      cxDisplayName = typeof usernameFetch === 'function' ? await usernameFetch(target) : null;
+    } catch (e) {}
+
     // The header is written to its own persistent container so it survives
     // tab switches; only the relic grid goes into #codex-body.
     const headerHTML = `
@@ -11788,7 +11797,10 @@ async function codexOpen(addr){
           <span style="font-size:1.15rem;letter-spacing:0.18em;color:${rankColor};text-shadow:0 0 10px ${rankColor}66;">${'\u2605'.repeat(Math.max(0, Math.min(4, rankIdx)))}</span>
           <span style="font-family:'Cinzel',serif;font-size:1.5rem;color:${rankColor};">${rankName}</span>
         </div>
-        <div style="font-size:0.62rem;color:rgba(255,255,255,0.3);font-family:monospace;margin-top:0.15rem;">${cxShort(target)}</div>
+        ${cxDisplayName
+          ? `<div style="font-family:'Cinzel',serif;font-size:0.92rem;letter-spacing:0.08em;color:#fff;margin-top:0.35rem;">${cxDisplayName}</div>
+             <div style="font-size:0.58rem;color:rgba(255,255,255,0.22);font-family:monospace;margin-top:0.1rem;">${cxShort(target)}</div>`
+          : `<div style="font-size:0.62rem;color:rgba(255,255,255,0.3);font-family:monospace;margin-top:0.15rem;">${cxShort(target)}</div>`}
         ${arenaRank >= 1 && typeof svRankBadge === 'function'
           ? `<div style="margin-top:0.55rem;display:flex;align-items:center;justify-content:center;gap:0.45rem;">
                ${svRankBadge(arenaRank, 'sm', DUELIST_TIERS[arenaRank-1].name)}
