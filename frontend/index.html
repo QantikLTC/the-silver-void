@@ -12317,7 +12317,15 @@ function storeApplyFilters() {
     if (!g) groups.set(key, { best: r, count: 1 });
     else {
       g.count++;
-      if (r.l.price < g.best.l.price) g.best = r;
+      // Moins cher gagne la vitrine. A prix EGAL, le plus ancien listing
+      // passe devant (id le plus petit) : sans ce departage, c'etait l'ordre
+      // de tri courant qui tranchait, donc l'arbitraire — un vendeur pouvait
+      // rester invisible alors qu'il demandait le meme prix. Premier arrive,
+      // premier servi, comme sur un carnet d'ordres.
+      if (r.l.price < g.best.l.price ||
+          (r.l.price === g.best.l.price && r.l.id < g.best.l.id)) {
+        g.best = r;
+      }
     }
   });
   const cards = [...groups.values()];
