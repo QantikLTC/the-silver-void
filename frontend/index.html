@@ -11932,6 +11932,25 @@ async function sagaMint(sagaId) {
         <span style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:rgba(255,255,255,0.4);text-transform:uppercase;">All Relics — by rarity</span>
         <button id="store-refresh-btn" onclick="storeRefreshListings()" style="background:transparent;border:1px solid rgba(0,229,204,0.3);color:rgba(0,229,204,0.7);font-size:0.6rem;padding:0.35rem 0.6rem;border-radius:3px;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:0.05em;">↻ Refresh</button>
       </div>
+      <!-- Tri et filtres. Ils operent sur les listings DEJA CHARGES
+           (_storeResolvedCache) : aucun clic ne relit la chaine, sans quoi
+           chaque changement de tri couterait une salve d'appels RPC. -->
+      <div id="store-filters" style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;margin-bottom:1rem;">
+        <select id="store-sort" onchange="storeApplyFilters()"
+          style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);color:#fff;
+                 border-radius:6px;padding:0.45rem 0.6rem;font-size:0.72rem;font-family:'Inter',sans-serif;cursor:pointer;">
+          <option value="rarity">Rarest first</option>
+          <option value="price-asc">Price: low to high</option>
+          <option value="price-desc">Price: high to low</option>
+          <option value="recent">Recently listed</option>
+        </select>
+        <div id="store-rarity-filters" style="display:flex;gap:0.35rem;flex-wrap:wrap;"></div>
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.72rem;color:rgba(255,255,255,0.5);cursor:pointer;">
+          <input type="checkbox" id="store-missing-only" onchange="storeApplyFilters()" style="cursor:pointer;">
+          Only what I'm missing
+        </label>
+        <span id="store-filter-count" style="margin-left:auto;font-size:0.7rem;color:rgba(255,255,255,0.35);"></span>
+      </div>
       <div id="store-listings-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:0.85rem;">
         <div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;grid-column:1/-1;">Scanning the store...</div>
       </div>
@@ -12214,10 +12233,126 @@ async function storeResolveRelic(nftContractAddr, tokenId) {
   return { name: 'Unknown Relic', rarity: 'common', artUrl: null, family: 'External' };
 }
 
-function storeRelicCard(l, relic) {
+// ═══ TRI, FILTRES ET REGROUPEMENT ════════════════════════════════════
+// Avec douze reliques, quatre skins et plusieurs vendeurs pour un meme objet,
+// la grille depasse la vingtaine de cartes des que le marche s'anime. Un tri
+// et un regroupement font l'essentiel du travail ; les filtres viennent
+// ensuite.
+let _storeResolvedCache = [];
+let _storeSellerNames = {};
+let _storeRarityFilter = new Set();
+
+/// Pseudo + avatar de chaque vendeur, une seule fois par adresse.
+async function storeResolveSellers(resolved) {
+  const uniq = [...new Set(resolved.map(r => r.l.seller.toLowerCase()))]
+    .filter(a => _storeSellerNames[a] === undefined);
+  await Promise.all(uniq.map(async a => {
+    let name = null, av = null;
+    try { name = typeof usernameFetch === 'function' ? await usernameFetch(a) : null; } catch(e) {}
+    try {
+      const id = typeof avatarFetch === 'function' ? await avatarFetch(a) : null;
+      if (id && typeof avatarHTMLFor === 'function') av = avatarHTMLFor(id, 18);
+    } catch(e) {}
+    _storeSellerNames[a] = { name, av };
+  }));
+}
+
+/// Pastilles de rarete, construites d'apres ce qui est REELLEMENT en vente :
+/// proposer un filtre "Legendary" quand aucune n'est listee ne sert a rien.
+function storeBuildRarityFilters(resolved) {
+  const host = document.getElementById('store-rarity-filters');
+  if (!host) return;
+  const present = [...new Set(resolved.map(r => r.relic.rarity))]
+    .sort((a, b) => STORE_RARITY_ORDER.indexOf(a) - STORE_RARITY_ORDER.indexOf(b));
+  host.innerHTML = present.map(r => {
+    const col = STORE_RARITY_COLOR[r] || '#9aa8b8';
+    const on = _storeRarityFilter.has(r);
+    return `<span onclick="storeToggleRarity('${r}')" data-rar="${r}"
+      style="cursor:pointer;padding:0.32rem 0.6rem;border-radius:20px;font-size:0.62rem;
+             letter-spacing:0.1em;text-transform:uppercase;font-family:'Cinzel',serif;
+             border:1px solid ${col}${on ? 'cc' : '33'};
+             background:${col}${on ? '22' : '0d'};color:${col};">${r}</span>`;
+  }).join('');
+}
+
+function storeToggleRarity(r) {
+  if (_storeRarityFilter.has(r)) _storeRarityFilter.delete(r);
+  else _storeRarityFilter.add(r);
+  storeBuildRarityFilters(_storeResolvedCache);
+  storeApplyFilters();
+}
+
+/// Applique tri + filtres sur le cache, sans aucun appel RPC.
+function storeApplyFilters() {
+  const grid = document.getElementById('store-listings-grid');
+  if (!grid) return;
+  let rows = _storeResolvedCache.slice();
+
+  if (_storeRarityFilter.size) {
+    rows = rows.filter(r => _storeRarityFilter.has(r.relic.rarity));
+  }
+
+  // "Ce qui me manque" : masque tout ce que le joueur possede deja. C'est le
+  // geste de quelqu'un qui vient completer sa collection.
+  const missingEl = document.getElementById('store-missing-only');
+  if (missingEl && missingEl.checked && Array.isArray(window._myRelicNames)) {
+    rows = rows.filter(r => !window._myRelicNames.includes(r.relic.name));
+  }
+
+  const sort = (document.getElementById('store-sort') || {}).value || 'rarity';
+  rows.sort((a, b) => {
+    if (sort === 'price-asc')  return a.l.price < b.l.price ? -1 : a.l.price > b.l.price ? 1 : 0;
+    if (sort === 'price-desc') return b.l.price < a.l.price ? -1 : b.l.price > a.l.price ? 1 : 0;
+    if (sort === 'recent')     return b.l.id - a.l.id;
+    return STORE_RARITY_ORDER.indexOf(a.relic.rarity) - STORE_RARITY_ORDER.indexOf(b.relic.rarity);
+  });
+
+  // Regroupement : cinq vendeurs d'une meme relique n'ont pas a occuper cinq
+  // vignettes identiques. On garde l'offre la MOINS CHERE en vitrine et on
+  // annonce les autres. C'est ce qui compresse vraiment une liste longue.
+  const groups = new Map();
+  rows.forEach(r => {
+    const key = r.relic.name;
+    const g = groups.get(key);
+    if (!g) groups.set(key, { best: r, count: 1 });
+    else {
+      g.count++;
+      if (r.l.price < g.best.l.price) g.best = r;
+    }
+  });
+  const cards = [...groups.values()];
+
+  const cnt = document.getElementById('store-filter-count');
+  if (cnt) {
+    cnt.textContent = rows.length === _storeResolvedCache.length
+      ? `${rows.length} listing${rows.length > 1 ? 's' : ''}`
+      : `${rows.length} of ${_storeResolvedCache.length}`;
+  }
+
+  grid.innerHTML = cards.length
+    ? cards.map(g => storeRelicCard(g.best.l, g.best.relic, g.count)).join('')
+    : '<div style="text-align:center;padding:2rem 0;color:rgba(255,255,255,0.3);font-style:italic;grid-column:1/-1;">Nothing matches those filters.</div>';
+}
+
+function storeRelicCard(l, relic, alsoListed) {
   const priceStr = ethers.formatEther(l.price);
-  const shortSeller = l.seller.slice(0,6) + '...' + l.seller.slice(-4);
   const isMine = connectedAddress && l.seller.toLowerCase() === connectedAddress.toLowerCase();
+
+  // Le vendeur etait affiche en adresse brute (0x5489...B24E) : illisible, et
+  // froid pour une place de marche entre joueurs. On reprend le pseudo et
+  // l'avatar du classement, cliquables vers son Codex — on voit alors ce
+  // qu'il possede, donc ce qu'il cherche peut-etre en echange.
+  const sellerInfo = _storeSellerNames[l.seller.toLowerCase()] || {};
+  const sellerLabel = isMine
+    ? 'Your listing'
+    : (sellerInfo.name || (l.seller.slice(0,6) + '…' + l.seller.slice(-4)));
+  const sellerBlock = isMine
+    ? `<span style="color:rgba(0,229,204,0.7);">${sellerLabel}</span>`
+    : `<span onclick="event.stopPropagation();if(typeof codexOpen==='function')codexOpen('${l.seller}')"
+             title="Open this Codex"
+             style="display:inline-flex;align-items:center;gap:0.35rem;cursor:pointer;">
+         ${sellerInfo.av || ''}<span>${sellerLabel}</span>
+       </span>`;
   const color = STORE_RARITY_COLOR[relic.rarity] || STORE_RARITY_COLOR.common;
   const img = relic.artUrl
     ? `<img src="${relic.artUrl}" onclick="event.stopPropagation();storeZoomImage('${relic.artUrl}')" style="position:absolute;width:100%;height:100%;object-fit:cover;cursor:zoom-in;" onerror="this.style.display='none';" title="Click to view full image" />`
@@ -12233,7 +12368,8 @@ function storeRelicCard(l, relic) {
     </div>
     <div class="vb-body">
       <div class="vb-name">${relic.name}</div>
-      <div class="vb-desc" style="min-height:0;">${shortSeller}</div>
+      <div class="vb-desc" style="min-height:0;">${sellerBlock}</div>
+      ${alsoListed > 1 ? `<div style="font-size:0.62rem;color:rgba(255,255,255,0.35);margin-top:0.15rem;">${alsoListed} listings · from ${priceStr} zkLTC</div>` : ''}
       <div class="vb-foot">
         <div class="vb-price"><span class="vb-zk">${priceStr}</span><span class="vb-usd">zkLTC</span></div>
         ${cta}
@@ -12322,9 +12458,20 @@ async function storeRefreshListings() {
       return;
     }
 
-    // Resolve rarity/art for every listing, then sort rarest-first.
+    // Resolution une seule fois, puis mise en cache : tri et filtres
+    // travaillent ensuite en memoire, sans jamais relire la chaine.
     const resolved = await Promise.all(active.map(async l => ({ l, relic: await storeResolveRelic(l.nftContract, l.tokenId) })));
-    resolved.sort((a, b) => STORE_RARITY_ORDER.indexOf(a.relic.rarity) - STORE_RARITY_ORDER.indexOf(b.relic.rarity));
+    _storeResolvedCache = resolved;
+
+    // Identite des vendeurs : pseudo + avatar plutot que 0x5489...B24E.
+    // Sur une place de marche entre joueurs, savoir A QUI on achete compte —
+    // et c'est la meme personne qu'on croise au classement et a l'Arene.
+    await storeResolveSellers(resolved);
+
+    storeBuildRarityFilters(resolved);
+    storeApplyFilters();
+    if (btn) { btn.innerHTML = btnOriginalText; btn.style.opacity = ''; btn.disabled = false; }
+    return;
 
     // Single unified grid for every listing, regardless of rarity — the
     // carousel was hard to read when multiple items shared the same rarity,
@@ -12438,6 +12585,9 @@ async function storeScanMyNFTs() {
   } catch (e) { console.warn('Ascent relic scan:', e.message); }
 
   _storeMyNFTs = owned;
+  // Alimente le filtre "Only what I'm missing" de l'onglet Acquire : sans
+  // cette liste, la case a cocher n'aurait rien a comparer.
+  window._myRelicNames = owned.map(n => n.name);
   storeRenderMyNFTs();
 
   // ── ANCIENS NFT (rangs + saga) — en arriere-plan ──────────────────
