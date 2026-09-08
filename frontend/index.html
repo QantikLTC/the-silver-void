@@ -691,11 +691,37 @@ footer {
 .footer-brand em { color:var(--teal); font-style:normal; }
 .footer-links { display:flex; justify-content:center; gap:1.5rem; list-style:none; margin-bottom:0.75rem; }
 .footer-links a { font-family:'Cinzel',serif; font-size:0.58rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--silver-dim); text-decoration:none; }
+.footer-contracts{ margin-top:1.1rem; text-align:center; }
+.fc-lab{
+  font-family:'Cinzel',serif; font-size:0.5rem; letter-spacing:0.25em;
+  text-transform:uppercase; color:rgba(255,255,255,0.28); margin-bottom:0.5rem;
+}
+.fc-list{ display:flex; flex-wrap:wrap; gap:0.4rem; justify-content:center; }
+.fc-list a{
+  font-family:'Cinzel',serif; font-size:0.58rem; letter-spacing:0.1em;
+  color:rgba(255,255,255,0.5); text-decoration:none;
+  padding:0.3rem 0.65rem; border-radius:5px;
+  border:1px solid rgba(255,255,255,0.08); transition:all 0.18s;
+}
+.fc-list a:hover{ color:#fff; border-color:rgba(0,229,204,0.4); background:rgba(0,229,204,0.06) }
+.fc-burn{
+  margin-top:0.7rem; font-family:'Cormorant Garamond',serif; font-style:italic;
+  font-size:0.76rem; color:rgba(255,255,255,0.35);
+}
+.fc-burn a{ color:rgba(255,106,61,0.7); text-decoration:none; }
+.fc-burn a:hover{ color:#ff9d6e; }
+
 .footer-chain { font-size:0.55rem; letter-spacing:0.15em; color:rgba(90,159,255,0.35); font-family:'Cinzel',serif; }
 
 /* ── TOAST ── */
 /* FAQ — le gris a 0.5 etait illisible sur ce fond. Reponses en blanc casse
    a 0.88, questions en blanc plein : c'est du texte a lire, pas une legende. */
+/* Menu deroulant du tri du Store. Sans ces deux lignes, les options
+   heritaient du blanc du select et disparaissaient sur le fond blanc du
+   menu natif : une seule ligne restait lisible. */
+#store-sort option{ background:#0b1026; color:#fff; }
+#store-sort{ color-scheme:dark; }
+
 .faq-lead{
   font-family:'Cormorant Garamond',serif; font-size:1rem; font-style:italic;
   line-height:1.65; color:rgba(255,255,255,0.78); margin-bottom:1.6rem;
@@ -5633,6 +5659,27 @@ function chroniclesRouteFromHash() {
     <li><a href="#" onclick="openTermsReader();return false;">Terms of Use</a></li>
   </ul>
   <div class="footer-chain">LiteForge Testnet · Chain ID 4441</div>
+
+  <!-- Adresses des contrats. Le projet promet "permanently, and provably" :
+       sans un lien cliquable vers la chaine, c'est de la prose. Chaque
+       adresse ouvre l'explorateur, ou l'on voit les transactions et le total
+       reellement detruit, que le contrat soit verifie ou non. -->
+  <div class="footer-contracts">
+    <div class="fc-lab">Verify on-chain</div>
+    <div class="fc-list">
+      <a href="https://liteforge.explorer.caldera.xyz/address/0x0AD3f776C45FF457d2d8e211A3174A4Db201b656" target="_blank" rel="noopener">Ritual</a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0xEA3ac301Fef474c8799924EC58c48f2c4114684B" target="_blank" rel="noopener">Arena</a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0xD21daA1a264eb9770ECA992e9414Fac5058AfB12" target="_blank" rel="noopener">Order</a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0x8FF2fbfE17Af4746DB4b3d500D34AebB3bF1Fcd8" target="_blank" rel="noopener">Relics</a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0x50FbF3fe230c67913e4a8dB9230D538ADAA08Ef7" target="_blank" rel="noopener">Store</a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0xB715bc47A5a2Ab31f3F6a09211E53c8eb9CCDe76" target="_blank" rel="noopener">Saga</a>
+    </div>
+    <div class="fc-burn">
+      Every offering is sent to
+      <a href="https://liteforge.explorer.caldera.xyz/address/0x000000000000000000000000000000000000dEaD" target="_blank" rel="noopener">0x…dEaD</a>
+      — irrecoverable by anyone, including us.
+    </div>
+  </div>
 </footer>
 
 
@@ -11943,6 +11990,11 @@ async function sagaMint(sagaId) {
           <option value="price-asc">Price: low to high</option>
           <option value="price-desc">Price: high to low</option>
           <option value="recent">Recently listed</option>
+          <!-- Les <option> heritent du color:#fff du <select>, mais le menu
+               deroulant natif s'ouvre sur fond BLANC : le texte devenait
+               invisible et seule l'option selectionnee se voyait. Le fond et
+               la couleur sont donc imposes sur les options elles-memes
+               (regle #store-sort option dans la feuille de style). -->
         </select>
         <div id="store-rarity-filters" style="display:flex;gap:0.35rem;flex-wrap:wrap;"></div>
         <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.72rem;color:rgba(255,255,255,0.5);cursor:pointer;">
@@ -15973,7 +16025,12 @@ body.sv-rail-on section#chronicles-page > div[aria-hidden]{ display:none !import
    pulls the eye — that pull is what makes reaching Maximalist worth it. */
 #codex-modal .cx-tc.sealed .art{ filter:grayscale(1) brightness(0.3) }
 #codex-modal .cx-tc.sealed .nm { color:rgba(255,255,255,0.5) }
-#codex-modal .cx-tc.sealed.r-legendary .art{ filter:grayscale(0.6) brightness(0.5) }
+/* La Legendary scellee etait a grayscale(0.6) brightness(0.5) quand les
+   autres sont a grayscale(1) brightness(0.3) : elle gardait 40% de sa couleur
+   et paraissait DEVERROUILLEE a cote des autres, ce qui brouillait la lecture
+   de la grille. A peine plus claire suffit a suggerer qu'il y a quelque
+   chose, sans laisser croire qu'on la possede. */
+#codex-modal .cx-tc.sealed.r-legendary .art{ filter:grayscale(0.9) brightness(0.38) }
 #codex-modal .cx-tc.sealed.r-legendary .nm { color:rgba(255,255,255,0.75) }
 #codex-modal .cx-tc .lock{
   position:absolute; left:0; right:0; top:34%; display:flex;
