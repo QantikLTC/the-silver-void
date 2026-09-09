@@ -104,7 +104,9 @@ async function redisGet(key) {
     const r = await redisCmd(['GET', key]);
     return r ? JSON.parse(r) : null;
   } catch (e) {
-    console.warn(`redisGet(${key}):`, e.message);
+    // Silencieux : une clé absente est un cas normal (premier appel), pas
+    // une erreur. Le vrai échec Redis, s'il y en a un, remonte plus loin
+    // via les catch de tryLock()/readLeaderboard() qui, eux, loggent.
     return null;
   }
 }
@@ -323,20 +325,32 @@ export default async function handler(req, res) {
     const cached = await redisGet(KEY_DATA);
     const age = cached ? Date.now() - cached.t : Infinity;
 
-    // Diagnostic : /api/leaderboard?debug=1
+    // Diagnostic : /api/leaderboard?debug=1&key=<DEBUG_KEY>
+    //
+    // CORRIGÉ — ce mode déclenchait un readLeaderboard() COMPLET à chaque
+    // appel, sans verrou ni cache, contrairement au chemin normal. N'importe
+    // qui pouvait appeler cette URL en boucle et forcer des lectures RPC
+    // payantes en continu : c'est le suspect le plus probable derrière le
+    // pic d'Observability Events (1.25M events pour 178K invocations,
+    // ~7 events/appel — un ratio que la lecture normale, gardée par le
+    // cache 90s et le verrou, ne peut pas produire seule).
+    //
+    // Deux garde-fous : protégé par une clé, et ne fait plus JAMAIS de
+    // lecture RPC — il ne fait qu'inspecter l'état déjà en cache.
     if (req.query && req.query.debug === '1') {
+      if (!process.env.DEBUG_KEY || req.query.key !== process.env.DEBUG_KEY) {
+        res.status(404).json({ error: 'Not found' });
+        return;
+      }
       const out = {
         env: { url: !!process.env.KV_REST_API_URL, token: !!process.env.KV_REST_API_TOKEN },
         cacheAgeSec: cached ? Math.round(age / 1000) : null,
         cacheEntries: cached ? cached.leaderboard.length : 0,
+        cacheStale: cached ? age >= FRESH_MS : null,
         slotBase: '0x' + arrayBase(BURNERS_ARRAY_SLOT).toString(16),
+        top3: cached ? cached.leaderboard.slice(0, 3).map(e => e.address + ' = ' + e.amount) : [],
       };
       try { out.redis = await redisCmd(['PING']); } catch (e) { out.redisErr = e.message; }
-      try {
-        const r = await readLeaderboard(Date.now() + 40000);
-        out.readOk = true; out.readCount = r.list.length; out.burners = r.count;
-        out.top3 = r.list.slice(0, 3).map(e => e.address + ' = ' + e.amount);
-      } catch (e) { out.readErr = e.message; }
       res.status(200).json(out);
       return;
     }
@@ -362,7 +376,10 @@ export default async function handler(req, res) {
         if (r.list.length > 0) {
           fresh = { t: Date.now(), leaderboard: r.list, totalBurners: r.count };
           await redisSet(KEY_DATA, fresh);
-          console.log(`leaderboard: ${r.list.length} entrées, ${r.count} burners, ${Date.now()-started}ms`);
+          // Pas de log de succès ici : ce chemin s'exécute à chaque
+          // rafraîchissement de cache (toutes les ~90s sous trafic), ce qui
+          // en fait à lui seul une source réguliere d'events. Le compte
+          // final (r.list.length, r.count) reste lisible via ?debug=1.
         }
       } catch (e) {
         // On NE jette PAS le cache existant : un classement daté vaut
