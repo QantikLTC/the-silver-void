@@ -691,22 +691,33 @@ footer {
 .footer-brand em { color:var(--teal); font-style:normal; }
 .footer-links { display:flex; justify-content:center; gap:1.5rem; list-style:none; margin-bottom:0.75rem; }
 .footer-links a { font-family:'Cinzel',serif; font-size:0.58rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--silver-dim); text-decoration:none; }
-.footer-contracts{ margin-top:1.1rem; text-align:center; }
-.fc-lab{
-  font-family:'Cinzel',serif; font-size:0.5rem; letter-spacing:0.25em;
-  text-transform:uppercase; color:rgba(255,255,255,0.28); margin-bottom:0.5rem;
+.ft-top{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:1.5rem; flex-wrap:wrap; margin-bottom:0.5rem;
 }
-.fc-list{ display:flex; flex-wrap:wrap; gap:0.4rem; justify-content:center; }
+.ft-top .footer-links{ margin:0 }
+.footer-contracts{
+  margin-top:1.2rem; padding-top:1.1rem;
+  border-top:1px solid rgba(255,255,255,0.07);
+  text-align:left;
+}
+.fc-lab{
+  font-family:'Cinzel',serif; font-size:0.6rem; letter-spacing:0.25em;
+  text-transform:uppercase; color:rgba(255,255,255,0.62); margin-bottom:0.8rem;
+}
+/* Alignees a gauche, sous leur libelle : centrees, elles flottaient au
+   milieu du bandeau tandis que "Verify on-chain" restait a gauche. */
+.fc-list{ display:flex; flex-wrap:wrap; gap:0.45rem; justify-content:flex-start; }
 .fc-list a{
-  font-family:'Cinzel',serif; font-size:0.58rem; letter-spacing:0.1em;
-  color:rgba(255,255,255,0.5); text-decoration:none;
-  padding:0.3rem 0.65rem; border-radius:5px;
-  border:1px solid rgba(255,255,255,0.08); transition:all 0.18s;
+  font-family:'Cinzel',serif; font-size:0.7rem; letter-spacing:0.1em;
+  color:rgba(255,255,255,0.85); text-decoration:none;
+  padding:0.45rem 0.9rem; border-radius:6px;
+  border:1px solid rgba(255,255,255,0.13); transition:all 0.18s;
 }
 .fc-list a:hover{ color:#fff; border-color:rgba(0,229,204,0.4); background:rgba(0,229,204,0.06) }
 .fc-burn{
-  margin-top:0.7rem; font-family:'Cormorant Garamond',serif; font-style:italic;
-  font-size:0.76rem; color:rgba(255,255,255,0.35);
+  margin-top:1.1rem; font-family:'Cormorant Garamond',serif; font-style:italic;
+  font-size:0.92rem; color:rgba(255,255,255,0.68);
 }
 .fc-burn a{ color:rgba(255,106,61,0.7); text-decoration:none; }
 .fc-burn a:hover{ color:#ff9d6e; }
@@ -1577,6 +1588,14 @@ body::after {
   transition:color 0.4s;
 }
 .rcc-stars { display:flex; gap:5px; font-size:0.95rem; }
+/* L'illustration du badge porte deja le nom du rang et le mot SOULBOUND
+   grave dessous. Repeter "Devoted Litecoiner" et les etoiles juste en
+   dessous faisait doublon — et la ligne "Rank 3 · ADEPT" etait fausse : ce
+   libelle vient d'une table ou il ne correspond pas au nom de l'artwork.
+   On masque plutot que de supprimer : le JS ecrit toujours dans ces ids. */
+.rank-col-card .rcc-info,
+.rank-col-card .rcc-stars-row{ display:none !important }
+
 .rcc-lore {
   font-family:'Cormorant Garamond',serif; font-size:0.88rem;
   font-style:italic; color:rgba(255,255,255,0.5);
@@ -2591,7 +2610,41 @@ body.sv-rail-on nav{ display:none !important }
 
 /* The footer floated to the top of every page once the sections stopped
    pushing it down, and its links (X, Terms) now live at the foot of the rail. */
-body.sv-rail-on footer{ display:none !important }
+/* Le footer etait masque en entier sous le rail, ce qui rendait invisibles
+   les adresses de contrat — le seul endroit ou "permanently, and provably"
+   devient verifiable d'un clic. Il revient, decale de la largeur du rail. */
+body.sv-rail-on footer{
+  display:block !important;
+  /* Le bandeau part du bord du rail et court jusqu'au bord de l'ecran : un
+     footer flottant au milieu, avec du vide de chaque cote, ne ressemble
+     pas a un pied de page. */
+  margin-left:196px; padding:2.6rem 3rem 2.8rem;
+  background:rgba(4,6,20,0.55);
+  border-top:1px solid rgba(255,255,255,0.07);
+  /* La regle de base centre tout le footer. En bandeau, le contenu se lit
+     de gauche a droite : la marque a gauche, les liens a droite, et chaque
+     bloc aligne sur son libelle. */
+  text-align:left !important;
+}
+/* La ligne reseau suivait le centrage global et flottait seule au milieu. */
+/* Le gris d'origine (silver-dim, 0.35 d'opacite) etait pense pour un footer
+   discret en bas d'une page longue. Dans un bandeau plein, il devient
+   illisible : les valeurs remontent vers le blanc. */
+body.sv-rail-on .footer-chain{
+  text-align:left; margin-top:0.4rem; font-size:0.66rem;
+  color:rgba(255,255,255,0.55) !important;
+}
+body.sv-rail-on .footer-brand{
+  margin-bottom:0; font-size:0.95rem; color:rgba(255,255,255,0.92) !important;
+}
+body.sv-rail-on .footer-links{ justify-content:flex-end; margin-bottom:0 }
+body.sv-rail-on .footer-links a{
+  font-size:0.75rem; color:rgba(255,255,255,0.75) !important;
+}
+body.sv-rail-on .footer-links a:hover{ color:#fff !important }
+@media(max-width:900px){
+  body.sv-rail-on footer{ margin-left:0; padding:2rem 1.2rem 2.4rem; }
+}
 body.sv-rail-on section[data-rail]{ display:none }
 body.sv-rail-on section[data-rail].sv-active{ display:block !important }
 /* Store and Chronicles ship with an inline display:none, which outranks the
@@ -5674,12 +5727,18 @@ function chroniclesRouteFromHash() {
 <!-- FOOTER -->
 
 <footer>
-  <div class="footer-brand">The Si<span class="ltc-letter footer-ltc">Ł</span>ver Void</div>
-  <ul class="footer-links">
-    <li><a href="https://x.com/The_SilverVoid" target="_blank">X</a></li>
-    <li><a href="https://testnet.litvm.com" target="_blank">LiteForge</a></li>
-    <li><a href="#" onclick="openTermsReader();return false;">Terms of Use</a></li>
-  </ul>
+  <!-- Bandeau en deux temps : identite et liens en haut, contrats en bas.
+       Les adresses ne sont pas une mention legale a reléguer — c'est la
+       preuve que le site n'invente rien. -->
+  <div class="ft-top">
+    <div class="footer-brand">The Si<span class="ltc-letter footer-ltc">Ł</span>ver Void</div>
+    <ul class="footer-links">
+      <li><a href="https://x.com/The_SilverVoid" target="_blank" rel="noopener">X</a></li>
+      <li><a href="https://testnet.litvm.com" target="_blank" rel="noopener">LiteForge</a></li>
+      <li><a href="#" onclick="openTermsReader();return false;">Terms of Use</a></li>
+      <li><a href="#" onclick="faqOpen();return false;">How it works</a></li>
+    </ul>
+  </div>
   <div class="footer-chain">LiteForge Testnet · Chain ID 4441</div>
 
   <!-- Adresses des contrats. Le projet promet "permanently, and provably" :
@@ -15005,19 +15064,14 @@ window.addEventListener('load', function () {
       onmouseout="this.style.color='rgba(255,255,255,0.4)';this.style.borderColor='rgba(255,255,255,0.12)'">Disconnect</button>
 
     <!-- Terms + socials, lost with the old top nav and its footer. -->
-    <!-- Les adresses de contrat vivaient dans le <footer>, que le rail masque
-         entierement (body.sv-rail-on footer{display:none}) : personne ne les
-         voyait. Elles remontent ici, dans le seul pied de page visible. -->
-    <div class="sv-legal">
-      <a href="#" onclick="svOpenContracts();return false;" title="Contract addresses">Verify on-chain</a>
-    </div>
-    <div class="sv-legal">
-      <!-- Le lien appelait openTerms(), qui n'existe pas : la fonction reelle
-           s'appelle openTermsReader(). Le garde `typeof === 'function'` avalait
-           l'erreur en silence, donc le clic ne faisait simplement rien. -->
-      <a href="https://x.com/The_SilverVoid" target="_blank" rel="noopener" title="X">𝕏</a>
-      <a href="#" onclick="if(typeof openTermsReader==='function')openTermsReader();return false;">Terms of use</a>
-    </div>
+    <!-- Le lien "Verify on-chain" a ete retire d'ici : le footer est
+         redevenu visible sous le rail, et il porte desormais les adresses
+         dans un vrai bandeau. Deux entrees pour la meme chose ne servaient
+         qu'a diluer l'attention. La fenetre svOpenContracts() reste
+         disponible si tu veux la rebrancher ailleurs. -->
+    <!-- X et Terms of use ont ete retires d'ici : le footer est redevenu
+         visible sous le rail et porte deja ces deux liens. Les avoir aux
+         deux endroits n'ajoutait rien et alourdissait le pied du rail. -->
   </div>
 </div>
 
