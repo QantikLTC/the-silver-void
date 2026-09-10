@@ -2490,8 +2490,14 @@ body::after {
   box-shadow:1px 0 24px rgba(0,0,0,0.5);
   backdrop-filter:blur(14px); overflow-y:auto; scrollbar-width:thin;
 }
-#sv-rail::-webkit-scrollbar{ width:4px }
-#sv-rail::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.08); border-radius:2px }
+/* La barre de defilement du rail se dessinait avec les couleurs du systeme —
+   une bande blanche en travers du bleu nuit. Elle reste utilisable, mais
+   devient quasi invisible tant qu'on ne la survole pas. */
+#sv-rail{ scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.10) transparent; }
+#sv-rail::-webkit-scrollbar{ width:4px; background:transparent }
+#sv-rail::-webkit-scrollbar-track{ background:transparent }
+#sv-rail::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.07); border-radius:2px }
+#sv-rail:hover::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.16) }
 
 .sv-brand{
   font-family:'Cinzel',serif; font-size:0.95rem; letter-spacing:0.13em;
@@ -11276,10 +11282,14 @@ function codexSkinsRender(){
     let hint = '';
     if (!has) {
       if (s.rarity === 'relic') {
+        // `req` d'abord : c'est la seule information qui dit quoi FAIRE.
+        // Le repli sur FEATS ne trouvait rien (les ids duels_50 / burn_50
+        // n'y existent pas) et retombait sur un "Earned, never sold" qui
+        // n'apprenait rien.
         const feat = (typeof FEATS !== 'undefined') ? FEATS.find(f => f.id === s.featId) : null;
-        hint = feat && feat.goal ? 'Earned · ' + feat.desc : 'Earned, never sold';
+        hint = s.req || (feat && feat.desc) || 'Earned, never sold';
       } else {
-        hint = 'Available in the Store';
+        hint = 'Forge it in the Store';
       }
     }
 
@@ -11299,7 +11309,15 @@ function codexSkinsRender(){
       + '</div>'
       + '<div style="font-family:\'Cinzel\',serif;font-size:0.9rem;color:' + (has ? '#fff' : 'rgba(255,255,255,0.4)') + ';">' + s.name + '</div>'
       + '<div style="font-size:0.66rem;letter-spacing:0.14em;text-transform:uppercase;color:' + col + ';opacity:' + (has ? 0.95 : 0.45) + ';margin-top:0.3rem;font-family:\'Cinzel\',serif;">' + s.rarity + '</div>'
-      + '<div style="font-size:0.74rem;color:rgba(255,255,255,0.34);margin-top:0.45rem;line-height:1.4;min-height:2.7em;padding:0 0.4rem;">' + (has ? s.desc : hint) + '</div>'
+      + '<div style="font-size:0.74rem;color:rgba(255,255,255,0.34);margin-top:0.45rem;line-height:1.4;min-height:2.7em;padding:0 0.4rem;">' + s.desc + '</div>'
+      // Bandeau "comment l'obtenir" sur les skins verrouilles : la condition
+      // merite d'etre lisible d'un coup d'oeil, pas cachee dans la prose.
+      + (!has
+          ? '<div style="margin-top:0.5rem;padding:0.35rem 0.5rem;border-radius:5px;'
+            + 'background:rgba(255,255,255,0.035);border:1px solid rgba(255,255,255,0.07);'
+            + 'font-family:\'Cinzel\',serif;font-size:0.6rem;letter-spacing:0.06em;'
+            + 'color:' + col + 'cc;">' + hint + '</div>'
+          : '')
       + (equipped
           ? '<div style="margin-top:0.5rem;font-family:\'Cinzel\',serif;font-size:0.62rem;letter-spacing:0.1em;color:rgba(0,229,204,0.85);">\u2713 EQUIPPED</div>'
           : has
@@ -13728,11 +13746,15 @@ const SKINS = [
   { id:'ring_ember',   name:'Eternal Blaze',      rarity:'legendary', desc:'The ritual fire itself, sparks and all.' },
   { id:'ring_shadow',  name:'Blaze of Shadows',   rarity:'legendary', desc:'The dark mirror — spectral violet flames.' },
   { id:'ring_84m',     name:'84 Millions',        rarity:'legendary', desc:'The whole supply, engraved in gold ticks.' },
-  { id:'ring_devour',  name:'Devouring Shadow',   rarity:'relic',     featId:'duels_50', desc:'Sparks FALL into it. Earned, never sold — 50 duels fought.' },
+  // `req` dit COMMENT l'obtenir. Avant, une relique verrouillee n'affichait
+  // que "Earned, never sold" : le joueur savait qu'elle se meritait, jamais
+  // a quelle condition. FEATS ne contient ni duels_50 ni burn_50, donc le
+  // repli qui devait aller y chercher l'objectif ne trouvait rien.
+  { id:'ring_devour',  name:'Devouring Shadow',   rarity:'relic',     featId:'duels_50', req:'Fight 50 duels', desc:'Sparks FALL into it. Earned, never sold — 50 duels fought.' },
   { id:'ring_halving', name:'Halving',            rarity:'rare',      desc:'Cut in two. Twice as scarce.' },
   { id:'ring_bolt',    name:'Lightning',          rarity:'epic',      desc:'A single strike, never twice the same.' },
   { id:'ring_mimble',  name:'Mimblewimble',       rarity:'epic',      desc:'Half there. Half nowhere at all.' },
-  { id:'ring_hollow',  name:'Hollow Gold',        rarity:'relic',     featId:'burn_50',  desc:'It shines. There is nothing inside. Earned, never sold — 50 offerings.' },
+  { id:'ring_hollow',  name:'Hollow Gold',        rarity:'relic',     featId:'burn_50',  req:'Make 50 offerings in the Ritual', desc:'It shines. There is nothing inside. Earned, never sold — 50 offerings.' },
 ];
 
 // ── Effect generator: returns the animated layers for a skin ──
