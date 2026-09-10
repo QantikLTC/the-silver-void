@@ -13392,6 +13392,7 @@ async function usernameSubmit() {
     const _wbtn = document.getElementById('wallet-btn');
     if (_wbtn) _wbtn.textContent = _myUsername;
     if (typeof refreshDisplayedUsername === 'function') refreshDisplayedUsername();
+    svRefreshIdentity();   // Codex, classements et rail d'un coup
 
   } catch (e) {
     console.error('usernameSubmit error:', e);
@@ -13401,6 +13402,32 @@ async function usernameSubmit() {
     btn.disabled = false;
     btn.textContent = 'Confirm Name';
   }
+}
+
+/// Redessine partout ou l'identite du joueur apparait, apres un changement
+/// de pseudo ou de portrait.
+///
+/// Ces endroits se sont multiplies (rail, classements, Codex) et chaque
+/// fonction de sauvegarde en rafraichissait sa propre liste, forcement
+/// incomplete : le nouvel avatar apparaissait sur le wallet mais pas dans le
+/// Codex, ou il fallait quitter l'onglet et y revenir. Une seule fonction,
+/// appelee des deux cotes.
+function svRefreshIdentity() {
+  try { if (typeof avatarUpdateButtonIcon === 'function') avatarUpdateButtonIcon(); } catch(e) {}
+  try { if (typeof svRailSyncWallet === 'function') svRailSyncWallet(); } catch(e) {}
+  try { if (typeof svDrawerSyncWallet === 'function') svDrawerSyncWallet(); } catch(e) {}
+  try { if (typeof loadLeaderboard === 'function') loadLeaderboard(); } catch(e) {}
+  try { if (typeof duelistLeaderboardRefresh === 'function') duelistLeaderboardRefresh(false); } catch(e) {}
+
+  // Le Codex, seulement s'il est ouvert sur SON propre profil : inutile de
+  // recharger celui de quelqu'un d'autre.
+  try {
+    const m = document.getElementById('codex-modal');
+    const visible = m && (m.classList.contains('cx-inline') || m.style.display === 'flex');
+    const mine = !window._codexTarget
+      || window._codexTarget.toLowerCase() === (connectedAddress || '').toLowerCase();
+    if (visible && mine && typeof codexOpen === 'function') codexOpen();
+  } catch(e) {}
 }
 
 // Call this on wallet connect to load the cached username, and anywhere
@@ -13732,12 +13759,9 @@ async function avatarSelect(id) {
         _profileCache[_k] = Object.assign({}, _profileCache[_k], { avatar: id, ts: Date.now() });
       }
     } catch(e) {}
-    avatarUpdateButtonIcon();
     showToast('✦ Avatar updated');
     avatarOpen(); // re-render to show the new active selection
-    // Rafraîchir le leaderboard pour que le nouveau portrait y apparaisse tout de suite
-    if (typeof loadLeaderboard === 'function') { try { loadLeaderboard(); } catch(e) {} }
-    if (typeof duelistLeaderboardRefresh === 'function') { try { duelistLeaderboardRefresh(false); } catch(e) {} }
+    svRefreshIdentity();   // rail, classements et Codex
   } catch (e) {
     console.error('avatarSelect error:', e);
     showToast('Network error — try again', true);
