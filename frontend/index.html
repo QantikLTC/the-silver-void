@@ -5726,42 +5726,10 @@ function chroniclesRouteFromHash() {
 
 <!-- FOOTER -->
 
-<footer>
-  <!-- Bandeau en deux temps : identite et liens en haut, contrats en bas.
-       Les adresses ne sont pas une mention legale a reléguer — c'est la
-       preuve que le site n'invente rien. -->
-  <div class="ft-top">
-    <div class="footer-brand">The Si<span class="ltc-letter footer-ltc">Ł</span>ver Void</div>
-    <ul class="footer-links">
-      <li><a href="https://x.com/The_SilverVoid" target="_blank" rel="noopener">X</a></li>
-      <li><a href="https://testnet.litvm.com" target="_blank" rel="noopener">LiteForge</a></li>
-      <li><a href="#" onclick="openTermsReader();return false;">Terms of Use</a></li>
-      <li><a href="#" onclick="faqOpen();return false;">How it works</a></li>
-    </ul>
-  </div>
-  <div class="footer-chain">LiteForge Testnet · Chain ID 4441</div>
-
-  <!-- Adresses des contrats. Le projet promet "permanently, and provably" :
-       sans un lien cliquable vers la chaine, c'est de la prose. Chaque
-       adresse ouvre l'explorateur, ou l'on voit les transactions et le total
-       reellement detruit, que le contrat soit verifie ou non. -->
-  <div class="footer-contracts">
-    <div class="fc-lab">Verify on-chain</div>
-    <div class="fc-list">
-      <a href="https://liteforge.explorer.caldera.xyz/address/0x0AD3f776C45FF457d2d8e211A3174A4Db201b656" target="_blank" rel="noopener">Ritual</a>
-      <a href="https://liteforge.explorer.caldera.xyz/address/0xEA3ac301Fef474c8799924EC58c48f2c4114684B" target="_blank" rel="noopener">Arena</a>
-      <a href="https://liteforge.explorer.caldera.xyz/address/0xD21daA1a264eb9770ECA992e9414Fac5058AfB12" target="_blank" rel="noopener">Order</a>
-      <a href="https://liteforge.explorer.caldera.xyz/address/0x8FF2fbfE17Af4746DB4b3d500D34AebB3bF1Fcd8" target="_blank" rel="noopener">Relics</a>
-      <a href="https://liteforge.explorer.caldera.xyz/address/0x50FbF3fe230c67913e4a8dB9230D538ADAA08Ef7" target="_blank" rel="noopener">Store</a>
-      <a href="https://liteforge.explorer.caldera.xyz/address/0xB715bc47A5a2Ab31f3F6a09211E53c8eb9CCDe76" target="_blank" rel="noopener">Saga</a>
-    </div>
-    <div class="fc-burn">
-      Every offering is sent to
-      <a href="https://liteforge.explorer.caldera.xyz/address/0x000000000000000000000000000000000000dEaD" target="_blank" rel="noopener">0x…dEaD</a>
-      — irrecoverable by anyone, including us.
-    </div>
-  </div>
-</footer>
+<!-- Le pied de page a ete deplace tout en bas du document. Il se trouvait
+     AVANT la section du Codex : sous cet onglet, il s'affichait donc au-dessus
+     du contenu au lieu d'en dessous. Un pied de page doit etre le dernier
+     element du flux, apres toutes les sections. -->
 
 
 <!-- RANK UP OVERLAY -->
@@ -6292,12 +6260,34 @@ async function loadUserData(){
     const rankFloors=[0.5,5,20,100,Infinity];
     const currT = rankIdx>=0 ? rankFloors[rankIdx] : 0;
     const nextT = rankIdx>=0 ? (rankFloors[rankIdx+1]||Infinity) : 0.5;
-    // Silver Maximalist (rank 4) = max rank, barre à 100%
-    // Unranked = barre à 0%
+    // La barre porte QUATRE paliers sur toute sa largeur (Initiate, Apprent.,
+    // Devoted, Silver M.), mais son remplissage ne mesurait que la progression
+    // A L'INTERIEUR du palier courant. Un joueur a 27.965 zkLTC — rang 3 sur 4
+    // — obtenait (27.965-20)/(100-20) = 10%, un curseur qui le plaçait
+    // visuellement avant Apprentice. L'echelle et le remplissage racontaient
+    // deux choses differentes.
+    //
+    // On raisonne desormais en SEGMENTS : chaque palier occupe un quart de la
+    // barre, on remplit les paliers atteints puis la fraction parcourue dans
+    // le palier courant. Le curseur tombe alors sous le bon libelle.
+    // .xp-labels est en `justify-content:space-between` : les quatre libelles
+    // se posent donc a 0%, 33%, 66% et 100% — TROIS intervalles, pas quatre.
+    // Chaque palier atteint vaut un tiers de barre, et l'on ajoute la
+    // fraction parcourue vers le suivant. Un joueur a 20 zkLTC tombe pile
+    // sous "Devoted", a 100 sous "Silver M.".
+    const SEG = 100 / 3;
     let pct;
-    if(rankIdx<0) pct=0;
-    else if(nextT===Infinity) pct=100;
-    else { const range=nextT-currT; pct=range>0?Math.min(((burnedEth-currT)/range)*100,100):100; }
+    if (rankIdx < 0) {
+      // Sous le premier seuil : on n'a pas encore atteint le repere
+      // "Initiate", qui est a 0%. La barre reste vide.
+      pct = 0;
+    } else if (nextT === Infinity) {
+      pct = 100;                           // Silver Maximalist : barre pleine
+    } else {
+      const range = nextT - currT;
+      const within = range > 0 ? Math.min((burnedEth - currT) / range, 1) : 1;
+      pct = rankIdx * SEG + within * SEG;
+    }
     document.getElementById('xpf-profile').style.width=Math.max(pct,rankIdx<0?0:1)+'%';
     const rankNum=rankIdx; window._currentRankIdx=rankIdx;
     // Update the nav rank-ring: unranked wallets see a teal ring filling
@@ -16394,6 +16384,43 @@ body.sv-rail-on section#chronicles-page > div[aria-hidden]{ display:none !import
   }
 })();
 </script>
+
+<footer>
+  <!-- Bandeau en deux temps : identite et liens en haut, contrats en bas.
+       Les adresses ne sont pas une mention legale a reléguer — c'est la
+       preuve que le site n'invente rien. -->
+  <div class="ft-top">
+    <div class="footer-brand">The Si<span class="ltc-letter footer-ltc">Ł</span>ver Void</div>
+    <ul class="footer-links">
+      <li><a href="https://x.com/The_SilverVoid" target="_blank" rel="noopener">X</a></li>
+      <li><a href="https://testnet.litvm.com" target="_blank" rel="noopener">LiteForge</a></li>
+      <li><a href="#" onclick="openTermsReader();return false;">Terms of Use</a></li>
+      <li><a href="#" onclick="faqOpen();return false;">How it works</a></li>
+    </ul>
+  </div>
+  <div class="footer-chain">LiteForge Testnet · Chain ID 4441</div>
+
+  <!-- Adresses des contrats. Le projet promet "permanently, and provably" :
+       sans un lien cliquable vers la chaine, c'est de la prose. Chaque
+       adresse ouvre l'explorateur, ou l'on voit les transactions et le total
+       reellement detruit, que le contrat soit verifie ou non. -->
+  <div class="footer-contracts">
+    <div class="fc-lab">Verify on-chain</div>
+    <div class="fc-list">
+      <a href="https://liteforge.explorer.caldera.xyz/address/0x0AD3f776C45FF457d2d8e211A3174A4Db201b656" target="_blank" rel="noopener">Ritual</a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0xEA3ac301Fef474c8799924EC58c48f2c4114684B" target="_blank" rel="noopener">Arena</a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0xD21daA1a264eb9770ECA992e9414Fac5058AfB12" target="_blank" rel="noopener">Order</a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0x8FF2fbfE17Af4746DB4b3d500D34AebB3bF1Fcd8" target="_blank" rel="noopener">Relics</a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0x50FbF3fe230c67913e4a8dB9230D538ADAA08Ef7" target="_blank" rel="noopener">Store</a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0xB715bc47A5a2Ab31f3F6a09211E53c8eb9CCDe76" target="_blank" rel="noopener">Saga</a>
+    </div>
+    <div class="fc-burn">
+      Every offering is sent to
+      <a href="https://liteforge.explorer.caldera.xyz/address/0x000000000000000000000000000000000000dEaD" target="_blank" rel="noopener">0x…dEaD</a>
+      — irrecoverable by anyone, including us.
+    </div>
+  </div>
+</footer>
 
 </body>
 </html>
