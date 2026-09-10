@@ -9203,7 +9203,17 @@ async function duelCreate() {
 
   try {
     duelMySecret = duelMakeSecret();
-    const commit = duelMakeCommit(duelChoice, duelMySecret);
+    // ⚠ On FIGE le choix ici.
+    //
+    // `duelChoice` est une globale que les boutons d'arme reecrivent a chaque
+    // clic. Le commit est calcule maintenant, mais l'enregistrement du secret
+    // n'a lieu qu'apres `await tx.wait()` — plusieurs secondes plus tard, et
+    // l'interface laisse toujours changer d'arme pendant ce temps. Un joueur
+    // qui se ravise se retrouvait avec un commit calcule sur Pierre et un
+    // choix stocke sur Papier : le contrat rejetait ensuite la revelation
+    // avec "commit mismatch", et le duel devenait irrevelable.
+    const _choice = duelChoice;
+    const commit = duelMakeCommit(_choice, duelMySecret);
     showToast('Confirm in MetaMask...');
     const tx = await duelContract.createDuel(commit, await svGasOverrides({ value: ethers.parseEther(duelSelectedStake) }));
     const receipt = await tx.wait();
@@ -9232,24 +9242,24 @@ async function duelCreate() {
 
     duelMyId = duelId;
     duelMyStatus = 'open';
-    duelMyChoiceNum = duelChoice;
+    duelMyChoiceNum = _choice;
 
     // Persist state so it survives page reload
     localStorage.setItem(_duelKey('duelId'), duelId.toString());
     localStorage.setItem(_duelKey('secret'), duelMySecret);
-    localStorage.setItem(_duelKey('choice'), duelChoice.toString());
+    localStorage.setItem(_duelKey('choice'), _choice.toString());
     localStorage.setItem(_duelKey('status'), 'open');
-    duelSecretStore(duelId, duelMySecret, duelChoice); // per-duel entry — the authoritative local copy
+    duelSecretStore(duelId, duelMySecret, _choice); // per-duel entry — the authoritative local copy
 
     // Silent server-side encrypted backup — safety net if this device's
     // localStorage is later lost (cache cleared, different browser/device).
-    backupSecretToServer(duelId, duelMySecret, duelChoice);
+    backupSecretToServer(duelId, duelMySecret, _choice);
 
     document.getElementById('duel-my-none').style.display    = 'none';
     document.getElementById('duel-my-open').style.display    = 'block';
     document.getElementById('duel-my-reveal').style.display  = 'none';
     document.getElementById('duel-my-id-open').textContent   = '#'+duelId;
-    document.getElementById('duel-my-choice-open').innerHTML = duelSVG(duelChoice,28)+' <span style="vertical-align:middle;">'+DUEL_NAMES[duelChoice]+'</span>';
+    document.getElementById('duel-my-choice-open').innerHTML = duelSVG(_choice,28)+' <span style="vertical-align:middle;">'+DUEL_NAMES[_choice]+'</span>';
     // Ensure creator sees the cancel button and the default waiting label
     const _cb = document.getElementById('duel-cancel-btn');
     if (_cb) _cb.style.display = '';
@@ -9445,6 +9455,36 @@ async function duelReveal() {
   if (!duelContract || !duelMyId || !_restoredSecret) { showToast('No active duel'); return; }
   duelMySecret = _restoredSecret;
   try {
+    // ── Rattrapage : choix memorise incoherent avec le commit ──────────
+    //
+    // Le contrat verifie keccak256(choix, secret) contre commitA. Si le
+    // choix stocke ne correspond pas, la revelation echoue avec
+    // "commit mismatch" et le duel devient irrecuperable — l'adversaire
+    // encaisse par timeout au bout de 24h.
+    //
+    // Le secret, lui, est le bon : seul le choix avait ete ecrase (bug
+    // corrige dans duelCreate, mais les duels deja ouverts en heritent).
+    // Il n'y a que trois valeurs possibles : on retrouve la bonne en
+    // comparant localement, sans aucune transaction.
+    try {
+      const _onchain = await duelReadContract.getDuel(duelMyId);
+      if (_onchain && _onchain.commitA &&
+          duelMakeCommit(duelMyChoiceNum, duelMySecret) !== _onchain.commitA) {
+        let _fixed = null;
+        for (const c of [1, 2, 3]) {
+          if (duelMakeCommit(c, duelMySecret) === _onchain.commitA) { _fixed = c; break; }
+        }
+        if (_fixed) {
+          console.warn('duelReveal: choix corrige', duelMyChoiceNum, '->', _fixed);
+          duelMyChoiceNum = _fixed;
+          duelSecretStore(duelMyId, duelMySecret, _fixed);   // pour les prochaines fois
+        } else {
+          showToast('This duel cannot be revealed — the secret does not match.', true);
+          return;
+        }
+      }
+    } catch (e) { console.warn('verification du commit impossible:', e.message); }
+
     const secretBytes = duelSecretToBytes32(duelMySecret);
     showToast('Confirm in MetaMask...');
     const tx = await duelContract.reveal(duelMyId, duelMyChoiceNum, secretBytes, await svGasOverrides());
