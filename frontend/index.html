@@ -722,6 +722,17 @@ footer {
 #store-sort option{ background:#0b1026; color:#fff; }
 #store-sort{ color-scheme:dark; }
 
+.ct-list{ display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:0.55rem; }
+.ct-list a{
+  display:flex; flex-direction:column; gap:0.15rem; text-decoration:none;
+  padding:0.7rem 0.85rem; border-radius:8px;
+  border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02);
+  transition:all 0.18s;
+}
+.ct-list a:hover{ border-color:rgba(0,229,204,0.4); background:rgba(0,229,204,0.06) }
+.ct-list a b{ font-family:'Cinzel',serif; font-size:0.78rem; color:#fff; font-weight:400; letter-spacing:0.08em; }
+.ct-list a span{ font-family:monospace; font-size:0.64rem; color:rgba(255,255,255,0.35); }
+
 .faq-lead{
   font-family:'Cormorant Garamond',serif; font-size:1rem; font-style:italic;
   line-height:1.65; color:rgba(255,255,255,0.78); margin-bottom:1.6rem;
@@ -5715,6 +5726,46 @@ function chroniclesRouteFromHash() {
       raises a rank.
     </div>
     <div id="faq-list"></div>
+  </div>
+</div>
+
+<!-- Adresses des contrats. Le projet promet "permanently, and provably" :
+     sans lien cliquable vers la chaine, c'est de la prose. -->
+<div id="contracts-modal" style="display:none;position:fixed;inset:0;z-index:9600;
+     background:rgba(2,4,14,0.92);backdrop-filter:blur(14px);
+     align-items:flex-start;justify-content:center;overflow-y:auto;padding:3rem 1rem;"
+     onclick="if(event.target===this)svCloseContracts()">
+  <div style="width:100%;max-width:620px;background:rgba(255,255,255,0.02);
+              border:1px solid rgba(255,255,255,0.09);border-radius:12px;padding:2rem 1.8rem;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1.4rem;">
+      <div>
+        <div class="eyebrow">Verify on-chain</div>
+        <div style="font-family:'Cinzel',serif;font-size:1.4rem;color:#fff;margin-top:0.3rem;">The contracts</div>
+      </div>
+      <button onclick="svCloseContracts()" aria-label="Close" style="background:transparent;
+              border:1px solid rgba(255,255,255,0.18);color:#fff;width:34px;height:34px;
+              border-radius:8px;cursor:pointer;font-size:1.1rem;flex-shrink:0;">&times;</button>
+    </div>
+    <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:0.95rem;
+                line-height:1.6;color:rgba(255,255,255,0.7);margin-bottom:1.4rem;">
+      Nothing here is taken on trust. Every ritual, duel and sale is settled by these
+      contracts, and every one of them is open to read.
+    </div>
+    <div class="ct-list">
+      <a href="https://liteforge.explorer.caldera.xyz/address/0x0AD3f776C45FF457d2d8e211A3174A4Db201b656" target="_blank" rel="noopener"><b>Ritual</b><span>0x0AD3…b656</span></a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0xEA3ac301Fef474c8799924EC58c48f2c4114684B" target="_blank" rel="noopener"><b>Arena</b><span>0xEA3a…684B</span></a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0xD21daA1a264eb9770ECA992e9414Fac5058AfB12" target="_blank" rel="noopener"><b>Order</b><span>0xD21d…fB12</span></a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0x8FF2fbfE17Af4746DB4b3d500D34AebB3bF1Fcd8" target="_blank" rel="noopener"><b>Relics</b><span>0x8FF2…Fcd8</span></a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0x50FbF3fe230c67913e4a8dB9230D538ADAA08Ef7" target="_blank" rel="noopener"><b>Store</b><span>0x50Fb…8Ef7</span></a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0xB715bc47A5a2Ab31f3F6a09211E53c8eb9CCDe76" target="_blank" rel="noopener"><b>Saga</b><span>0xB715…De76</span></a>
+    </div>
+    <div style="margin-top:1.2rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.07);
+                font-family:'Cormorant Garamond',serif;font-style:italic;font-size:0.86rem;
+                color:rgba(255,255,255,0.5);">
+      Every offering is sent to
+      <a href="https://liteforge.explorer.caldera.xyz/address/0x000000000000000000000000000000000000dEaD" target="_blank" rel="noopener" style="color:rgba(255,106,61,0.8);text-decoration:none;">0x…dEaD</a>
+      — irrecoverable by anyone, including us.
+    </div>
   </div>
 </div>
 
@@ -11509,6 +11560,17 @@ const FAQ_ITEMS = [
     a: 'The board is read from the chain and refreshes about every minute, so a fresh burn can take a moment to appear. Your own total in the Codex is read straight from the contract and is always exact \u2014 if the two disagree, the Codex is right and the board is simply behind.' },
 ];
 
+function svOpenContracts(){
+  const m = document.getElementById('contracts-modal');
+  if (m) { m.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+}
+function svCloseContracts(){
+  const m = document.getElementById('contracts-modal');
+  if (m) m.style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') svCloseContracts(); });
+
 function faqOpen(){
   const m = document.getElementById('faq-modal');
   if (!m) return;
@@ -11797,6 +11859,9 @@ async function codexOpen(addr){
     try {
       cxDisplayName = typeof usernameFetch === 'function' ? await usernameFetch(target) : null;
     } catch (e) {}
+    // Le crayon n'apparait que sur SON propre Codex : on ne renomme pas
+    // quelqu'un d'autre.
+    const cxIsSelf = target === (connectedAddress || '').toLowerCase();
 
     // The header is written to its own persistent container so it survives
     // tab switches; only the relic grid goes into #codex-body.
@@ -11807,10 +11872,25 @@ async function codexOpen(addr){
           <span style="font-size:1.15rem;letter-spacing:0.18em;color:${rankColor};text-shadow:0 0 10px ${rankColor}66;">${'\u2605'.repeat(Math.max(0, Math.min(4, rankIdx)))}</span>
           <span style="font-family:'Cinzel',serif;font-size:1.5rem;color:${rankColor};">${rankName}</span>
         </div>
+        <!-- Le pseudo est l'identite du joueur : il merite la taille d'un nom,
+             pas celle d'une legende. Et le crayon d'edition vit ici plutot que
+             dans le panneau de profil, ou personne n'allait le chercher. -->
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;flex-wrap:wrap;">
+          <span style="font-family:'Cinzel',serif;font-size:1.35rem;letter-spacing:0.06em;color:#fff;line-height:1.2;">
+            ${cxDisplayName || cxShort(target)}
+          </span>
+          ${cxIsSelf ? `<svg onclick="if(typeof usernameOpen==='function')usernameOpen()"
+             title="${cxDisplayName ? 'Change your name' : 'Choose a name'}"
+             style="width:17px;height:17px;flex-shrink:0;cursor:pointer;opacity:0.45;transition:opacity 0.2s;"
+             onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.45'"
+             viewBox="0 0 24 24" fill="none" stroke="#00e5cc" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+             <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+           </svg>` : ''}
+        </div>
         ${cxDisplayName
-          ? `<div style="font-family:'Cinzel',serif;font-size:0.92rem;letter-spacing:0.08em;color:#fff;margin-top:0.35rem;">${cxDisplayName}</div>
-             <div style="font-size:0.58rem;color:rgba(255,255,255,0.22);font-family:monospace;margin-top:0.1rem;">${cxShort(target)}</div>`
-          : `<div style="font-size:0.62rem;color:rgba(255,255,255,0.3);font-family:monospace;margin-top:0.15rem;">${cxShort(target)}</div>`}
+          ? `<div style="font-size:0.6rem;color:rgba(255,255,255,0.25);font-family:monospace;margin-top:0.2rem;">${cxShort(target)}</div>`
+          : ''}
         ${arenaRank >= 1 && typeof svRankBadge === 'function'
           ? `<div style="margin-top:0.55rem;display:flex;align-items:center;justify-content:center;gap:0.45rem;">
                ${svRankBadge(arenaRank, 'sm', DUELIST_TIERS[arenaRank-1].name)}
@@ -14863,6 +14943,12 @@ window.addEventListener('load', function () {
       onmouseout="this.style.color='rgba(255,255,255,0.4)';this.style.borderColor='rgba(255,255,255,0.12)'">Disconnect</button>
 
     <!-- Terms + socials, lost with the old top nav and its footer. -->
+    <!-- Les adresses de contrat vivaient dans le <footer>, que le rail masque
+         entierement (body.sv-rail-on footer{display:none}) : personne ne les
+         voyait. Elles remontent ici, dans le seul pied de page visible. -->
+    <div class="sv-legal">
+      <a href="#" onclick="svOpenContracts();return false;" title="Contract addresses">Verify on-chain</a>
+    </div>
     <div class="sv-legal">
       <!-- Le lien appelait openTerms(), qui n'existe pas : la fonction reelle
            s'appelle openTermsReader(). Le garde `typeof === 'function'` avalait
