@@ -744,6 +744,18 @@ footer {
 .ct-list a b{ font-family:'Cinzel',serif; font-size:0.78rem; color:#fff; font-weight:400; letter-spacing:0.08em; }
 .ct-list a span{ font-family:monospace; font-size:0.64rem; color:rgba(255,255,255,0.35); }
 
+/* Portrait dans l'en-tete du Codex. Sur son propre Codex il est cliquable :
+   l'anneau qui s'allume au survol est le seul indice necessaire. */
+.cx-av-wrap{
+  display:inline-flex; position:relative; border-radius:50%;
+  border:1px solid rgba(255,255,255,0.12); padding:2px;
+  transition:border-color 0.2s, box-shadow 0.2s;
+}
+.cx-av-wrap[onclick]:hover{
+  border-color:rgba(0,229,204,0.6);
+  box-shadow:0 0 14px rgba(0,229,204,0.25);
+}
+
 .faq-lead{
   font-family:'Cormorant Garamond',serif; font-size:1rem; font-style:italic;
   line-height:1.65; color:rgba(255,255,255,0.78); margin-bottom:1.6rem;
@@ -11970,6 +11982,28 @@ async function codexOpen(addr){
     // quelqu'un d'autre.
     const cxIsSelf = target === (connectedAddress || '').toLowerCase();
 
+    // Portrait du joueur. Pour SOI, on prend _myAvatarId : le cache de
+    // profils peut etre perime et afficherait l'ancien portrait juste apres
+    // un changement.
+    let cxAvatar = '';
+    try {
+      const avId = cxIsSelf
+        ? (typeof _myAvatarId !== 'undefined' && _myAvatarId && _myAvatarId !== 'default' ? _myAvatarId : null)
+        : (typeof avatarFetch === 'function' ? await avatarFetch(target) : null);
+      if (avId && typeof avatarHTMLFor === 'function') cxAvatar = avatarHTMLFor(avId, 46);
+    } catch (e) {}
+
+    // Un joueur reste sur 'default' tant qu'il n'a rien choisi — et c'est
+    // precisement celui qui a besoin du bouton. N'afficher le portrait que
+    // s'il en avait deja un supprimait le seul point d'entree vers le
+    // sélecteur : le probleme qu'on voulait corriger.
+    if (!cxAvatar && cxIsSelf) {
+      cxAvatar = `<span style="width:46px;height:46px;border-radius:50%;display:flex;
+                   align-items:center;justify-content:center;
+                   background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.35);
+                   font-size:1.25rem;">+</span>`;
+    }
+
     // The header is written to its own persistent container so it survives
     // tab switches; only the relic grid goes into #codex-body.
     const headerHTML = `
@@ -11982,7 +12016,12 @@ async function codexOpen(addr){
         <!-- Le pseudo est l'identite du joueur : il merite la taille d'un nom,
              pas celle d'une legende. Et le crayon d'edition vit ici plutot que
              dans le panneau de profil, ou personne n'allait le chercher. -->
-        <div style="display:flex;align-items:center;justify-content:center;gap:0.5rem;margin-top:0.4rem;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;justify-content:center;gap:0.7rem;margin-top:0.6rem;flex-wrap:wrap;">
+          <!-- Le portrait vit ici, a cote du nom : c'est la meme identite, et
+               le sélecteur d'avatar n'etait atteignable que par le panneau de
+               profil, aussi introuvable que l'edition du pseudo l'etait. -->
+          ${cxAvatar ? `<span ${cxIsSelf ? `onclick="if(typeof avatarOpen==='function')avatarOpen()" title="${(typeof _myAvatarId !== 'undefined' && _myAvatarId && _myAvatarId !== 'default') ? 'Change your portrait' : 'Choose a portrait'}" style="cursor:pointer;"` : 'style=""'}
+             class="cx-av-wrap">${cxAvatar}</span>` : ''}
           <span style="font-family:'Cinzel',serif;font-size:1.35rem;letter-spacing:0.06em;color:#fff;line-height:1.2;">
             ${cxDisplayName || cxShort(target)}
           </span>
