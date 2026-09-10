@@ -3138,8 +3138,13 @@ function svIntroParticles() {
           <div class="track"><div class="fill f-arena" id="vh-bar-duel"></div></div>
           <b id="vh-b-duel">—</b>
         </div>
+        <!-- Libelle corrige : cette barre affiche _storeStats._totalBurned,
+             ce que le contrat STORE a brule (17% de chaque vente + une part
+             des frais de mise en vente). L'appeler "Forge" laissait croire a
+             une incoherence avec le volume du Store — 13.700 de volume
+             donnent bien ~2.40 brules. -->
         <div class="vh-bar">
-          <span>Forge</span>
+          <span>Store</span>
           <div class="track"><div class="fill f-store" id="vh-bar-store"></div></div>
           <b id="vh-b-store">—</b>
         </div>
@@ -10107,6 +10112,11 @@ async function duelLoadStats() {
     // separately — "Duels Played: 0" right after playing a tie confused
     // testers, so the display shows their sum as the played count.
     s('duel-stat-duels',  (td + tt).toString());
+    // Le Ledger n'obtenait "Played" que du scan complet du classement
+    // duelliste — lourd (pseudo, avatar et skin lus par duelliste) et coupe
+    // a 25s. Des qu'il expirait, la case restait a "—". Ces totaux viennent
+    // des compteurs du contrat, en 3 appels : autant les ecrire ici.
+    s('vh-duels', (td + tt).toLocaleString('en-US'));
     s('duel-stat-ties',   tt.toString());
     s('duel-stat-burned', parseFloat(ethers.formatEther(tb)).toFixed(3));
     s('duel-stat-open',   oc.toString());
@@ -13594,7 +13604,16 @@ document.addEventListener('click', (e) => {
   const btn = document.getElementById('profile-btn');
   if (!panel || panel.style.display !== 'block') return;
   const clickedInsidePanel = panel.contains(e.target);
-  const clickedTheButton = btn && (e.target === btn || btn.contains(e.target));
+  // Le garde ne connaissait QUE #profile-btn, le bouton de l'ancienne barre
+  // du haut. Depuis le passage au rail, c'est #sv-wallet-btn qui ouvre le
+  // panneau : le meme clic remontait jusqu'ici, ne reconnaissait pas le
+  // bouton, et refermait le panneau dans la foulee. Le profil s'ouvrait et
+  // se fermait dans le meme geste — d'ou l'impression que l'edition du nom
+  // avait disparu.
+  const btns = [btn,
+                document.getElementById('sv-wallet-btn'),
+                document.getElementById('sv-dr-wallet-btn')].filter(Boolean);
+  const clickedTheButton = btns.some(b => e.target === b || b.contains(e.target));
   if (!clickedInsidePanel && !clickedTheButton) {
     panel.style.display = 'none';
   }
@@ -14988,15 +15007,20 @@ function svRailSyncWallet() {
   // in the arena, so the wallet button doubles as a preview of your look.
   const skinId = (typeof _mySkin !== 'undefined' && _mySkin) ? _mySkin : 'ring_default';
   let inner = '';
+  // L'anneau a ete agrandi de 38 a 48px, mais ces tailles etaient restees
+  // calees sur l'ancienne valeur : le skin se dessinait a 38px dans un
+  // conteneur de 48, et le disque de fond #0c0824 laissait un large rond
+  // noir autour d'un avatar de 28px. Tout derive maintenant de RING_PX.
+  const RING_PX = 48;
   if (skinId !== 'ring_default' && typeof SKIN_FX === 'function') {
-    inner = SKIN_FX(skinId, 38, true);
+    inner = SKIN_FX(skinId, RING_PX, true);
   } else {
     const col = window._pbRingColor || 'rgba(0,229,204,0.6)';
     const pct = (window._pbRingPct != null) ? window._pbRingPct : 60;
     inner = '<span class="fgl" style="background:conic-gradient(' + col + ' 0 ' + pct + '%, rgba(255,255,255,0.09) ' + pct + '% 100%);"></span>';
   }
   const avatar = (typeof avatarHTMLFor === 'function' && typeof _myAvatarId !== 'undefined')
-    ? avatarHTMLFor(_myAvatarId, 28) : '';
+    ? avatarHTMLFor(_myAvatarId, RING_PX - 10) : '';
   ring.innerHTML = inner
     + '<span style="position:absolute;inset:5px;border-radius:50%;background:#0c0824;z-index:2;display:flex;align-items:center;justify-content:center;overflow:hidden;">'
     + avatar + '</span>';
