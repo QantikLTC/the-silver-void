@@ -66,13 +66,22 @@ const SEL_BURNER_INFO = '0x39b7a75b';   // keccak("getBurnerInfo(address)")[0:4]
 const SEL_BURNER_COUNT = '0xba8e15f1';  // keccak("getBurnerCount()")[0:4]
 
 const BATCH_SIZE = 40;          // un lot de 200 se faisait refuser en bloc
-const BATCH_PAUSE_MS = 120;     // respiration entre deux lots
+const BATCH_PAUSE_MS = 60;      // respiration entre deux vagues
 const MAX_RETRIES = 4;
 const RPC_TIMEOUT_MS = 15000;
 const LEADERBOARD_SIZE = 100;
 
+/// Lots lancés de front. Séquentiel, la lecture ne tenait plus : à 1845
+/// burners il faut 47 lots pour les adresses et 47 pour les montants, soit
+/// 94 allers-retours à la queue leu leu. Les seules pauses faisaient déjà
+/// 11 s, et le tout dépassait le budget — d'où un cache figé et `stale:true`
+/// servi en permanence. Trois de front divisent le temps de mur par trois
+/// sans réveiller le rate limit (la lecture directe en navigateur, qui le
+/// déclenchait, en lançait des centaines).
+const CONCURRENCY = 3;
+
 const FRESH_MS = 90000;         // au-delà, on relance une lecture
-const INVOCATION_BUDGET_MS = 45000;
+const INVOCATION_BUDGET_MS = 52000;   // maxDuration vaut 60 s
 
 const KEY_DATA = `leaderboard:${NETWORK_TAG}:data`;
 const KEY_LOCK = `leaderboard:${NETWORK_TAG}:lock`;
@@ -265,37 +274,56 @@ async function readLeaderboard(deadline) {
   const base = arrayBase(BURNERS_ARRAY_SLOT);
 
   // 2. Les adresses, depuis le storage.
-  const addrs = [];
-  for (let i = 0; i < count; i += BATCH_SIZE) {
+  //
+  // Les lots partent par vagues de CONCURRENCY. Chaque lot garde son index
+  // de départ pour que les adresses reviennent DANS L'ORDRE quel que soit
+  // l'ordre d'arrivée des réponses — l'ordre du tableau n'a pas d'incidence
+  // sur le classement final, mais un ordre stable rend les diagnostics
+  // reproductibles d'une lecture à l'autre.
+  const addrSlots = new Array(count).fill(null);
+  const addrStarts = [];
+  for (let i = 0; i < count; i += BATCH_SIZE) addrStarts.push(i);
+
+  for (let w = 0; w < addrStarts.length; w += CONCURRENCY) {
     if (Date.now() > deadline) throw new Error('BUDGET_EPUISE');
-    const reqs = [];
-    for (let k = i; k < Math.min(i + BATCH_SIZE, count); k++) {
-      reqs.push({ jsonrpc: '2.0', id: k, method: 'eth_getStorageAt',
-        params: [CONTRACT_ADDRESS, '0x' + (base + BigInt(k)).toString(16), 'latest'] });
-    }
-    const res = await rpcBatch(reqs);
-    for (const x of res) {
-      if (x.error || !x.result || x.result.length !== 66) continue;
-      const a = '0x' + x.result.slice(-40);
-      if (a !== '0x' + '0'.repeat(40)) addrs.push(a.toLowerCase());
-    }
+    const wave = addrStarts.slice(w, w + CONCURRENCY);
+    await Promise.all(wave.map(async (start) => {
+      const reqs = [];
+      for (let k = start; k < Math.min(start + BATCH_SIZE, count); k++) {
+        reqs.push({ jsonrpc: '2.0', id: k, method: 'eth_getStorageAt',
+          params: [CONTRACT_ADDRESS, '0x' + (base + BigInt(k)).toString(16), 'latest'] });
+      }
+      const res = await rpcBatch(reqs);
+      for (const x of res) {
+        if (x.error || !x.result || x.result.length !== 66) continue;
+        const a = '0x' + x.result.slice(-40);
+        if (a !== '0x' + '0'.repeat(40)) addrSlots[x.id] = a.toLowerCase();
+      }
+    }));
     await sleep(BATCH_PAUSE_MS);
   }
+  const addrs = addrSlots.filter(Boolean);
 
   // 3. Les montants, depuis le compteur interne du contrat.
   const list = [];
-  for (let i = 0; i < addrs.length; i += BATCH_SIZE) {
+  const amtStarts = [];
+  for (let i = 0; i < addrs.length; i += BATCH_SIZE) amtStarts.push(i);
+
+  for (let w = 0; w < amtStarts.length; w += CONCURRENCY) {
     if (Date.now() > deadline) throw new Error('BUDGET_EPUISE');
-    const slice = addrs.slice(i, i + BATCH_SIZE);
-    const reqs = slice.map((a, k) => ({ jsonrpc: '2.0', id: k, method: 'eth_call',
-      params: [{ to: CONTRACT_ADDRESS,
-                 data: SEL_BURNER_INFO + a.slice(2).padStart(64, '0') }, 'latest'] }));
-    const res = await rpcBatch(reqs);
-    for (const x of res) {
-      if (x.error || !x.result || x.result.length < 66) continue;
-      const v = BigInt('0x' + x.result.slice(2, 66));
-      if (v > 0n) list.push({ address: slice[x.id], amount: v.toString() });
-    }
+    const wave = amtStarts.slice(w, w + CONCURRENCY);
+    await Promise.all(wave.map(async (start) => {
+      const slice = addrs.slice(start, start + BATCH_SIZE);
+      const reqs = slice.map((a, k) => ({ jsonrpc: '2.0', id: k, method: 'eth_call',
+        params: [{ to: CONTRACT_ADDRESS,
+                   data: SEL_BURNER_INFO + a.slice(2).padStart(64, '0') }, 'latest'] }));
+      const res = await rpcBatch(reqs);
+      for (const x of res) {
+        if (x.error || !x.result || x.result.length < 66) continue;
+        const v = BigInt('0x' + x.result.slice(2, 66));
+        if (v > 0n) list.push({ address: slice[x.id], amount: v.toString() });
+      }
+    }));
     await sleep(BATCH_PAUSE_MS);
   }
 
@@ -347,6 +375,8 @@ export default async function handler(req, res) {
         cacheAgeSec: cached ? Math.round(age / 1000) : null,
         cacheEntries: cached ? cached.leaderboard.length : 0,
         cacheStale: cached ? age >= FRESH_MS : null,
+        burnersInCache: cached ? cached.totalBurners : null,
+        estimatedBatches: cached ? Math.ceil(cached.totalBurners / BATCH_SIZE) * 2 : null,
         slotBase: '0x' + arrayBase(BURNERS_ARRAY_SLOT).toString(16),
         top3: cached ? cached.leaderboard.slice(0, 3).map(e => e.address + ' = ' + e.amount) : [],
       };
@@ -385,7 +415,11 @@ export default async function handler(req, res) {
         // On NE jette PAS le cache existant : un classement daté vaut
         // infiniment mieux qu'un tableau vide, et c'était le défaut majeur
         // de toutes les versions précédentes.
-        console.error('lecture échouée, on garde le cache:', e.message);
+        //
+        // Ce log est le seul moyen de distinguer BUDGET_EPUISE (lecture trop
+        // lente pour le nombre de burners) de RATE_LIMITED (RPC qui refuse) :
+        // sans lui, un `stale:true` permanent reste inexplicable.
+        console.error(`lecture échouée après ${Date.now()-started}ms, cache conservé:`, e.message);
       } finally {
         await unlock();
       }
