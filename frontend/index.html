@@ -7648,16 +7648,39 @@ async function duelistLeaderboardScan() {
 
   const CONCURRENCY = 4;
   let bCursor = 0;
+  // Un lot qui echoue etait simplement IGNORE : ses duels n'etaient jamais
+  // comptes, et le scan renvoyait un total partiel comme s'il etait complet.
+  // D'ou un nombre de duellistes qui sautait de 180 a 210 d'une actualisation
+  // a l'autre, selon les lots qui passaient. On les reessaie, et on retient
+  // ceux qui echouent malgre tout pour ne pas publier un chiffre faux.
+  const failed = [];
+  async function fetchBatch(srcContract, from, attempt = 0) {
+    try {
+      const batch = await srcContract.getDuelsBatch(from, BATCH);
+      batch.forEach(tally);
+      return true;
+    } catch (e) {
+      if (attempt < 2) {
+        // Attente croissante : le RPC refuse surtout quand on le presse.
+        await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
+        return fetchBatch(srcContract, from, attempt + 1);
+      }
+      console.warn('leaderboard batch', from, 'abandonne apres 3 essais:', e.message);
+      failed.push(from);
+      return false;
+    }
+  }
   async function worker() {
     while (bCursor < batchStarts.length) {
       const [srcContract, from] = batchStarts[bCursor++];
-      try {
-        const batch = await srcContract.getDuelsBatch(from, BATCH);
-        batch.forEach(tally);
-      } catch (e) { console.warn('leaderboard batch', from, 'failed:', e.message); }
+      await fetchBatch(srcContract, from);
     }
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, Math.max(batchStarts.length, 1)) }, worker));
+  const complete = failed.length === 0;
+  if (!complete) {
+    console.warn(`leaderboard: ${failed.length}/${batchStarts.length} lots manquants — resultat partiel`);
+  }
 
   // Build sorted rows with display names
   const wallets = Object.keys(scores);
@@ -7705,7 +7728,9 @@ async function duelistLeaderboardScan() {
     totalBurnedZkltc = parseFloat(ethers.formatEther(_burnWei));
   }
 
-  return { rows, totalPlayed, totalBurnedZkltc, totalPlayers: wallets.length };
+  // `complete` dit si TOUS les lots ont ete lus. Sans ce drapeau, un scan
+  // partiel ecrasait un total correct par un total plus bas.
+  return { rows, totalPlayed, totalBurnedZkltc, totalPlayers: wallets.length, complete };
 }
 
 async function duelistLeaderboardRefresh(force) {
@@ -7811,7 +7836,21 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
     // had painted, leaving a stale — or simply lower — figure on the dashboard.
     const vh = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
     vh('vh-duels',    (stats.totalPlayed  ?? 0).toLocaleString('en-US'));
-    vh('vh-duelists', (stats.totalPlayers ?? 0).toLocaleString('en-US'));
+
+    // Le nombre de duellistes uniques ne peut que MONTER : personne ne quitte
+    // l'arene. Un scan incomplet qui renvoie moins que le dernier total connu
+    // est donc forcement faux — on garde alors le precedent plutot que
+    // d'afficher un chiffre qu'on sait errone.
+    const _players = stats.totalPlayers ?? 0;
+    const _best = Number(localStorage.getItem('sv_duelists_best') || 0);
+    if (stats.complete !== false && _players >= _best) {
+      try { localStorage.setItem('sv_duelists_best', String(_players)); } catch(e) {}
+      vh('vh-duelists', _players.toLocaleString('en-US'));
+    } else if (_best > 0) {
+      vh('vh-duelists', _best.toLocaleString('en-US'));
+    } else {
+      vh('vh-duelists', _players.toLocaleString('en-US'));
+    }
     vh('vh-row-duelists', (stats.totalPlayers ?? 0).toLocaleString('en-US'));
   }
 
@@ -13112,9 +13151,16 @@ async function storeScanMyNFTs() {
   window._myRelicNames = owned.map(n => n.name);
   storeRenderMyNFTs();
 
-  // ── ANCIENS NFT (rangs + saga) — en arriere-plan ──────────────────
-  // Ils ne bloquent plus l'affichage : les reliques sont deja a l'ecran.
-  storeScanLegacyNFTs().catch(e => console.warn('legacy scan:', e.message));
+  // Les anciens NFT de saga N'APPARAISSENT PLUS dans la galerie de vente.
+  //
+  // Ils venaient d'un contrat retire, avec des noms qui doublonnent ceux des
+  // reliques actuelles ("Guardian Ascended" figurait deux fois, une fois en
+  // Rare et une fois en Legendary) et des raretes qui ne correspondent plus
+  // au systeme en vigueur. Un vendeur ne pouvait pas savoir lequel des deux
+  // il mettait en vente.
+  //
+  // storeScanLegacyNFTs() est conservee juste en dessous : si tu veux un jour
+  // rouvrir la vente de ces jetons, il suffira de rappeler cette ligne.
 }
 
 /// Anciens NFT de rang et de saga. Lecture groupee : l'ancienne boucle
@@ -16744,7 +16790,6 @@ body.sv-rail-on section#chronicles-page > div[aria-hidden]{ display:none !import
       <a href="https://liteforge.explorer.caldera.xyz/address/0xD21daA1a264eb9770ECA992e9414Fac5058AfB12" target="_blank" rel="noopener">Order</a>
       <a href="https://liteforge.explorer.caldera.xyz/address/0x8FF2fbfE17Af4746DB4b3d500D34AebB3bF1Fcd8" target="_blank" rel="noopener">Relics</a>
       <a href="https://liteforge.explorer.caldera.xyz/address/0x50FbF3fe230c67913e4a8dB9230D538ADAA08Ef7" target="_blank" rel="noopener">Store</a>
-      <a href="https://liteforge.explorer.caldera.xyz/address/0xB715bc47A5a2Ab31f3F6a09211E53c8eb9CCDe76" target="_blank" rel="noopener">Saga</a>
     </div>
     <div class="fc-burn">
       Every offering is sent to
