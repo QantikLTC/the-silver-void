@@ -3472,6 +3472,12 @@ function svIntroParticles() {
           <div class="track"><div class="fill f-store" id="vh-bar-store"></div></div>
           <b id="vh-b-store">—</b>
         </div>
+        <!-- Les frais de forge, brulés en entier : personne ne les percoit. -->
+        <div class="vh-bar">
+          <span>Forge</span>
+          <div class="track"><div class="fill f-forge" id="vh-bar-forge"></div></div>
+          <b id="vh-b-forge">—</b>
+        </div>
       </div>
     </div>
 
@@ -3510,6 +3516,17 @@ function svIntroParticles() {
         <div><b id="vh-mod-sales">—</b><span>Sold</span></div>
         <div><b id="vh-mod-volume">—</b><span>Volume</span></div>
         <div><b id="vh-mod-skins">—</b><span>Skins</span></div>
+      </div>
+    </div>
+    <!-- La Forge est la seule mecanique qui RETIRE des reliques de la
+         circulation. Ce chiffre n'existe nulle part ailleurs, et il dit
+         quelque chose : les joueurs ne se contentent pas de collectionner. -->
+    <div class="vh-row r-forge" onclick="if(typeof svRailGo==='function')svRailGo('codex')">
+      <div class="gl">◈</div>
+      <div class="name"><h3>The Forge</h3><p>Duplicates turned into something better</p></div>
+      <div class="vals">
+        <div><b id="vh-mod-forged">—</b><span>Forged</span></div>
+        <div><b id="vh-mod-forgeburn">—</b><span>Burned</span></div>
       </div>
     </div>
     <div class="vh-row r-chron" onclick="if(typeof svRailGo==='function')svRailGo('story')">
@@ -9267,6 +9284,8 @@ const ASCENT_ABI = [
   'function FORGE_INPUT() external view returns (uint8)',
   'function FORGE_COST() external view returns (uint256)',
   'function burnedPerItem(uint8) external view returns (uint256)',
+  'function totalForged() external view returns (uint256)',
+  'function totalBurnedWei() external view returns (uint256)',
   'function circulatingOf(uint8 id) external view returns (uint256)',
   'event RelicsForged(address indexed player, uint8 fromRarity, uint8 toRarity, uint256[] burned, uint256 tokenId)',
   'function tokenItem(uint256 tokenId) external view returns (uint8)',
@@ -12839,6 +12858,18 @@ async function codexOpen(addr){
       }
     }));
 
+    // Exemplaires reellement en circulation, par objet. mintedPerItem seul
+    // cesse d'etre juste des que la forge consomme des doublons — et c'est
+    // precisement le chiffre que le Codex presente comme preuve de rarete.
+    const circ = new Array(12).fill(null);
+    try {
+      const ac = new ethers.Contract(ASCENT_CONTRACT_ADDRESS, ASCENT_ABI, window.svReadProvider);
+      const vals = await Promise.all(
+        Array.from({ length: 12 }, (_, k) => ac.circulatingOf(k + 1).then(Number).catch(() => null))
+      );
+      vals.forEach((v, k) => { circ[k] = v; });
+    } catch (e) { /* silencieux : la rarete est un bonus, pas un pre-requis */ }
+
     const rankChecks = [];
     POOL_DATA.forEach((pool, rIdx) => {
       pool.forEach((nft, nIdx) => {
@@ -13044,9 +13075,12 @@ async function codexOpen(addr){
         // grille ne lisait qu'un booleen.
         // L'id d'item du contrat (1..12) se deduit de la position : POOL_DATA
         // est range dans le meme ordre que itemRank()/itemRarity().
+        const _id = rIdx * 3 + nIdx + 1;
+        const _n = circ[_id - 1];
         html += cardHTML(nft, rec && rec.owned,
           reached ? '' : `Reach ${rd ? rd.name : 'this rank'} to unlock this pool`,
-          null, rec ? rec.copies : 0, rIdx * 3 + nIdx + 1);
+          (_n != null && _n > 0) ? (_n + ' in existence') : null,
+          rec ? rec.copies : 0, _id);
       });
       html += '</div>';
     });
@@ -13666,6 +13700,33 @@ function storeZoomImage(url) {
 // banner had to scan the contract's entire event history to reconstruct
 // these numbers, which is why it was removed during the RPC-overload
 // cleanup; the new contract makes it essentially free.)
+/// Statistiques de la forge : reliques detruites et zkLTC brules.
+///
+/// Deux variables publiques du contrat, donc deux lectures et aucun calcul.
+/// Ces chiffres n'existent nulle part ailleurs : la forge est la seule
+/// mecanique qui RETIRE des reliques de la circulation.
+let _forgeStats = null;
+
+async function forgeLoadStats() {
+  try {
+    const c = await initAscentContract();
+    if (!c) return;
+    const [forged, burned] = await Promise.all([
+      c.totalForged().then(Number).catch(() => 0),
+      c.totalBurnedWei().then(v => v).catch(() => 0n),
+    ]);
+    _forgeStats = { forged, burnedWei: burned };
+
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    set('vh-mod-forged', forged.toLocaleString('en-US'));
+    const zk = parseFloat(ethers.formatEther(burned));
+    set('vh-mod-forgeburn', zk > 0 ? zk.toFixed(3) : '0');
+    set('vh-b-forge', zk > 0 ? zk.toFixed(3) : '0');
+  } catch (e) {
+    console.warn('forgeLoadStats:', e.message);
+  }
+}
+
 async function storeLoadStats() {
   try {
     // Sortait en silence si le contrat n'etait pas encore initialise. Or
@@ -15906,6 +15967,9 @@ function goStats(){
     if (typeof storeLoadStats === 'function') {
       try { storeLoadStats(); } catch(e) {}
     }
+    if (typeof forgeLoadStats === 'function') {
+      try { forgeLoadStats(); } catch(e) {}
+    }
 
     // ── Sections chargees UNIQUEMENT a la navigation ──────────────────
     // Sous la navigation par rail, les sections inactives sont en
@@ -16610,6 +16674,7 @@ body.sv-rail-on section#ritual > div[aria-hidden]{ display:none !important }
 .vh-bar .f-fire { background:linear-gradient(90deg,#ff6a3d,#ffb08d) }
 .vh-bar .f-arena{ background:linear-gradient(90deg,#00e5cc,#7ff2e4) }
 .vh-bar .f-store{ background:linear-gradient(90deg,#ffd27a,#fff0c4) }
+.vh-bar .f-forge{ background:linear-gradient(90deg,#ffc140,#ff9d6e) }
 .vh-bar b{ width:62px; text-align:right; font-family:'Cinzel',serif; color:#dfe6ff; flex-shrink:0 }
 
 .vh-mini{ display:grid; grid-template-rows:1fr 1fr; gap:1rem }
@@ -17054,6 +17119,8 @@ body.sv-rail-on #ritual .btn-transmute-main:hover{
 .vh-row.r-arena:hover{ border-color:rgba(0,229,204,0.3) }
 .vh-row.r-store .gl{ background:rgba(255,210,122,0.13); color:#ffd27a }
 .vh-row.r-store:hover{ border-color:rgba(255,210,122,0.3) }
+.vh-row.r-forge .gl{ background:rgba(255,193,64,0.13); color:#ffc140 }
+.vh-row.r-forge:hover{ border-color:rgba(255,193,64,0.3) }
 .vh-row.r-chron .gl{ background:rgba(176,117,255,0.14); color:#c9b3ff }
 .vh-row.r-chron:hover{ border-color:rgba(176,117,255,0.3) }
 @media (max-width:760px){
