@@ -80,7 +80,17 @@ const LEADERBOARD_SIZE = 100;
 /// déclenchait, en lançait des centaines).
 const CONCURRENCY = 3;
 
-const FRESH_MS = 90000;         // au-delà, on relance une lecture
+/// Fraîcheur du cache. Passé de 90 s à 5 min.
+///
+/// Chaque appel qui atteint la fonction coûte au minimum un GET Redis, et
+/// un cycle de rafraîchissement en coûte trois de plus (SET NX du verrou,
+/// SET des données, DEL du verrou). Le quota gratuit d'Upstash est de
+/// 500 000 commandes par mois — atteint à 90 % en quelques jours.
+///
+/// Un classement de burns n'a pas besoin d'être frais à la seconde : le
+/// Codex de chaque joueur, lui, est lu directement sur la chaîne et reste
+/// exact. C'est ce que dit déjà la FAQ.
+const FRESH_MS = 300000;
 const INVOCATION_BUDGET_MS = 52000;   // maxDuration vaut 60 s
 
 const KEY_DATA = `leaderboard:${NETWORK_TAG}:data`;
@@ -387,7 +397,10 @@ export default async function handler(req, res) {
 
     // Cache frais : on sert directement, sans toucher au RPC.
     if (cached && age < FRESH_MS) {
-      res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
+      // Le CDN garde la reponse 2 min et peut servir une version perimee
+      // pendant 10 min de plus pendant qu'il rafraichit en arriere-plan.
+      // C'est ce qui evite que chaque visiteur reveille la fonction.
+      res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
       res.status(200).json({
         leaderboard: cached.leaderboard,
         totalBurners: cached.totalBurners,
@@ -427,7 +440,7 @@ export default async function handler(req, res) {
 
     const data = fresh || cached;
     if (data) {
-      res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
+      res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
       res.status(200).json({
         leaderboard: data.leaderboard,
         totalBurners: data.totalBurners,
