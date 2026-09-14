@@ -7974,10 +7974,34 @@ async function duelistLeaderboardScan() {
     console.warn(`leaderboard: ${failed.length}/${batchStarts.length} lots manquants — resultat partiel`);
   }
 
-  // Build sorted rows with display names
+  // ── Les chiffres D'ABORD, les visages ensuite ──────────────────────
+  //
+  // Le tally est termine : on connait deja le nombre de duels joues et de
+  // duellistes uniques. Or la suite resout un pseudo, un avatar et un skin
+  // POUR CHAQUE duelliste — plus de six cents lectures a 210 joueurs — et
+  // les statistiques attendaient tout cela pour rien.
+  //
+  // Sur mobile, le tableau restait criblé de tirets pendant une minute. On
+  // publie donc les compteurs immediatement, quitte a ce que les noms
+  // arrivent apres.
   const wallets = Object.keys(scores);
+  try {
+    const vh = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    const _played = Object.values(scores).reduce((a, x) => a + x.wins + x.ties + x.losses, 0);
+    if (_played > 0) vh('vh-duels', _played.toLocaleString('en-US'));
+    if (wallets.length > 0 && complete) {
+      vh('vh-duelists', wallets.length.toLocaleString('en-US'));
+      vh('vh-row-duelists', wallets.length.toLocaleString('en-US'));
+    }
+    if (typeof svStatsSave === 'function') svStatsSave();
+  } catch (e) {}
+
   if (typeof profilesBatchPrefetch === 'function') await profilesBatchPrefetch(wallets);
-  const rows = await Promise.all(wallets.map(async w => {
+  // Par vagues de 8 : lancer 210 resolutions de front sature un RPC mobile,
+  // qui repond alors par des 502 — et chaque echec coute une reprise.
+  const rows = [];
+  const WAVE = 8;
+  const _mkRow = async (w) => {
     let displayName = w.slice(0,6) + '...' + w.slice(-4);
     let avatarHTML = '<span style="font-size:1.4rem;">👤</span>';
     try {
@@ -7995,7 +8019,11 @@ async function duelistLeaderboardScan() {
     let skinId = null;
     try { skinId = typeof skinFetchCached === 'function' ? await skinFetchCached(w) : null; } catch(e) {}
     return { wallet: w, name: displayName, avatar: avatarHTML, skin: skinId, ...scores[w] };
-  }));
+  };
+  for (let k = 0; k < wallets.length; k += WAVE) {
+    const part = await Promise.all(wallets.slice(k, k + WAVE).map(_mkRow));
+    rows.push(...part);
+  }
 
   rows.sort((a, b) => b.score - a.score || (b.wins - a.wins));
 
@@ -13700,6 +13728,79 @@ function storeZoomImage(url) {
 // banner had to scan the contract's entire event history to reconstruct
 // these numbers, which is why it was removed during the RPC-overload
 // cleanup; the new contract makes it essentially free.)
+// ═══ MEMOIRE DES STATISTIQUES ════════════════════════════════════════
+//
+// Chaque chiffre du Ledger attend sa propre lecture on-chain, et le scan du
+// classement duelliste parcourt tout l'historique des duels sur deux
+// contrats. Sur mobile, avec un RPC lent, la page restait criblee de tirets
+// pendant une minute.
+//
+// On memorise donc ce qui a ete affiche la derniere fois, et on le repeint
+// AVANT la moindre requete. Le visiteur voit des chiffres tout de suite —
+// ceux de sa derniere visite — puis ils se corrigent silencieusement quand
+// les vraies valeurs arrivent.
+//
+// Un chiffre de la veille vaut mieux qu'un tiret : il donne l'ordre de
+// grandeur, et il ne ment que sur les decimales.
+const SV_STATS_KEY = 'sv_stats_cache_v1';
+const SV_STATS_MAX_AGE = 7 * 24 * 3600 * 1000;   // au-dela, mieux vaut un tiret
+
+/// Tous les compteurs du tableau de bord, par id.
+const SV_STAT_IDS = [
+  'hero-total','hero-burners','hero-burns',
+  'vh-total','vh-sacrifiants','vh-burns','vh-duels','vh-duelists',
+  'vh-row-burned','vh-row-offerings','vh-row-sacrifiants','vh-row-duelists',
+  'vh-b-ritual','vh-b-duel','vh-b-store','vh-b-forge',
+  'vh-mod-open','vh-mod-sales','vh-mod-volume','vh-mod-skins',
+  'vh-mod-forged','vh-mod-forgeburn','vh-mod-entries',
+  'duel-stat-duels','duel-stat-open','duel-stat-ties',
+  'store-stat-sales','store-stat-volume',
+];
+
+function svStatsSave() {
+  try {
+    const snap = { t: Date.now(), v: {} };
+    SV_STAT_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      // On n'enregistre que ce qui a une vraie valeur : sauver un tiret
+      // reviendrait a figer le probleme qu'on veut resoudre.
+      if (el && el.textContent && el.textContent.trim() !== '—' && el.textContent.trim() !== '') {
+        snap.v[id] = el.innerHTML;
+      }
+    });
+    if (Object.keys(snap.v).length) localStorage.setItem(SV_STATS_KEY, JSON.stringify(snap));
+  } catch (e) {}
+}
+
+function svStatsRestore() {
+  try {
+    const raw = localStorage.getItem(SV_STATS_KEY);
+    if (!raw) return;
+    const snap = JSON.parse(raw);
+    if (!snap || !snap.v || (Date.now() - snap.t) > SV_STATS_MAX_AGE) return;
+
+    Object.entries(snap.v).forEach(([id, html]) => {
+      const el = document.getElementById(id);
+      // Ne jamais ecraser une valeur deja fraiche : la restauration est un
+      // filet, pas une source.
+      if (el && (el.textContent.trim() === '—' || el.textContent.trim() === '')) {
+        el.innerHTML = html;
+        el.dataset.fromCache = '1';
+      }
+    });
+  } catch (e) {}
+}
+
+// Repeindre le plus tot possible, avant la moindre requete reseau.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', svStatsRestore);
+} else {
+  svStatsRestore();
+}
+// Et enregistrer regulierement ce qui est a l'ecran.
+setInterval(svStatsSave, 20000);
+document.addEventListener('visibilitychange', () => { if (document.hidden) svStatsSave(); });
+
 /// Statistiques de la forge : reliques detruites et zkLTC brules.
 ///
 /// Deux variables publiques du contrat, donc deux lectures et aucun calcul.
