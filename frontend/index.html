@@ -756,30 +756,255 @@ footer {
   box-shadow:0 0 14px rgba(0,229,204,0.25);
 }
 
+/* Sous-onglets du panneau Relics. */
+#codex-modal .cx-sub{
+  display:flex; gap:0.3rem; margin-bottom:1.1rem;
+  border-bottom:1px solid rgba(255,255,255,0.07);
+}
+#codex-modal .cx-sub span{
+  padding:0.5rem 0.9rem; cursor:pointer; position:relative; bottom:-1px;
+  font-family:'Cinzel',serif; font-size:0.74rem; letter-spacing:0.06em;
+  color:rgba(255,255,255,0.4); border-bottom:2px solid transparent;
+  transition:color 0.16s, border-color 0.16s;
+}
+#codex-modal .cx-sub span:hover{ color:rgba(255,255,255,0.75) }
+#codex-modal .cx-sub span.on{ color:#fff; border-bottom-color:var(--teal) }
+#codex-modal .cx-sub b{
+  font-weight:400; margin-left:0.4rem; font-size:0.62rem;
+  color:#ffc140; opacity:0.85;
+}
+
+/* Grille de selection de la forge. */
+.fg-tier{
+  padding:0.35rem 0.8rem; border-radius:20px; cursor:pointer;
+  font-family:'Cinzel',serif; font-size:0.64rem; letter-spacing:0.08em;
+  border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.02);
+  color:rgba(255,255,255,0.55); transition:all 0.16s;
+}
+.fg-tier:hover{ border-color:rgba(255,255,255,0.25); color:#fff }
+.fg-tier.on{ border-color:rgba(255,193,64,0.6); background:rgba(255,193,64,0.1); color:#ffc140 }
+.fg-tier.empty{ opacity:0.3; cursor:not-allowed }
+
+.fg-pick{
+  border-radius:8px; overflow:hidden; cursor:pointer; position:relative;
+  border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02);
+  transition:all 0.16s;
+}
+.fg-pick:hover{ border-color:rgba(255,255,255,0.22) }
+.fg-pick.picked{ border-color:rgba(255,193,64,0.7); background:rgba(255,193,64,0.07) }
+.fg-pick.none{ opacity:0.32; cursor:not-allowed }
+.fg-pick img{ width:100%; aspect-ratio:1; object-fit:cover; display:block }
+.fg-pick .t{ padding:0.5rem 0.55rem }
+.fg-pick .t .n{ font-family:'Cinzel',serif; font-size:0.68rem; color:#fff; line-height:1.25 }
+.fg-pick .t .c{ font-size:0.6rem; color:rgba(255,255,255,0.4); margin-top:0.15rem }
+.fg-pick .t .c.warn{ color:#ffc140 }
+.fg-badge{
+  position:absolute; top:6px; right:6px; min-width:20px; height:20px;
+  border-radius:10px; background:rgba(255,193,64,0.9); color:#1a1005;
+  font-family:'Cinzel',serif; font-size:0.62rem;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* Presentation de l'onglet Forge. */
+.fg-intro{
+  padding:1rem 1.1rem; border-radius:9px; margin-bottom:1.3rem;
+  background:rgba(255,193,64,0.04); border:1px solid rgba(255,193,64,0.16);
+}
+.fg-intro .h{
+  font-family:'Cinzel',serif; font-size:0.92rem; color:#ffc140;
+  margin-bottom:0.5rem;
+}
+.fg-intro p{
+  font-size:0.82rem; line-height:1.6; color:rgba(255,255,255,0.72);
+  margin:0 0 0.7rem;
+}
+.fg-intro ul{ margin:0; padding-left:1.1rem; list-style:none }
+.fg-intro li{
+  position:relative; font-size:0.79rem; line-height:1.55;
+  color:rgba(255,255,255,0.6); margin-bottom:0.35rem;
+}
+.fg-intro li::before{
+  content:'◆'; position:absolute; left:-1.1rem;
+  color:rgba(255,193,64,0.5); font-size:0.6rem; top:0.25rem;
+}
+.fg-intro b{ color:rgba(255,255,255,0.9); font-weight:600 }
+
+/* ── ETABLI ─────────────────────────────────────────────────────────
+   Compact tant qu'il est vide — il ne doit pas manger la place avant qu'on
+   s'en serve — puis il grandit des la premiere relique posee. */
+.fg-bench{
+  display:flex; align-items:center; gap:0.9rem; flex-wrap:wrap;
+  padding:0.9rem 1rem; border-radius:10px;
+  background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08);
+  transition:padding 0.25s, border-color 0.25s, background 0.25s;
+}
+.fg-bench.open{
+  padding:1.6rem 1.4rem; gap:1.2rem;
+  border-color:rgba(255,193,64,0.22);
+  background:rgba(255,193,64,0.03);
+}
+.fg-slots{ display:flex; gap:0.5rem }
+.fg-slot{
+  width:38px; height:38px; border-radius:6px; flex-shrink:0; position:relative;
+  border:1px dashed rgba(255,255,255,0.18); overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+  transition:width 0.25s, height 0.25s, border-color 0.18s;
+}
+.fg-slot.big{ width:104px; height:104px }
+.fg-slot img{ width:100%; height:100%; object-fit:cover; display:block }
+.fg-slot.full{ border-style:solid; border-color:rgba(255,193,64,0.5); cursor:pointer }
+.fg-slot .ix{ font-family:'Cinzel',serif; font-size:0.8rem; color:rgba(255,255,255,0.18) }
+.fg-slot .rm{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  background:rgba(4,2,18,0.7); color:#ff9d9d; font-size:1.3rem;
+  opacity:0; transition:opacity 0.16s;
+}
+.fg-slot.full:hover .rm{ opacity:1 }
+.fg-slot .nm{
+  position:absolute; left:0; right:0; bottom:0; padding:3px 4px;
+  background:rgba(4,2,18,0.82); font-size:0.58rem; line-height:1.25;
+  color:rgba(255,255,255,0.65); text-align:center;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.fg-slot.out{ border-style:solid; border-color:rgba(255,193,64,0.3); color:rgba(255,193,64,0.45); font-size:1.9rem }
+.fg-out{ display:flex; flex-direction:column; align-items:center; gap:0.3rem }
+.fg-out .nm{
+  font-family:'Cinzel',serif; font-size:0.66rem; letter-spacing:0.08em;
+  color:rgba(255,193,64,0.6);
+}
+.fg-out.ready .fg-slot.out{
+  border-color:rgba(255,193,64,0.8); color:#ffc140;
+  animation:fgPulse 1.8s ease-in-out infinite;
+}
+@keyframes fgPulse{
+  0%,100%{ box-shadow:0 0 0 0 rgba(255,193,64,0) }
+  50%    { box-shadow:0 0 16px 2px rgba(255,193,64,0.25) }
+}
+.fg-to{ color:rgba(255,255,255,0.3); font-size:1.6rem }
+.fg-say{ flex:1; min-width:140px }
+.fg-say .t{ font-family:'Cinzel',serif; font-size:0.98rem; color:#fff }
+.fg-say .s{ font-size:0.76rem; color:rgba(255,255,255,0.5); margin-top:0.3rem; line-height:1.45 }
+.fg-btn{
+  padding:0.65rem 1.4rem; border-radius:8px; cursor:not-allowed;
+  background:transparent; border:1px solid rgba(255,193,64,0.2);
+  color:#ffc140; opacity:0.4; transition:all 0.2s;
+  font-family:'Cinzel',serif; font-size:0.7rem; letter-spacing:0.12em;
+}
+.fg-btn{ padding:0.8rem 1.8rem; font-size:0.78rem }
+/* Le bouton respire quand les trois reliques sont posees : c'est le seul
+   signal qui dit « tu peux y aller » sans avoir a lire la ligne d'a cote. */
+.fg-btn.on{
+  cursor:pointer; opacity:1; border-color:rgba(255,193,64,0.6);
+  animation:fgReady 1.9s ease-in-out infinite;
+}
+.fg-btn.on:hover{ background:rgba(255,193,64,0.14); border-color:#ffc140; animation:none }
+@keyframes fgReady{
+  0%,100%{ box-shadow:0 0 0 0 rgba(255,193,64,0); background:rgba(255,193,64,0.04) }
+  50%    { box-shadow:0 0 20px 2px rgba(255,193,64,0.22); background:rgba(255,193,64,0.12) }
+}
+
+/* ── REVELATION ──────────────────────────────────────────────────────
+   La carte forgee merite d'etre montree : c'est le seul moment ou le
+   joueur voit ce qu'il a obtenu, et trois reliques viennent de disparaitre
+   pour elle. */
+#fg-reveal{
+  position:fixed; inset:0; z-index:9800; display:none;
+  align-items:center; justify-content:center;
+  background:rgba(2,4,14,0.94); backdrop-filter:blur(16px);
+}
+#fg-reveal.on{ display:flex }
+.fgr-card{
+  width:230px; border-radius:12px; overflow:hidden; position:relative;
+  border:1px solid rgba(255,193,64,0.5); background:rgba(255,255,255,0.03);
+  animation:fgrIn 0.75s cubic-bezier(.16,1,.3,1) both;
+}
+.fgr-card img{ width:100%; aspect-ratio:1; object-fit:cover; display:block }
+@keyframes fgrIn{
+  0%  { transform:scale(0.72) rotateY(-28deg); opacity:0; filter:brightness(2.4) blur(6px) }
+  55% { opacity:1 }
+  100%{ transform:scale(1) rotateY(0); opacity:1; filter:brightness(1) blur(0) }
+}
+.fgr-ray{
+  position:absolute; inset:-40%; pointer-events:none;
+  background:conic-gradient(from 0deg, transparent 0 12%, rgba(255,193,64,0.16) 14%, transparent 16% 100%);
+  animation:fgrSpin 5s linear infinite;
+}
+@keyframes fgrSpin{ to{ transform:rotate(360deg) } }
+.fgr-name{
+  padding:0.8rem 0.7rem; text-align:center;
+  font-family:'Cinzel',serif; font-size:0.9rem; color:#fff;
+  animation:fgrFade 0.5s 0.45s both;
+}
+.fgr-tier{
+  display:block; margin-top:0.3rem; font-size:0.6rem; letter-spacing:0.18em;
+  text-transform:uppercase;
+}
+@keyframes fgrFade{ from{ opacity:0; transform:translateY(6px) } to{ opacity:1 } }
+.fgr-close{
+  margin-top:1.4rem; padding:0.6rem 1.6rem; border-radius:8px; cursor:pointer;
+  background:transparent; border:1px solid rgba(255,255,255,0.2);
+  color:rgba(255,255,255,0.7); font-family:'Cinzel',serif;
+  font-size:0.68rem; letter-spacing:0.12em;
+  animation:fgrFade 0.5s 0.7s both;
+}
+.fgr-close:hover{ color:#fff; border-color:rgba(255,255,255,0.45) }
+
+/* Bouton de forge sur les cartes du Codex. Discret au repos — il ne doit pas
+   concurrencer l'illustration — et net au survol de la carte. */
+#codex-modal .cx-tc .cx-forge{
+  position:absolute; left:50%; bottom:8px; transform:translateX(-50%) translateY(4px);
+  padding:0.3rem 0.7rem; border-radius:5px; cursor:pointer;
+  font-family:'Cinzel',serif; font-size:0.58rem; letter-spacing:0.1em;
+  background:rgba(4,2,18,0.85); color:#ffc140;
+  border:1px solid rgba(255,193,64,0.45);
+  opacity:0; pointer-events:none; transition:all 0.18s; z-index:4;
+}
+#codex-modal .cx-tc:hover .cx-forge{ opacity:1; pointer-events:auto; transform:translateX(-50%) translateY(0) }
+#codex-modal .cx-tc .cx-forge:hover{ background:rgba(255,193,64,0.15); border-color:rgba(255,193,64,0.8) }
+/* Sur tactile il n'y a pas de survol : le bouton reste visible. */
+@media (hover:none){
+  #codex-modal .cx-tc .cx-forge{ opacity:1; pointer-events:auto; transform:translateX(-50%) }
+}
+
+/* Fenetre de confirmation */
+.fg-row{ display:flex; gap:0.5rem; justify-content:center; margin:1rem 0; flex-wrap:wrap }
+.fg-card{
+  width:78px; border-radius:6px; overflow:hidden;
+  border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.02);
+}
+.fg-card img{ width:100%; aspect-ratio:1; object-fit:cover; display:block }
+.fg-card .n{ font-size:0.52rem; padding:0.3rem; text-align:center; color:rgba(255,255,255,0.55); line-height:1.2 }
+.fg-arrow{ display:flex; align-items:center; font-size:1.4rem; color:rgba(255,193,64,0.7) }
+
+/* FAQ. Le blanc pur fatiguait sur ce fond bleu nuit — les reponses passent
+   en bleu clair, une teinte qui appartient deja a la palette du site et qui
+   se lit longtemps sans forcer. */
 .faq-lead{
   font-family:'Cormorant Garamond',serif; font-size:1rem; font-style:italic;
-  line-height:1.65; color:rgba(255,255,255,0.78); margin-bottom:1.6rem;
+  line-height:1.65; color:#b8d4f0; margin-bottom:1.6rem;
 }
-.faq-lead b{ font-style:normal; color:#fff; font-weight:600 }
+.faq-lead b{ font-style:normal; color:#e4f1ff; font-weight:600 }
 .faq-item{
-  border:1px solid rgba(255,255,255,0.08); border-radius:8px;
-  background:rgba(255,255,255,0.02); margin-bottom:0.5rem;
-  cursor:pointer; transition:border-color 0.18s;
+  border:1px solid rgba(140,190,240,0.16); border-radius:8px;
+  background:rgba(140,190,240,0.05); margin-bottom:0.5rem;
+  cursor:pointer; transition:border-color 0.18s, background 0.18s;
 }
-.faq-item:hover{ border-color:rgba(255,255,255,0.2) }
+.faq-item:hover{ border-color:rgba(140,190,240,0.34); background:rgba(140,190,240,0.09) }
 .faq-item .q{
   display:flex; align-items:center; justify-content:space-between; gap:1rem;
   padding:0.9rem 1.1rem; font-family:'Cinzel',serif; font-size:0.8rem;
-  color:#fff; line-height:1.35;
+  color:#dceaf8; line-height:1.35;
 }
 .faq-item .q i{
-  font-style:normal; color:var(--teal); font-size:1.05rem; flex-shrink:0;
+  font-style:normal; color:#7fb5e8; font-size:1.05rem; flex-shrink:0;
   transition:transform 0.2s;
 }
+.faq-item.open{ border-color:rgba(140,190,240,0.32); background:rgba(140,190,240,0.07) }
+.faq-item.open .q{ color:#fff }
 .faq-item.open .q i{ transform:rotate(45deg) }
 .faq-item .a{
   display:none; padding:0 1.1rem 1rem; font-size:0.88rem; line-height:1.7;
-  color:rgba(255,255,255,0.88);
+  color:#a9c8e4;
 }
 .faq-item.open .a{ display:block }
 
@@ -2856,43 +3081,60 @@ if (document.readyState === 'loading') {
 <!-- ═══════════════ INTRO OVERLAY ═══════════════ -->
 <!-- (intro supprimée) -->
 
-<!-- MAINNET MIGRATION NOTICE — shown on every visit until dismissed -->
-<div id="sv-duel-notice" style="display:none;position:fixed;inset:0;z-index:99500;background:rgba(4,2,26,0.8);align-items:center;justify-content:center;padding:1.5rem;">
-  <div style="max-width:480px;background:linear-gradient(135deg,rgba(8,4,40,0.98),rgba(4,2,26,0.99));border:1px solid rgba(0,229,204,0.35);border-radius:6px;padding:1.8rem;text-align:center;">
+<!-- ANNONCE — affichee a chaque visite jusqu'a fermeture.
+     Cle de version : chaque changement majeur en prend une nouvelle, pour
+     que ceux qui avaient ferme la precedente revoient le message. -->
+<div id="sv-duel-notice" style="display:none;position:fixed;inset:0;z-index:99500;background:rgba(4,2,26,0.85);align-items:center;justify-content:center;padding:1.5rem;">
+  <div style="max-width:500px;background:linear-gradient(135deg,rgba(8,4,40,0.98),rgba(4,2,26,0.99));border:1px solid rgba(255,193,64,0.35);border-radius:8px;padding:2rem 1.8rem;text-align:center;max-height:88vh;overflow-y:auto;">
     <div style="font-size:1.6rem;margin-bottom:0.6rem;">⬡</div>
-    <div style="font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:0.1em;color:var(--teal);text-transform:uppercase;margin-bottom:0.9rem;">The relics have changed</div>
-    <div style="font-family:'Cormorant Garamond',serif;font-size:1rem;color:rgba(255,255,255,0.78);line-height:1.55;margin-bottom:1rem;text-align:left;">
-      The relics of the Void are no longer bought. They are earned in the Arena — and what you draw is decided by chance.
+    <div style="font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:0.1em;color:#ffc140;text-transform:uppercase;margin-bottom:0.9rem;">The Forge is open</div>
+
+    <div style="font-family:'Cormorant Garamond',serif;font-size:1.05rem;color:rgba(255,255,255,0.8);line-height:1.6;margin-bottom:1.1rem;text-align:left;">
+      Three relics of one tier become one of the tier above. Guaranteed — not another roll.
+      Until now, a Common you already owned led nowhere. Now every duplicate is a step.
     </div>
-    <div style="font-family:'Cormorant Garamond',serif;font-size:0.95rem;color:rgba(255,255,255,0.6);line-height:1.6;margin-bottom:1.1rem;text-align:left;">
+
+    <div style="font-family:'Cormorant Garamond',serif;font-size:0.95rem;color:rgba(255,255,255,0.62);line-height:1.65;margin-bottom:1.1rem;text-align:left;">
       What changed:<br>
-      • <strong style="color:rgba(255,255,255,0.8);">Your rank opens the pool.</strong> Burning no longer mints a relic directly. It decides <em>which</em> relics can reach you — the deeper you have burned, the rarer the pool.<br>
-      • <strong style="color:rgba(255,255,255,0.8);">Duels earn the draws.</strong> Every four duels grants one draw. Won or lost: only fighting counts.<br>
-      • <strong style="color:rgba(255,255,255,0.8);">Rarity decides the rest.</strong> Each draw is sealed on-chain, then revealed. Common, rare, epic — or, once in a long while, legendary.
+      • <strong style="color:rgba(255,255,255,0.85);">The Forge.</strong> Any three relics of the same tier — they need not be the same card. Found in your Codex, under Relics.<br>
+      • <strong style="color:rgba(255,255,255,0.85);">It ignores rank.</strong> Buy three Rares on the Store and you have paid for your Epic, in zkLTC rather than offerings.<br>
+      • <strong style="color:rgba(255,255,255,0.85);">Three duels per draw</strong>, down from four.<br>
+      • <strong style="color:rgba(255,255,255,0.85);">Fifty seconds to reveal</strong>, up from sixteen.
     </div>
-    <div style="font-family:'Cormorant Garamond',serif;font-size:0.95rem;color:rgba(255,255,255,0.6);line-height:1.55;margin-bottom:1.1rem;text-align:left;">
-      You will draw the same relic twice. That is the point — <strong style="color:rgba(255,255,255,0.8);">bring your duplicates to the Store</strong> and trade them with those still missing them. The collection is meant to circulate.
+
+    <!-- Le point le plus important de l'annonce : il vaut mieux l'apprendre
+         ici que devant une grille grisee. -->
+    <div style="font-family:'Cormorant Garamond',serif;font-size:0.95rem;line-height:1.6;margin-bottom:1.2rem;text-align:left;padding:0.9rem 1rem;border-radius:7px;background:rgba(255,193,64,0.07);border:1px solid rgba(255,193,64,0.25);color:rgba(255,255,255,0.78);">
+      <strong style="color:#ffc140;">Relics minted before today cannot be forged.</strong><br>
+      The Forge lives in a new contract, and a contract can only destroy its own tokens.
+      Everything you already hold stays yours and stays visible in your Codex — it simply
+      cannot go into the Forge. Relics drawn from now on can.
     </div>
+
+    <div style="font-family:'Cormorant Garamond',serif;font-size:0.9rem;color:rgba(255,255,255,0.5);line-height:1.55;margin-bottom:1.2rem;text-align:left;">
+      Your duels were not lost: draws are counted from your full history, so you may find
+      you have more waiting than before.
+    </div>
+
     <div style="display:flex;gap:0.6rem;justify-content:center;flex-wrap:wrap;">
-      <button onclick="svDismissDuelNotice();if(typeof svRailGo==='function')svRailGo('arena');" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;background:rgba(0,229,204,0.12);border:1px solid rgba(0,229,204,0.5);color:var(--teal);padding:0.6rem 1.4rem;border-radius:3px;cursor:pointer;">Enter the Arena</button>
-      <button onclick="svDismissDuelNotice()" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;background:transparent;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.55);padding:0.6rem 1.4rem;border-radius:3px;cursor:pointer;">Later</button>
+      <button onclick="svDismissDuelNotice();if(typeof svRailGo==='function')svRailGo('arena');" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;background:transparent;border:1px solid rgba(255,193,64,0.6);color:#ffc140;padding:0.65rem 1.3rem;border-radius:6px;cursor:pointer;">To the Arena</button>
+      <button onclick="svDismissDuelNotice()" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;background:transparent;border:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.55);padding:0.65rem 1.3rem;border-radius:6px;cursor:pointer;">Later</button>
     </div>
   </div>
 </div>
 
 <script>
 function svDismissDuelNotice() {
-  // v4 — nouvelle clé à chaque annonce importante : tout le monde revoit le
-  // message, y compris ceux qui avaient fermé la précédente. Le passage au
-  // tirage de reliques change la façon dont on obtient un NFT, donc personne
-  // ne doit le manquer.
-  try { localStorage.setItem('sv_notice_seen_v4', '1'); } catch {}
+  // v5 — la Forge et le nouveau contrat de reliques. Nouvelle cle : ceux qui
+  // avaient ferme l'annonce v4 doivent revoir celle-ci, notamment la ligne
+  // sur les reliques d'avant la migration.
+  try { localStorage.setItem('sv_notice_seen_v5', '1'); } catch {}
   const el = document.getElementById('sv-duel-notice');
   if (el) el.style.display = 'none';
 }
 function svShowDuelNoticeIfNeeded() {
   let seen = false;
-  try { seen = localStorage.getItem('sv_notice_seen_v4') === '1'; } catch {}
+  try { seen = localStorage.getItem('sv_notice_seen_v5') === '1'; } catch {}
   if (seen) return;
   const el = document.getElementById('sv-duel-notice');
   if (el) el.style.display = 'flex';
@@ -5963,12 +6205,19 @@ function chroniclesRouteFromHash() {
 <!-- FAQ — fenetre autonome, ouverte par "How it works" dans le rail.
      Elle vivait dans le Codex : il fallait deja savoir ou chercher, et les
      regles du jeu n'ont rien a voir avec l'inventaire d'un joueur. -->
+<!-- Le voile etait en rgba(2,4,14,0.92), presque noir, alors que le site vit
+     dans un bleu nuit. Sur un texte aussi long que celui-ci, ce contraste
+     fatiguait. On reprend la teinte du fond, en laissant le champ etoile
+     transparaitre juste assez pour qu'on sente ou l'on est. -->
 <div id="faq-modal" style="display:none;position:fixed;inset:0;z-index:9600;
-     background:rgba(2,4,14,0.92);backdrop-filter:blur(14px);
+     background:linear-gradient(180deg, rgba(13,19,45,0.93), rgba(9,13,33,0.95));
+     backdrop-filter:blur(12px);
      align-items:flex-start;justify-content:center;overflow-y:auto;padding:3rem 1rem;"
      onclick="if(event.target===this)faqClose()">
-  <div style="width:100%;max-width:760px;background:rgba(255,255,255,0.02);
-              border:1px solid rgba(255,255,255,0.09);border-radius:12px;padding:2rem 1.8rem;">
+  <div style="width:100%;max-width:760px;
+              background:linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015));
+              border:1px solid rgba(140,190,240,0.14);border-radius:12px;padding:2rem 1.8rem;
+              box-shadow:0 24px 70px rgba(0,0,0,0.35);">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1.4rem;">
       <div>
         <div class="eyebrow">How it works</div>
@@ -5983,6 +6232,10 @@ function chroniclesRouteFromHash() {
       <b>which</b> relics can reach you. Duelling earns <b>draws</b>, and a draw decides
       <b>when</b> a relic arrives. Burning alone never yields a relic; duelling alone never
       raises a rank.
+      <br><br>
+      And what you already hold counts too: three relics of one tier can be
+      <b>forged</b> into one of the tier above. Burn opens the chest, duels turn
+      the key, the Forge closes the circle.
     </div>
     <div id="faq-list"></div>
   </div>
@@ -5991,7 +6244,8 @@ function chroniclesRouteFromHash() {
 <!-- Adresses des contrats. Le projet promet "permanently, and provably" :
      sans lien cliquable vers la chaine, c'est de la prose. -->
 <div id="contracts-modal" style="display:none;position:fixed;inset:0;z-index:9600;
-     background:rgba(2,4,14,0.92);backdrop-filter:blur(14px);
+     background:linear-gradient(180deg, rgba(13,19,45,0.93), rgba(9,13,33,0.95));
+     backdrop-filter:blur(12px);
      align-items:flex-start;justify-content:center;overflow-y:auto;padding:3rem 1rem;"
      onclick="if(event.target===this)svCloseContracts()">
   <div style="width:100%;max-width:620px;background:rgba(255,255,255,0.02);
@@ -6025,6 +6279,18 @@ function chroniclesRouteFromHash() {
       <a href="https://liteforge.explorer.caldera.xyz/address/0x000000000000000000000000000000000000dEaD" target="_blank" rel="noopener" style="color:rgba(255,106,61,0.8);text-decoration:none;">0x…dEaD</a>
       — irrecoverable by anyone, including us.
     </div>
+  </div>
+</div>
+
+<!-- Revelation de la relique forgee. Trois reliques viennent de disparaitre
+     pour celle-ci : un toast d'une ligne ne suffisait pas. -->
+<div id="fg-reveal" onclick="fgRevealClose()">
+  <div style="display:flex;flex-direction:column;align-items:center;">
+    <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+      <div class="fgr-ray"></div>
+      <div class="fgr-card" id="fgr-card"></div>
+    </div>
+    <button class="fgr-close" onclick="fgRevealClose()">Continue</button>
   </div>
 </div>
 
@@ -7003,7 +7269,16 @@ async function loadLeaderboard(){
     // la méthode (tableau `burners` au slot 5 du storage + getBurnerInfo).
     let lbData = null;
     try {
-      const resp = await fetch('/api/leaderboard?_=' + Date.now(), { cache: 'no-store' });
+      // Ni cache-buster ni no-store : les deux annulaient le cache CDN de
+      // Vercel, donc CHAQUE appel reveillait la fonction et interrogeait
+      // Redis. A une requete par minute et par onglet ouvert, la base a
+      // atteint 450 000 commandes sur un quota de 500 000.
+      //
+      // L'API renvoie `s-maxage=30, stale-while-revalidate=120` : en la
+      // laissant faire, le CDN sert l'immense majorite des visiteurs sans
+      // que la fonction ne s'execute.
+      const resp = await fetch('/api/leaderboard');
+      window._lbLastFetch = Date.now();
       lbData = await resp.json();
     } catch(e) {
       console.error('Leaderboard API:', e);
@@ -7926,7 +8201,24 @@ svInterval(() => duelistLeaderboardRefresh(false), DUELIST_LB_REFRESH_MS);
 setTimeout(function(){ updateVortex(0.5); }, 100);
 loadChainData();
 loadLeaderboard();
-svInterval(()=>{loadChainData();loadLeaderboard();},60000);
+// Toutes les 3 minutes, pas toutes les 60 s : le classement bouge au rythme
+// des burns, pas des secondes, et chaque passage coutait un appel serveur.
+// Et rien ne se rafraichit quand l'onglet n'est pas visible — un onglet
+// oublie en arriere-plan consommait autant qu'un joueur actif.
+svInterval(()=>{
+  if (document.hidden) return;
+  loadChainData();
+  loadLeaderboard();
+}, 180000);
+
+// Au retour sur l'onglet, on rattrape immediatement plutot que d'attendre
+// le prochain cycle.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && typeof loadLeaderboard === 'function') {
+    const last = window._lbLastFetch || 0;
+    if (Date.now() - last > 60000) { loadChainData(); loadLeaderboard(); }
+  }
+});
 
 if(window.ethereum){
   window.ethereum.on('accountsChanged',async(accounts)=>{
@@ -8765,7 +9057,24 @@ async function initOrderContract() {
 // block as the seed; revealDraw() mints the relic that seed determined. The
 // outcome is fixed the moment the seed block is mined — a player can read it
 // before revealing but cannot change it, and walking away costs the draw.
-const ASCENT_CONTRACT_ADDRESS = '0x8FF2fbfE17Af4746DB4b3d500D34AebB3bF1Fcd8';
+// Contrat des reliques — v2, deployee le 12/09/2026.
+//
+// Changements : 3 duels par tirage au lieu de 4, fenetre de reveal portee a
+// 200 blocs (50s au lieu de 16), et la FORGE — trois doublons de meme rarete
+// contre une relique du palier au-dessus.
+//
+// Les compteurs drawsUsed et pityCounter vivent dans le contrat : ils sont
+// repartis de zero. Les reliques mintees sur l'ancienne adresse restent la
+// propriete de leurs detenteurs, mais appartiennent a CE contrat-la — d'ou
+// la liste legacy ci-dessous, que le Codex et le Store consultent pour ne
+// pas faire disparaitre une collection du jour au lendemain.
+const ASCENT_CONTRACT_ADDRESS = '0xAe23A9c55aA48Dd59E88E5080F15175067a71801';
+
+/// Anciennes adresses du contrat Ascent, de la plus recente a la plus
+/// ancienne. Lecture seule : on n'y mint plus rien.
+const LEGACY_ASCENT_CONTRACTS = [
+  '0x8FF2fbfE17Af4746DB4b3d500D34AebB3bF1Fcd8',
+];
 // Cadence des tirages : UN SEUL endroit dans tout le code.
 // L'interface annoncait "one draw every 3 duels" alors que le calcul du
 // compteur faisait (4 - duels % 4), soit un tirage tous les 4 duels. Un
@@ -8952,6 +9261,14 @@ const ASCENT_ABI = [
   // Ces deux-la existaient dans le contrat mais pas dans cet ABI : sans elles
   // le Store etait oblige de sonder les tokenId un par un.
   'function tokensOfOwner(address player, uint256 cursor, uint256 count) external view returns (uint256[] ids, uint256 nextCursor)',
+  // ── Forge (v2) ──────────────────────────────────────────────────────
+  'function forge(uint256[] tokenIds) external payable returns (uint256)',
+  'function forgeableOf(address player) external view returns (uint8[4])',
+  'function FORGE_INPUT() external view returns (uint8)',
+  'function FORGE_COST() external view returns (uint256)',
+  'function burnedPerItem(uint8) external view returns (uint256)',
+  'function circulatingOf(uint8 id) external view returns (uint256)',
+  'event RelicsForged(address indexed player, uint8 fromRarity, uint8 toRarity, uint256[] burned, uint256 tokenId)',
   'function tokenItem(uint256 tokenId) external view returns (uint8)',
   'function mintedPerItem(uint8) external view returns (uint256)',
   'function totalPulls() external view returns (uint256)',
@@ -11580,7 +11897,41 @@ async function featsOpen() {
     </div>
     <div id="codex-relics-pane">
       <div id="cx-bar-relics" style="margin-bottom:1.1rem;"></div>
+
+      <!-- Sous-onglets : la collection et la forge sont deux vues du meme
+           inventaire. Les separer en onglets de premier niveau aurait eloigne
+           l'action du moment ou la question se pose — on voit ses doublons,
+           on forge. -->
+      <div class="cx-sub">
+        <span id="cx-sub-collection" class="on" onclick="codexSubTab('collection')">Collection</span>
+        <span id="cx-sub-forge" onclick="codexSubTab('forge')">Forge<b id="cx-sub-forge-n"></b></span>
+      </div>
+
       <div id="codex-body" style="min-height:200px;"></div>
+
+      <div id="codex-forge-view" style="display:none;">
+        <!-- Une explication complete en tete : la forge est la seule mecanique
+             du jeu qui DETRUIT quelque chose. Elle merite d'etre comprise
+             avant d'etre utilisee, pas apres. -->
+        <div class="fg-intro">
+          <div class="h">Turn duplicates into something better</div>
+          <p>Three relics of the <b>same tier</b> — they don't have to be the same card — become
+             one relic of the tier above. The tier is guaranteed; which card you get is decided on-chain.</p>
+          <ul>
+            <li><b>Rank doesn't matter here.</b> The draw rewards what you burned; the Forge rewards
+                what you collected. Buy three Rares on the Store and you've paid for your Epic.</li>
+            <li><b>It is irreversible.</b> The three relics are destroyed for good — including a last
+                copy, if that's what you choose. Nothing is refunded.</li>
+            <li><b>It costs 0.002 zkLTC</b>, burned like every other offering.</li>
+            <li><b>Relics minted before the Forge shipped cannot go in.</b> The Forge lives
+                in a new contract, and a contract can only destroy its own tokens. Your older
+                relics stay yours and stay in your Codex — they just can't be forged.</li>
+          </ul>
+        </div>
+        <div id="fg-tiers" style="display:flex;gap:0.45rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem;"></div>
+        <div id="fg-grid" class="cx-grid" style="margin-bottom:1.2rem;"></div>
+        <div id="fg-bench"></div>
+      </div>
     </div>
     <div id="codex-forge-pane" style="display:none;">
       <div id="cx-bar-skins" style="margin-bottom:1.1rem;"></div>
@@ -11909,9 +12260,15 @@ async function codexLoadLadders(target) {
 /// un mur de texte se saute.
 const FAQ_ITEMS = [
   { q: 'How do I get a relic?',
-    a: 'Every 4 duels earns you one draw, win or lose \u2014 only fighting counts. In the Arena you seal the draw, then reveal it, and the relic is minted to you. Burning zkLTC does not give relics directly; it decides which ones can drop.' },
+    a: 'Every 3 duels earns you one draw, win or lose \u2014 only fighting counts. In the Arena you seal the draw, then reveal it, and the relic is minted to you. Burning zkLTC does not give relics directly; it decides which ones can drop.' },
   { q: 'Why does my rank matter if duels give the relics?',
-    a: 'Your rank sets the pool, and pools stack. Rank 1 draws Commons and Uncommons. Rank 2 adds Rares, rank 3 adds Epics, and only rank 4 can ever draw The Silver Throne. A rank 3 player draws from ranks 1 to 3 together, not from rank 3 alone. At rank 4 the pool still includes every lower card \u2014 you do not stop drawing Commons.' },
+    a: 'Your rank sets the pool, and pools stack. Rank 1 draws Commons and Uncommons. Rank 2 adds Rares, rank 3 adds Epics, and only rank 4 can ever DRAW The Silver Throne. A rank 3 player draws from ranks 1 to 3 together, not from rank 3 alone. At rank 4 the pool still includes every lower card \u2014 you do not stop drawing Commons. The Forge is the one exception: it ignores rank entirely.' },
+  { q: 'What is the Forge?',
+    a: 'Three relics of the same tier become one relic of the tier above \u2014 guaranteed, not another roll. They do not have to be the same card: any three Commons will do. Which card you receive is decided on-chain. It costs 0.002 zkLTC, burned, and the three relics are destroyed for good.' },
+  { q: 'Can I forge my way to The Silver Throne without rank 4?',
+    a: 'Yes. The Forge ignores rank, which is the whole point of it. The draw rewards what you burned; the Forge rewards what you collected. Buy three Rares on the Store and you have paid for your Epic in zkLTC rather than offerings \u2014 a different road, not a shortcut. Drawing the Throne still requires rank 4.' },
+  { q: 'Can I forge a relic I only own once?',
+    a: 'Yes, and the interface warns you before you do. The contract does not protect you from yourself: if you want to sacrifice the only Epic you hold for a shot at the tier above, that is your call. Nothing is refunded.' },
   { q: 'Does the zkLTC burned in duels raise my rank?',
     a: 'No. Only the Ritual counts toward rank. The share burned when a duel settles, and the share burned on a Store sale, leave circulation but are not credited to your lifetime total. Opening a 5 zkLTC duel will not make you an Apprentice.' },
   { q: 'What are the drop rates?',
@@ -11923,7 +12280,7 @@ const FAQ_ITEMS = [
   { q: 'I missed the reveal window. Is my relic lost?',
     a: 'That draw is, yes. The credit is spent at the seal, not at the reveal, which is what stops players from abandoning bad rolls and retrying for free. Use \u201cClear expired draw\u201d in the Arena and you can seal again as soon as you have another draw. Nothing else is affected.' },
   { q: 'I keep drawing the same relic. Is that a bug?',
-    a: 'No \u2014 duplicates are expected, and they are the point. Take your spares to the Void Store and trade them with players who are still missing them. The Store shows a \u00d72 badge on anything you hold more than one of.' },
+    a: 'No \u2014 duplicates are expected, and they are the point. You have two ways to use them: trade them at the Void Store with players still missing them, or take three of the same tier to the Forge and turn them into something better. The Store shows a \u00d72 badge on anything you hold more than one of.' },
   { q: 'What happens to the money when I sell?',
     a: 'The Store contract splits every sale: 80% to you, 17% burned forever, 3% to the Order. Listing costs 0.0075 zkLTC, of which 0.005 is burned. Every sale therefore shrinks the supply a little further.' },
   { q: 'Are the rank badges the same thing as relics?',
@@ -11942,6 +12299,320 @@ function svCloseContracts(){
   document.body.style.overflow = '';
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') svCloseContracts(); });
+
+// ═══ LA FORGE ════════════════════════════════════════════════════════
+//
+// Trois reliques d'une meme rarete contre une du palier au-dessus. Le
+// contrat n'exige pas qu'elles soient du MEME objet : deux "My First Coin"
+// et une "Kill the FUD" font l'affaire tant que les trois sont Common.
+//
+// D'ou cette vue plutot qu'un bouton par carte : le joueur choisit librement,
+// et voit ce qu'il engage avant de signer.
+let _fgTier = 0;                 // rarete selectionnee (0..3)
+let _fgPicked = [];              // tokenIds retenus, dans l'ordre des clics
+let _fgTokens = null;            // tokenId -> itemId, lu une fois
+let _fgBusy = false;
+
+const FG_TIERS = ['Common','Uncommon','Rare','Epic','Legendary'];
+
+/// Rarete d'un item (1..12) — meme table que le contrat.
+function fgRarityOf(id) {
+  if (id === 3 || id === 5) return 1;
+  if (id === 6 || id === 8) return 2;
+  if (id === 9 || id === 11) return 3;
+  if (id === 12) return 4;
+  return 0;
+}
+
+function codexSubTab(which) {
+  const isForge = which === 'forge';
+  document.getElementById('codex-body').style.display = isForge ? 'none' : '';
+  document.getElementById('codex-forge-view').style.display = isForge ? 'block' : 'none';
+  document.getElementById('cx-sub-collection').classList.toggle('on', !isForge);
+  document.getElementById('cx-sub-forge').classList.toggle('on', isForge);
+  if (isForge) fgLoad();
+}
+
+/// Lit les jetons du joueur une seule fois, puis dessine.
+async function fgLoad() {
+  const grid = document.getElementById('fg-grid');
+  if (!connectedAddress) {
+    grid.innerHTML = '<div style="grid-column:1/-1;color:rgba(255,255,255,0.35);font-style:italic;font-size:0.8rem;">Connect your wallet to forge.</div>';
+    return;
+  }
+  if (_fgTokens) { fgRender(); return; }
+
+  grid.innerHTML = '<div style="grid-column:1/-1;color:rgba(255,255,255,0.3);font-style:italic;font-size:0.8rem;">Reading your relics…</div>';
+  try {
+    const c = await initAscentContract();
+    const [ids] = await c.tokensOfOwner(connectedAddress, 0, 200);
+    const list = Array.from(ids).map(Number).filter(Boolean);
+
+    // tokenId -> itemId.
+    //
+    // La premiere version passait par un batch JSON-RPC brut, et enfermait
+    // chaque echec dans un catch vide : quand le noeud a renvoye ses 502, la
+    // table est revenue VIDE et toute la grille s'est affichee grisee, sans
+    // le moindre message. On emprunte desormais le meme chemin que
+    // tokensOfOwner — qui, lui, fonctionne — et on compte les echecs.
+    const map = {};
+    let failed = 0;
+    const LOT = 12;                      // assez petit pour ne pas saturer le RPC
+    for (let k = 0; k < list.length; k += LOT) {
+      const slice = list.slice(k, k + LOT);
+      const got = await Promise.all(slice.map(tid =>
+        c.tokenItem(tid).then(v => Number(v)).catch(() => null)
+      ));
+      got.forEach((it, n) => { if (it) map[slice[n]] = it; else failed++; });
+    }
+
+    _fgTokens = map;
+    fgRender();
+
+    // Un echec partiel doit se voir : sinon le joueur croit ne rien posseder.
+    if (failed > 0) {
+      const g = document.getElementById('fg-grid');
+      if (g) {
+        g.insertAdjacentHTML('afterbegin',
+          `<div style="grid-column:1/-1;margin-bottom:0.6rem;padding:0.5rem 0.7rem;border-radius:6px;
+                       background:rgba(255,136,153,0.08);border:1px solid rgba(255,136,153,0.2);
+                       font-size:0.74rem;color:#ff8899;">
+             ${failed} relic${failed > 1 ? 's' : ''} could not be read — the network refused the call.
+             <span onclick="_fgTokens=null;fgLoad()" style="cursor:pointer;text-decoration:underline;">Retry</span>
+           </div>`);
+      }
+    }
+  } catch (e) {
+    grid.innerHTML = `<div style="grid-column:1/-1;color:#ff8899;font-size:0.8rem;">Could not read your relics — ${e?.message || 'unknown error'}</div>`;
+  }
+}
+
+function fgRender() {
+  const tiersEl = document.getElementById('fg-tiers');
+  const grid = document.getElementById('fg-grid');
+  if (!_fgTokens) return;
+
+  // Compter les exemplaires par item et par rarete.
+  const byItem = {};
+  Object.values(_fgTokens).forEach(it => { byItem[it] = (byItem[it] || 0) + 1; });
+  const byTier = [0,0,0,0,0];
+  Object.entries(byItem).forEach(([it, n]) => { byTier[fgRarityOf(Number(it))] += n; });
+
+  // Pastilles de palier. Legendary absente : rien au-dessus a forger.
+  tiersEl.innerHTML = [0,1,2,3].map(r => {
+    const n = byTier[r];
+    const cls = 'fg-tier' + (r === _fgTier ? ' on' : '') + (n === 0 ? ' empty' : '');
+    return `<span class="${cls}" ${n ? `onclick="fgPickTier(${r})"` : ''}>${FG_TIERS[r]} · ${n}</span>`;
+  }).join('') + `<span style="margin-left:auto;font-size:0.68rem;color:rgba(255,255,255,0.3);">→ ${FG_TIERS[_fgTier + 1]}</span>`;
+
+  // Les douze objets de la rarete choisie.
+  const items = [];
+  for (let id = 1; id <= 12; id++) if (fgRarityOf(id) === _fgTier) items.push(id);
+
+  // Aucune relique de ce palier : on le dit, plutot que d'afficher douze
+  // cartes grisees qui laissent croire a une panne.
+  if (byTier[_fgTier] === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1;padding:1.4rem 0;text-align:center;
+         color:rgba(255,255,255,0.35);font-style:italic;font-size:0.8rem;line-height:1.6;">
+         No ${FG_TIERS[_fgTier]} relics on this contract yet.<br>
+         <span style="font-size:0.72rem;color:rgba(255,255,255,0.25);">Relics minted before the update cannot be forged.</span>
+       </div>`;
+    fgBench();
+    return;
+  }
+
+  grid.innerHTML = items.map(id => {
+    const meta = (typeof ASCENT_ITEMS !== 'undefined') ? ASCENT_ITEMS[id - 1] : null;
+    const owned = byItem[id] || 0;
+    const taken = _fgPicked.filter(t => _fgTokens[t] === id).length;
+    const cls = 'fg-pick' + (owned === 0 ? ' none' : '') + (taken > 0 ? ' picked' : '');
+    // "last copy" : le contrat autorise de bruler sa derniere piece, mais le
+    // joueur doit le savoir AVANT de cliquer.
+    const note = owned === 0 ? '—'
+      : (owned - taken === 1 && taken === 0) ? '×1 · last copy'
+      : `×${owned}${taken ? ` · ${taken} picked` : ''}`;
+    return `<div class="${cls}" ${owned ? `onclick="fgToggle(${id})"` : ''}>
+      ${taken ? `<div class="fg-badge">${taken}</div>` : ''}
+      <img src="${meta ? meta.img : ''}" alt="" onerror="this.style.visibility='hidden'">
+      <div class="t">
+        <div class="n">${meta ? meta.name : ('Relic ' + id)}</div>
+        <div class="c${(owned === 1 && taken === 0) ? ' warn' : ''}">${note}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  fgBench();
+
+  const badge = document.getElementById('cx-sub-forge-n');
+  if (badge) {
+    const possible = byTier.slice(0, 4).reduce((a, n) => a + Math.floor(n / 3), 0);
+    badge.textContent = possible > 0 ? ('· ' + possible) : '';
+  }
+}
+
+function fgPickTier(r) {
+  if (r === _fgTier) return;
+  _fgTier = r;
+  _fgPicked = [];      // on ne melange pas les raretes : le contrat refuse
+  fgRender();
+}
+
+/// Un clic prend un exemplaire de plus, jusqu'a trois au total.
+function fgToggle(itemId) {
+  const already = _fgPicked.filter(t => _fgTokens[t] === itemId);
+  const owned = Object.entries(_fgTokens).filter(([, it]) => it === itemId).map(([t]) => Number(t));
+
+  if (already.length >= owned.length || _fgPicked.length >= 3) {
+    // Plus rien a prendre de cet objet, ou l'etabli est plein : le clic
+    // retire ce qu'on avait pose, plutot que de ne rien faire.
+    if (already.length) _fgPicked = _fgPicked.filter(t => t !== already[already.length - 1]);
+  } else {
+    const next = owned.find(t => !_fgPicked.includes(t));
+    if (next !== undefined) _fgPicked.push(next);
+  }
+  fgRender();
+}
+
+/// L'etabli. Il grandit des qu'une relique y est posee : tant qu'il est vide
+/// il ne doit pas occuper la place, et une fois rempli il doit montrer
+/// exactement ce qui va disparaitre — c'est irreversible.
+function fgBench() {
+  const el = document.getElementById('fg-bench');
+  if (!el) return;
+
+  const ready = _fgPicked.length === 3;
+  const missing = 3 - _fgPicked.length;
+  const open = _fgPicked.length > 0;
+
+  const slots = [0,1,2].map(i => {
+    const tid = _fgPicked[i];
+    if (tid === undefined) {
+      return `<div class="fg-slot${open ? ' big' : ''}">
+                <span class="ix">${i + 1}</span>
+              </div>`;
+    }
+    const meta = (typeof ASCENT_ITEMS !== 'undefined') ? ASCENT_ITEMS[_fgTokens[tid] - 1] : null;
+    return `<div class="fg-slot full${open ? ' big' : ''}" onclick="fgUnpick(${tid})"
+                 title="Remove from the forge">
+              <img src="${meta ? meta.img : ''}" alt="">
+              <span class="rm">×</span>
+              ${open ? `<span class="nm">${meta ? meta.name : ''}</span>` : ''}
+            </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="fg-bench${open ? ' open' : ''}">
+    <div class="fg-slots">${slots}</div>
+    <div class="fg-to">→</div>
+    <div class="fg-out${ready ? ' ready' : ''}">
+      <div class="fg-slot out${open ? ' big' : ''}">?</div>
+      ${open ? `<span class="nm">${FG_TIERS[_fgTier + 1]}</span>` : ''}
+    </div>
+    <div class="fg-say">
+      <div class="t">One ${FG_TIERS[_fgTier + 1]}</div>
+      <div class="s">${ready
+        ? 'Three relics destroyed for good · 0.002 zkLTC burned'
+        : `Pick ${missing} more · any ${FG_TIERS[_fgTier]} will do`}</div>
+    </div>
+    <button id="fg-go" onclick="fgConfirm()" ${ready ? '' : 'disabled'}
+      class="fg-btn${ready ? ' on' : ''}">Forge</button>
+  </div>
+  <div id="fg-err" style="display:none;margin-top:0.7rem;font-size:0.75rem;color:#ff8899;"></div>`;
+}
+
+/// Retirer une relique de l'etabli en cliquant dessus — plus direct que de
+/// retrouver sa carte dans la grille.
+function fgUnpick(tid) {
+  _fgPicked = _fgPicked.filter(t => t !== tid);
+  fgRender();
+}
+
+const FGR_COLOR = {
+  common:'#9aa8b8', uncommon:'#5ec8a0', rare:'#5a9fff',
+  epic:'#b075ff', legendary:'#ffc140'
+};
+
+/// Montre la relique obtenue. La carte arrive de loin, un peu tournee et
+/// surexposee, puis se pose : c'est le seul instant ou le joueur voit ce
+/// qu'il a gagne.
+function fgReveal(meta) {
+  const host = document.getElementById('fg-reveal');
+  const card = document.getElementById('fgr-card');
+  if (!host || !card || !meta) { showToast('✦ Forged'); return; }
+
+  const col = FGR_COLOR[meta.rarity] || '#ffc140';
+  card.style.borderColor = col + '99';
+  card.innerHTML = `
+    <img src="${meta.img}" alt="" onerror="this.style.visibility='hidden'">
+    <div class="fgr-name">${meta.name}
+      <span class="fgr-tier" style="color:${col};">${meta.rarity}</span>
+    </div>`;
+
+  host.classList.add('on');
+  document.body.style.overflow = 'hidden';
+
+  // On ne referme pas tout seul : le joueur regarde aussi longtemps qu'il
+  // veut. Une relique n'est pas une notification.
+}
+
+function fgRevealClose() {
+  const host = document.getElementById('fg-reveal');
+  if (host) host.classList.remove('on');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fgRevealClose(); });
+
+async function fgConfirm() {
+  if (_fgBusy || _fgPicked.length !== 3) return;
+  const go = document.getElementById('fg-go');
+  const err = document.getElementById('fg-err');
+  _fgBusy = true;
+  try {
+    await initAscentContract();
+    const c = ascentContract;   // il faut le contrat SIGNE : forge() est payable
+    if (!c) { throw new Error('Connect your wallet first'); }
+    if (go) { go.disabled = true; go.textContent = '✦ Forging…'; }
+
+    const cost = await c.FORGE_COST();
+    const tx = await c.forge(_fgPicked.slice(0, 3), {
+      value: cost,
+      ...(typeof svGasOverrides === 'function' ? await svGasOverrides() : {})
+    });
+    const receipt = await tx.wait();
+
+    // Annoncer la relique obtenue par son nom.
+    let got = null;
+    try {
+      const iface = new ethers.Interface(ASCENT_ABI);
+      for (const log of receipt.logs) {
+        try {
+          const parsed = iface.parseLog(log);
+          if (parsed && parsed.name === 'RelicsForged') {
+            const it = Number(await c.tokenItem(Number(parsed.args.tokenId)));
+            got = (typeof ASCENT_ITEMS !== 'undefined') ? ASCENT_ITEMS[it - 1] : null;
+            break;
+          }
+        } catch (e) {}
+      }
+    } catch (e) {}
+
+    _fgPicked = [];
+    _fgTokens = null;          // l'inventaire a change : on le relit
+    if (got) fgReveal(got); else showToast('✦ Forged');
+    await fgLoad();
+    // La collection aussi a change.
+    if (typeof codexOpen === 'function') setTimeout(() => codexOpen(), 200);
+  } catch (e) {
+    console.error('forge:', e);
+    if (err) {
+      err.textContent = e?.reason || e?.shortMessage || e?.message || 'Transaction failed';
+      err.style.display = 'block';
+    }
+    if (go) { go.disabled = false; go.textContent = 'Forge'; }
+  } finally {
+    _fgBusy = false;
+  }
+}
 
 function faqOpen(){
   const m = document.getElementById('faq-modal');
@@ -11967,7 +12638,7 @@ function faqClose(){
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') faqClose(); });
 
-function cardHTML(item, owned, sealedHint, scarcity, copies) {
+function cardHTML(item, owned, sealedHint, scarcity, copies, itemId) {
   // The frame carries the rarity, not the art: a locked Legendary should still
   // pull the eye across the grid — that pull is what makes reaching Maximalist
   // worth it. The name shows on locked cards too, otherwise two Commons of the
@@ -12013,6 +12684,9 @@ function cardHTML(item, owned, sealedHint, scarcity, copies) {
         <div class="nm">${label}</div>
       </div>
       ${scarcity ? `<div class="scar">${scarcity}</div>` : ''}
+      <!-- Pas de bouton ici : la forge a son propre sous-onglet, ou le
+           joueur peut melanger des objets DIFFERENTS de meme rarete — ce que
+           le contrat autorise et qu'un bouton par carte ne permettait pas. -->
     </div>
   </div>`;
 }
@@ -12140,15 +12814,39 @@ async function codexOpen(addr){
       rankName = info[2] || rankName;
     } catch(e) { console.warn('codex: burner info failed', e); }
 
-    // ── Collection: 13 targeted reads in parallel ──
+    // ── Collection ──────────────────────────────────────────────────
+    //
+    // CORRIGE. Cette grille interrogeait hasClaimed() sur l'ANCIEN contrat
+    // de NFT de rang — le commentaire d'origine le disait deja : « when
+    // AscentRelics ships, point this at inventoryOf() instead ». Ca n'avait
+    // jamais ete fait, donc le Codex n'a jamais montre les vraies reliques
+    // d'Ascent, seulement les anciens badges.
+    //
+    // On lit maintenant inventoryOf() sur le contrat courant ET sur les
+    // anciens, puis on additionne : une collection ne doit pas disparaitre
+    // parce qu'on a redeploye.
+    const inv12 = new Array(12).fill(0);
+    const _ascentAddrs = [ASCENT_CONTRACT_ADDRESS].concat(
+      (typeof LEGACY_ASCENT_CONTRACTS !== 'undefined') ? LEGACY_ASCENT_CONTRACTS : []
+    );
+    await Promise.all(_ascentAddrs.map(async (addr) => {
+      try {
+        const ac = new ethers.Contract(addr, ASCENT_ABI, window.svReadProvider);
+        const counts = await ac.inventoryOf(target);
+        for (let i = 0; i < 12; i++) inv12[i] += Number(counts[i]);
+      } catch (e) {
+        console.warn('codex: inventoryOf failed on', addr.slice(0, 10), e.message);
+      }
+    }));
+
     const rankChecks = [];
     POOL_DATA.forEach((pool, rIdx) => {
       pool.forEach((nft, nIdx) => {
-        rankChecks.push(
-          nftRead.hasClaimed(target, rIdx + 1, nIdx)
-            .then(ok => ({ kind:'rank', rIdx, nIdx, nft, owned: !!ok }))
-            .catch(() => ({ kind:'rank', rIdx, nIdx, nft, owned:false }))
-        );
+        const idx = rIdx * 3 + nIdx;          // item 1..12 dans l'ordre du contrat
+        const copies = inv12[idx] || 0;
+        rankChecks.push(Promise.resolve({
+          kind:'rank', rIdx, nIdx, nft, owned: copies > 0, copies
+        }));
       });
     });
 
@@ -12164,9 +12862,9 @@ async function codexOpen(addr){
     // same ownership the sidebar shows. Only for your own Codex — inspecting
     // another wallet must not relight your feats.
     if (target === (connectedAddress || '').toLowerCase()) {
-      const inv = new Array(12).fill(0);
-      ranks.forEach(r => { const idx = r.rIdx * 3 + r.nIdx; if (idx < 12 && r.owned) inv[idx] = 1; });
-      window._ascentInventory = inv;
+      // Les vrais compteurs, pas des 0/1 : les hauts faits qui parlent de
+      // doublons ont besoin du nombre d'exemplaires.
+      window._ascentInventory = inv12.slice();
       if (typeof featsEvaluate === 'function') { try { featsEvaluate(); } catch(e) {} }
     }
 
@@ -12341,8 +13039,14 @@ async function codexOpen(addr){
       html += '<div class="cx-cards">';
       pool.forEach((nft, nIdx) => {
         const rec = ranks.find(r => r.rIdx===rIdx && r.nIdx===nIdx);
+        // Le nombre d'exemplaires est le 5e argument : cardHTML affiche un
+        // badge "×3" au-dela de un. Il etait toujours absent, puisque la
+        // grille ne lisait qu'un booleen.
+        // L'id d'item du contrat (1..12) se deduit de la position : POOL_DATA
+        // est range dans le meme ordre que itemRank()/itemRarity().
         html += cardHTML(nft, rec && rec.owned,
-          reached ? '' : `Reach ${rd ? rd.name : 'this rank'} to unlock this pool`);
+          reached ? '' : `Reach ${rd ? rd.name : 'this rank'} to unlock this pool`,
+          null, rec ? rec.copies : 0, rIdx * 3 + nIdx + 1);
       });
       html += '</div>';
     });
