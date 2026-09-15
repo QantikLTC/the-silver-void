@@ -11926,21 +11926,26 @@ async function featsOpen() {
      En haut a droite, en pastille pleine, pour qu'on le lise d'un coup. */
   #codex-modal .cx-tc .dup{
     position:absolute; top:0.55rem; right:0.55rem; z-index:3;
-    font-family:'Cinzel',serif; font-size:0.72rem; font-weight:600;
-    min-width:1.5rem; text-align:center; padding:0.15rem 0.5rem; border-radius:11px;
-    background:rgba(4,2,18,0.9); color:#fff;
-    border:1px solid rgba(255,255,255,0.28);
-    box-shadow:0 2px 8px rgba(0,0,0,0.4);
+    font-family:'Cinzel',serif; font-size:0.78rem; font-weight:700;
+    min-width:1.6rem; text-align:center; padding:0.2rem 0.55rem; border-radius:12px;
+    background:rgba(4,2,18,0.96); color:#fff;
+    border:1px solid rgba(255,255,255,0.45);
+    box-shadow:0 3px 10px rgba(0,0,0,0.55);
   }
   /* Deux exemplaires ou plus : la pastille s'anime doucement pour signaler
      qu'il y a de quoi forger. */
   #codex-modal .cx-tc .dup.spare{
-    background:rgba(255,193,64,0.16); color:#ffc140;
-    border-color:rgba(255,193,64,0.5);
+    background:rgba(255,193,64,0.28); color:#ffe0a0;
+    border-color:rgba(255,193,64,0.8);
+    box-shadow:0 0 12px rgba(255,193,64,0.3), 0 3px 10px rgba(0,0,0,0.55);
   }
+  /* Total en circulation. Il etait pose en absolu sur l'image et chevauchait
+     le nom de la relique. On le descend dans le flux, sous le titre, ou il
+     ne recouvre plus rien. */
   #codex-modal .cx-tc .scar{
-    position:absolute; bottom:0.52rem; right:0.6rem; font-size:0.5rem;
-    color:rgba(255,255,255,0.28); letter-spacing:0.04em;
+    display:block; margin-top:0.35rem;
+    font-size:0.56rem; letter-spacing:0.06em;
+    color:rgba(255,255,255,0.4);
   }
   #codex-modal .cx-tc.r-common   { border-color:rgba(138,176,200,0.35) }
   #codex-modal .cx-tc.r-rare     { border-color:rgba(0,229,204,0.45);   box-shadow:0 0 20px rgba(0,229,204,0.12) }
@@ -12820,12 +12825,10 @@ function cardHTML(item, owned, sealedHint, scarcity, copies, itemId) {
       ${copies && copies >= 1 ? `<div class="dup${copies >= 2 ? ' spare' : ''}">\u00d7${copies}</div>` : ''}
       <div class="txt">
         <div class="nm">${label}</div>
+        <!-- La rarete globale vit ICI, sous le nom, dans le flux : posee en
+             absolu sur l'image elle chevauchait le titre. -->
+        ${scarcity ? `<div class="scar" title="Total in circulation across all players">${scarcity}</div>` : ''}
       </div>
-      <!-- "16 in existence" (circulatingOf) a ete retire d'ici : c'etait le
-           total en circulation dans tout le jeu, pas la possession du joueur,
-           et il faisait doublon avec le badge de coin. La rarete globale a sa
-           place sur le survol, pas en permanence sur la carte. -->
-      ${scarcity ? `<div class="scar" title="Total in circulation across all players">${scarcity}</div>` : ''}
       <!-- Pas de bouton ici : la forge a son propre sous-onglet, ou le
            joueur peut melanger des objets DIFFERENTS de meme rarete — ce que
            le contrat autorise et qu'un bouton par carte ne permettait pas. -->
