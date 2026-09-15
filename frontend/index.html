@@ -13524,10 +13524,19 @@ async function storeResolveRelic(nftContractAddr, tokenId) {
   // "Unknown Relic" generique en bas de fonction, sans nom ni illustration.
   // tokenItem() donne l'id d'item (1..12), qui indexe directement
   // ASCENT_ITEMS pour le nom, la rarete et l'artwork.
-  if (typeof ASCENT_CONTRACT_ADDRESS !== 'undefined'
-      && nftContractAddr.toLowerCase() === ASCENT_CONTRACT_ADDRESS.toLowerCase()) {
+  // Reliques d'Ascent — le contrat COURANT comme les anciens. Une relique
+  // du contrat legacy s'affichait en "Unknown Relic" parce qu'on ne
+  // comparait qu'a l'adresse actuelle. On lit tokenItem() sur le contrat
+  // ou vit reellement le jeton, pas sur celui par defaut.
+  const _ascentSet = [ASCENT_CONTRACT_ADDRESS.toLowerCase()]
+    .concat((typeof LEGACY_ASCENT_CONTRACTS !== 'undefined')
+      ? LEGACY_ASCENT_CONTRACTS.map(a => a.toLowerCase()) : []);
+  if (_ascentSet.includes(nftContractAddr.toLowerCase())) {
     try {
-      const c = await initAscentContract();
+      // Le jeton peut etre sur l'ancien contrat : on lit sur SON adresse,
+      // pas via initAscentContract() qui pointe sur le contrat courant.
+      const c = new ethers.Contract(nftContractAddr,
+        ['function tokenItem(uint256) view returns (uint8)'], window.svReadProvider);
       const itemId = Number(await c.tokenItem(tokenId));
       const meta = ASCENT_ITEMS[itemId - 1];
       if (meta) return { name: meta.name, rarity: meta.rarity, artUrl: meta.img, family: 'Ascent' };
