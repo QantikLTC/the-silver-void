@@ -7000,6 +7000,33 @@ async function svGasOverrides(baseOpts = {}) {
   return opts;
 }
 
+/// Estime la LIMITE de gas d'une transaction et y ajoute 25% de marge.
+///
+/// Sur LiteForge, ce n'est pas le prix du gas qui coince le plus souvent,
+/// c'est la LIMITE : l'estimation de MetaMask tombe trop juste sur les
+/// contrats un peu lourds (achat au Store, forge), la transaction manque de
+/// gas et echoue. L'utilisateur devait alors relever la limite a la main.
+/// On l'estime nous-memes et on garde une marge.
+///
+/// @param method  la fonction du contrat, ex: storeContract.buy
+/// @param args     ses arguments, la valeur/overrides compris en dernier
+async function svWithGasLimit(contractMethod, ...args) {
+  const opts = args.length && typeof args[args.length - 1] === 'object' && !Array.isArray(args[args.length - 1])
+    ? args[args.length - 1] : null;
+  try {
+    if (contractMethod.estimateGas) {
+      const est = await contractMethod.estimateGas(...args);
+      const withMargin = (est * 125n) / 100n;
+      if (opts) opts.gasLimit = withMargin;
+    }
+  } catch (e) {
+    // L'estimation a echoue : on laisse le wallet decider plutot que de
+    // poser une limite arbitraire qui pourrait etre trop basse.
+    console.warn('svWithGasLimit: estimate failed, wallet estimate used:', e.message);
+  }
+  return contractMethod(...args);
+}
+
 async function burn(){
   const v=parseFloat(document.getElementById('amt').value)||0;
   if(v<=0){showToast('Enter an amount',true);return;}
@@ -14251,7 +14278,11 @@ async function storeList() {
   try {
     const listingCost = await storeContract.LISTING_COST();
     const priceWei = ethers.parseEther(price);
-    const tx = await storeContract.list(contractAddr, tokenId, priceWei, { value: listingCost });
+    const opts = {
+      value: listingCost,
+      ...(typeof svGasOverrides === 'function' ? await svGasOverrides() : {})
+    };
+    const tx = await svWithGasLimit(storeContract.list, contractAddr, tokenId, priceWei, opts);
     btn.textContent = 'Listing...';
     await tx.wait();
     showToast('✦ Listed in The Void Store!');
@@ -14275,7 +14306,16 @@ async function storeBuy(listingId) {
   try {
     const listing = await storeReadContract.getListing(listingId);
     showToast('Confirm in MetaMask...');
-    const tx = await storeContract.buy(listingId, { value: listing.price });
+    // svGasOverrides comme partout ailleurs : sur LiteForge, l'estimation
+    // automatique de MetaMask echoue reguliaerement, ce qui obligeait
+    // l'acheteur a fixer la limite de gas a la main — infaisable pour la
+    // plupart des gens. L'acheteur paie le prix affiche, rien de plus :
+    // les frais 80/17/3 sont preleves sur le vendeur, pas sur lui.
+    const opts = {
+      value: listing.price,
+      ...(typeof svGasOverrides === 'function' ? await svGasOverrides() : {})
+    };
+    const tx = await svWithGasLimit(storeContract.buy, listingId, opts);
     await tx.wait();
     showToast('✦ Purchase complete!');
     storeRefreshListings();
@@ -14290,7 +14330,8 @@ async function storeCancel(listingId) {
   if (!storeContract) { showToast('Store contract not ready'); return; }
   try {
     showToast('Confirm in MetaMask...');
-    const tx = await storeContract.cancel(listingId);
+    const tx = await storeContract.cancel(listingId,
+      (typeof svGasOverrides === 'function' ? await svGasOverrides() : {}));
     await tx.wait();
     showToast('✦ Listing cancelled');
     storeRefreshListings();
