@@ -12678,11 +12678,11 @@ function fgReveal(meta) {
 
   const col = FGR_COLOR[meta.rarity] || '#ffc140';
   card.style.borderColor = col + '99';
-  card.innerHTML = `
-    <img src="${meta.img}" alt="" onerror="this.style.visibility='hidden'">
-    <div class="fgr-name">${meta.name}
-      <span class="fgr-tier" style="color:${col};">${meta.rarity}</span>
-    </div>`;
+  // L'illustration porte deja le nom et la rarete de la relique — les
+  // repeter en dessous faisait doublon. On montre la carte seule, comme la
+  // revelation d'un tirage en duel. Le nom reste dans le toast, pour ceux
+  // qui l'ont manque.
+  card.innerHTML = `<img src="${meta.img}" alt="${meta.name}" onerror="this.style.visibility='hidden'">`;
 
   host.classList.add('on');
   document.body.style.overflow = 'hidden';
@@ -12735,7 +12735,8 @@ async function fgConfirm() {
 
     _fgPicked = [];
     _fgTokens = null;          // l'inventaire a change : on le relit
-    if (got) fgReveal(got); else showToast('✦ Forged');
+    if (got) { fgReveal(got); showToast('✦ Forged — ' + got.name); }
+    else showToast('✦ Forged');
     await fgLoad();
     // La collection aussi a change.
     if (typeof codexOpen === 'function') setTimeout(() => codexOpen(), 200);
