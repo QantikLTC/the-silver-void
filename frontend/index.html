@@ -769,9 +769,21 @@ footer {
 }
 #codex-modal .cx-sub span:hover{ color:rgba(255,255,255,0.75) }
 #codex-modal .cx-sub span.on{ color:#fff; border-bottom-color:var(--teal) }
+/* Quand des forges sont possibles, l'onglet cesse d'etre discret : il
+   s'illumine et respire, pour dire « viens forger » sans un mot. */
+#codex-modal .cx-sub span.can-forge{
+  color:#ffc140;
+  animation:cxForgeGlow 2s ease-in-out infinite;
+}
+#codex-modal .cx-sub span.can-forge.on{ color:#ffd97a; border-bottom-color:#ffc140 }
+@keyframes cxForgeGlow{
+  0%,100%{ text-shadow:0 0 0 rgba(255,193,64,0) }
+  50%    { text-shadow:0 0 12px rgba(255,193,64,0.55) }
+}
 #codex-modal .cx-sub b{
-  font-weight:400; margin-left:0.4rem; font-size:0.62rem;
-  color:#ffc140; opacity:0.85;
+  font-weight:600; margin-left:0.45rem; font-size:0.6rem;
+  color:#1a1005; background:#ffc140; padding:0.08rem 0.42rem; border-radius:9px;
+  vertical-align:middle;
 }
 
 /* Grille de selection de la forge. */
@@ -11909,14 +11921,26 @@ async function featsOpen() {
     position:absolute; top:0.55rem; right:0.55rem; width:13px; height:13px;
     transform:rotate(45deg); border-radius:2px; box-shadow:0 0 10px currentColor;
   }
+  /* Badge de possession — combien d'exemplaires le JOUEUR detient. A ne pas
+     confondre avec .scar, qui est le total en circulation dans tout le jeu.
+     En haut a droite, en pastille pleine, pour qu'on le lise d'un coup. */
   #codex-modal .cx-tc .dup{
-    position:absolute; top:0.5rem; left:0.5rem; font-family:'Cinzel',serif; font-size:0.6rem;
-    padding:1px 7px; border-radius:8px; background:rgba(8,6,26,0.85);
-    border:1px solid rgba(255,255,255,0.2); color:#fff;
+    position:absolute; top:0.55rem; right:0.55rem; z-index:3;
+    font-family:'Cinzel',serif; font-size:0.72rem; font-weight:600;
+    min-width:1.5rem; text-align:center; padding:0.15rem 0.5rem; border-radius:11px;
+    background:rgba(4,2,18,0.9); color:#fff;
+    border:1px solid rgba(255,255,255,0.28);
+    box-shadow:0 2px 8px rgba(0,0,0,0.4);
+  }
+  /* Deux exemplaires ou plus : la pastille s'anime doucement pour signaler
+     qu'il y a de quoi forger. */
+  #codex-modal .cx-tc .dup.spare{
+    background:rgba(255,193,64,0.16); color:#ffc140;
+    border-color:rgba(255,193,64,0.5);
   }
   #codex-modal .cx-tc .scar{
-    position:absolute; bottom:0.52rem; right:0.6rem; font-size:0.55rem;
-    color:rgba(255,255,255,0.42); letter-spacing:0.04em;
+    position:absolute; bottom:0.52rem; right:0.6rem; font-size:0.5rem;
+    color:rgba(255,255,255,0.28); letter-spacing:0.04em;
   }
   #codex-modal .cx-tc.r-common   { border-color:rgba(138,176,200,0.35) }
   #codex-modal .cx-tc.r-rare     { border-color:rgba(0,229,204,0.45);   box-shadow:0 0 20px rgba(0,229,204,0.12) }
@@ -12417,6 +12441,26 @@ function fgRarityOf(id) {
   return 0;
 }
 
+/// Met a jour le pastille et la lueur de l'onglet Forge, sans avoir a
+/// l'ouvrir. Lit l'inventaire deja charge (window._ascentInventory) et
+/// compte les forges possibles par palier.
+function svUpdateForgeTab() {
+  const tab = document.getElementById('cx-sub-forge');
+  const badge = document.getElementById('cx-sub-forge-n');
+  if (!tab) return;
+
+  const inv = window._ascentInventory;
+  if (!Array.isArray(inv)) return;
+
+  // Exemplaires par palier, puis nombre de forges (3 par forge).
+  const byTier = [0,0,0,0,0];
+  for (let id = 1; id <= 12; id++) byTier[fgRarityOf(id)] += (inv[id - 1] || 0);
+  const possible = byTier.slice(0, 4).reduce((a, n) => a + Math.floor(n / 3), 0);
+
+  if (badge) badge.textContent = possible > 0 ? String(possible) : '';
+  tab.classList.toggle('can-forge', possible > 0);
+}
+
 function codexSubTab(which) {
   const isForge = which === 'forge';
   document.getElementById('codex-body').style.display = isForge ? 'none' : '';
@@ -12772,11 +12816,15 @@ function cardHTML(item, owned, sealedHint, scarcity, copies, itemId) {
       <div class="rar-top r-${rar}">${rar}</div>
       <img class="art" src="${item.artUrl}" alt="${item.name}" onerror="this.style.visibility='hidden'">
       <div class="veil"></div>
-      ${copies && copies > 1 ? `<div class="dup">\u00d7${copies}</div>` : ''}
+      ${copies && copies >= 1 ? `<div class="dup${copies >= 2 ? ' spare' : ''}">\u00d7${copies}</div>` : ''}
       <div class="txt">
         <div class="nm">${label}</div>
       </div>
-      ${scarcity ? `<div class="scar">${scarcity}</div>` : ''}
+      <!-- "16 in existence" (circulatingOf) a ete retire d'ici : c'etait le
+           total en circulation dans tout le jeu, pas la possession du joueur,
+           et il faisait doublon avec le badge de coin. La rarete globale a sa
+           place sur le survol, pas en permanence sur la carte. -->
+      ${scarcity ? `<div class="scar" title="Total in circulation across all players">${scarcity}</div>` : ''}
       <!-- Pas de bouton ici : la forge a son propre sous-onglet, ou le
            joueur peut melanger des objets DIFFERENTS de meme rarete — ce que
            le contrat autorise et qu'un bouton par carte ne permettait pas. -->
@@ -12970,6 +13018,8 @@ async function codexOpen(addr){
       // Les vrais compteurs, pas des 0/1 : les hauts faits qui parlent de
       // doublons ont besoin du nombre d'exemplaires.
       window._ascentInventory = inv12.slice();
+      // L'onglet Forge peut maintenant dire s'il y a de quoi forger.
+      if (typeof svUpdateForgeTab === 'function') svUpdateForgeTab();
       if (typeof featsEvaluate === 'function') { try { featsEvaluate(); } catch(e) {} }
     }
 
@@ -13151,6 +13201,8 @@ async function codexOpen(addr){
         // est range dans le meme ordre que itemRank()/itemRarity().
         const _id = rIdx * 3 + nIdx + 1;
         const _n = circ[_id - 1];
+        // La rarete globale ne s'affiche plus en clair sur la carte (doublon
+        // avec le badge de possession) : elle reste accessible au survol.
         html += cardHTML(nft, rec && rec.owned,
           reached ? '' : `Reach ${rd ? rd.name : 'this rank'} to unlock this pool`,
           (_n != null && _n > 0) ? (_n + ' in existence') : null,
