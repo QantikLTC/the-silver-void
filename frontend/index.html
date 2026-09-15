@@ -9147,6 +9147,25 @@ const ASCENT_CONTRACT_ADDRESS = '0xAe23A9c55aA48Dd59E88E5080F15175067a71801';
 const LEGACY_ASCENT_CONTRACTS = [
   '0x8FF2fbfE17Af4746DB4b3d500D34AebB3bF1Fcd8',
 ];
+
+/// Les seuls contrats dont une relique a le droit d'apparaitre au Store.
+///
+/// Le contrat Store est immuable : sa fonction list() accepte N'IMPORTE quel
+/// NFT. Rien ne l'empeche on-chain — quelqu'un a d'ailleurs liste un jeton
+/// venu d'un contrat etranger, affiche en "Unknown Relic". On filtre donc a
+/// deux endroits cote interface : au moment de lister, et a l'affichage.
+/// La vraie interdiction (liste blanche dans list()) attend le redeploiement
+/// mainnet du Store.
+function svAllowedNftContracts() {
+  const list = [ASCENT_CONTRACT_ADDRESS];
+  if (typeof LEGACY_ASCENT_CONTRACTS !== 'undefined') list.push(...LEGACY_ASCENT_CONTRACTS);
+  if (typeof SAGA_CONTRACT_ADDRESS !== 'undefined') list.push(SAGA_CONTRACT_ADDRESS);
+  if (typeof NFT_CONTRACT_ADDRESS !== 'undefined') list.push(NFT_CONTRACT_ADDRESS);
+  return list.map(a => a.toLowerCase());
+}
+function svIsAllowedNft(addr) {
+  return !!addr && svAllowedNftContracts().includes(addr.toLowerCase());
+}
 // Cadence des tirages : UN SEUL endroit dans tout le code.
 // L'interface annoncait "one draw every 3 duels" alors que le calcul du
 // compteur faisait (4 - duels % 4), soit un tirage tous les 4 duels. Un
@@ -13898,6 +13917,10 @@ async function storeRefreshListings() {
       const res = await storeReadContract.getActiveListings(cursor, 100);
       for (let i = 0; i < res.ids.length; i++) {
         const l = res.page[i];
+        // On ne garde que les reliques du Void. Le contrat Store accepte
+        // n'importe quel NFT ; un jeton etranger liste par appel direct
+        // s'affichait en "Unknown Relic". On le masque de la vitrine.
+        if (!svIsAllowedNft(l.nftContract)) continue;
         active.push({ id: Number(res.ids[i]), seller: l.seller, nftContract: l.nftContract, tokenId: l.tokenId, price: l.price, active: l.active });
       }
       cursor = Number(res.nextCursor);
@@ -14272,6 +14295,14 @@ async function storeList() {
   if (!ethers.isAddress(contractAddr)) { errBox.textContent = 'Pick a relic from the gallery above first.'; errBox.style.display = 'block'; return; }
   if (!tokenId) { errBox.textContent = 'Pick a relic from the gallery above first.'; errBox.style.display = 'block'; return; }
   if (!price || parseFloat(price) <= 0) { errBox.textContent = 'Enter a valid price.'; errBox.style.display = 'block'; return; }
+
+  // Ne lister que des reliques du Void. Le contrat, lui, accepterait tout —
+  // c'est le seul garde-fou cote interface.
+  if (!svIsAllowedNft(contractAddr)) {
+    errBox.textContent = 'Only Silver Void relics can be listed here.';
+    errBox.style.display = 'block';
+    return;
+  }
 
   const btn = document.getElementById('store-list-btn');
   btn.disabled = true; btn.textContent = 'Confirm in MetaMask...';
