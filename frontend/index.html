@@ -3111,7 +3111,7 @@ if (document.readyState === 'loading') {
       • <strong style="color:rgba(255,255,255,0.85);">The Forge.</strong> Any three relics of the same tier — they need not be the same card. Found in your Codex, under Relics.<br>
       • <strong style="color:rgba(255,255,255,0.85);">It ignores rank.</strong> Buy three Rares on the Store and you have paid for your Epic, in zkLTC rather than offerings.<br>
       • <strong style="color:rgba(255,255,255,0.85);">Three duels per draw</strong>, down from four.<br>
-      • <strong style="color:rgba(255,255,255,0.85);">Fifty seconds to reveal</strong>, up from sixteen.
+      • <strong style="color:rgba(255,255,255,0.85);">Fifty seconds to reveal a draw</strong>, up from sixteen. (Duels keep their 24h window.)
     </div>
 
     <!-- Le point le plus important de l'annonce : il vaut mieux l'apprendre
@@ -3353,7 +3353,7 @@ function svIntroParticles() {
       <span class="t2">Si<span class="ltc-letter">Ł</span>ver Void</span>
     </h1>
     <p class="hero-pitch" style="opacity:1;position:relative;z-index:20;max-width:600px;margin:1.6rem auto 0;">
-      Transmute your LTC into <em>Eternal Silver</em> through the deflationary Great Work,
+      Transmute your zkLTC into <em>Eternal Silver</em> through the deflationary Great Work,
       <strong>and ascend through the Order of the Void.</strong>
     </p>
     <blockquote style="
@@ -4059,7 +4059,7 @@ function svIntroParticles() {
       <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
         <div>
           <div style="font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.35);">Arena Draws</div>
-          <div style="margin-top:0.3rem;font-size:0.78rem;color:rgba(255,255,255,0.45);">One draw every <span id="arena-cadence">4</span> duels. Earned by playing — never bought.</div>
+          <div style="margin-top:0.3rem;font-size:0.78rem;color:rgba(255,255,255,0.45);">One draw every <span id="arena-cadence">3</span> duels. Earned by playing — never bought.</div>
           <!-- La regle "le rang ouvre le pool" etait ecrite mais pas MONTREE :
                rien ne disait qu'un rang 3 tire aussi dans les pools 1 et 2.
                Cette echelle rend le cumul visible d'un coup d'oeil. -->
@@ -6297,9 +6297,9 @@ function chroniclesRouteFromHash() {
       <a href="https://liteforge.explorer.caldera.xyz/address/0x0AD3f776C45FF457d2d8e211A3174A4Db201b656" target="_blank" rel="noopener"><b>Ritual</b><span>0x0AD3…b656</span></a>
       <a href="https://liteforge.explorer.caldera.xyz/address/0xEA3ac301Fef474c8799924EC58c48f2c4114684B" target="_blank" rel="noopener"><b>Arena</b><span>0xEA3a…684B</span></a>
       <a href="https://liteforge.explorer.caldera.xyz/address/0xD21daA1a264eb9770ECA992e9414Fac5058AfB12" target="_blank" rel="noopener"><b>Order</b><span>0xD21d…fB12</span></a>
-      <a href="https://liteforge.explorer.caldera.xyz/address/0x8FF2fbfE17Af4746DB4b3d500D34AebB3bF1Fcd8" target="_blank" rel="noopener"><b>Relics</b><span>0x8FF2…Fcd8</span></a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0xAe23A9c55aA48Dd59E88E5080F15175067a71801" target="_blank" rel="noopener"><b>Relics &amp; Forge</b><span>0xAe23…1801</span></a>
       <a href="https://liteforge.explorer.caldera.xyz/address/0x50FbF3fe230c67913e4a8dB9230D538ADAA08Ef7" target="_blank" rel="noopener"><b>Store</b><span>0x50Fb…8Ef7</span></a>
-      <a href="https://liteforge.explorer.caldera.xyz/address/0xB715bc47A5a2Ab31f3F6a09211E53c8eb9CCDe76" target="_blank" rel="noopener"><b>Saga</b><span>0xB715…De76</span></a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0x8FF2fbfE17Af4746DB4b3d500D34AebB3bF1Fcd8" target="_blank" rel="noopener"><b>Relics (v1)</b><span>0x8FF2…Fcd8</span></a>
     </div>
     <div style="margin-top:1.2rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.07);
                 font-family:'Cormorant Garamond',serif;font-style:italic;font-size:0.86rem;
@@ -6957,7 +6957,7 @@ function updateRankProj(v){
 function updateXP(v){
   v=parseFloat(v)||0;
   const xp=Math.round(v*1000);
-  let r='Hollow';
+  let r='The Void';   // meme nom que le classement (etait 'Hollow')
   if(v>=100)r='Silver Maximalist ★★★★';else if(v>=20)r='Devoted Litecoiner ★★★';else if(v>=5)r='Apprentice Litecoiner ★★';else if(v>=0.5)r='Simple Holder ★';
   const _xpvEl=document.getElementById('xpv')||document.getElementById('live-xp'); if(_xpvEl) _xpvEl.textContent='+'+xp.toLocaleString()+' XP';
   // Segmented scale: each rank gets 25% of the bar
@@ -8646,7 +8646,7 @@ function triggerRankUp(n) {
 
 
 // ══ NFT POOL DATA ══
-// The twelve Ascent relics — 3 per burn rank, one draw every 4 duels.
+// The twelve Ascent relics — 3 per burn rank, one draw every 3 duels.
 // Rarity is no longer written per card as a percentage: the odds are a single
 // global table (75/18/5/1.5/0.5) renormalised over whatever the player's rank
 // actually makes reachable, so a fixed "70%" on a locked slot would be a lie.
@@ -9659,7 +9659,7 @@ async function duelRestoreState() {
         const choiceB = Number(d.choiceB);
         if (!_duelResultShown.has(String(jId))) {
           _duelResultShown.add(String(jId));
-          duelShowResult(isWin, isTie, choiceB, choiceA);
+          duelShowResult(isWin, isTie, choiceB, choiceA, ethers.formatEther(d.stake));
           showToast((isTie ? '🤝 Tie' : isWin ? '🏆 Victory' : '💀 Defeat') + ' — Duel #' + jId + ' resolved');
         }
         const _h = duelHistoryLoad();
@@ -10240,7 +10240,7 @@ async function duelReveal() {
       } catch {}
     }
 
-    duelShowResult(isWin, isTie, choiceA, choiceB);
+    duelShowResult(isWin, isTie, choiceA, choiceB, (typeof _onchain !== "undefined" && _onchain) ? ethers.formatEther(_onchain.stake) : undefined);
     // Save to persistent history — read the REAL stake from the contract
     // rather than duelSelectedStake, which is a single shared variable that
     // gets overwritten every time a new duel is created. If this reveal
@@ -10313,7 +10313,7 @@ async function duelCheckMyStatus() {
         // For wallet B: myChoice=choiceB, oppChoice=choiceA
         if (!_duelResultShown.has(String(jId))) {
           _duelResultShown.add(String(jId));
-          duelShowResult(isWin, isTie, choiceB, choiceA);
+          duelShowResult(isWin, isTie, choiceB, choiceA, stakeStr);
           showToast((isTie ? '🤝 Tie' : isWin ? '🏆 Victory' : '💀 Defeat') + ' — Duel #' + jId + ' resolved');
         }
         // Save to history (deduped — the restore path may already have saved it)
@@ -10965,7 +10965,7 @@ async function duelLoadStats() {
 // after an account switch both may run in the same window.
 const _duelResultShown = new Set();
 
-function duelShowResult(isWin, isTie, choiceA, choiceB) {
+function duelShowResult(isWin, isTie, choiceA, choiceB, stakeEth) {
   const overlay = document.getElementById('duel-result-overlay');
   const box     = document.getElementById('duel-result-box');
   if (!overlay || !box) return;
@@ -10976,6 +10976,18 @@ function duelShowResult(isWin, isTie, choiceA, choiceB) {
   const title = document.getElementById('duel-res-title');
   const sub   = document.getElementById('duel-res-sub');
 
+  // Montants CALCULES depuis la vraie mise, plus jamais codes en dur.
+  // Les anciennes valeurs (+0.15 / 0.02) etaient justes pour 0.1 seulement,
+  // et fausses des qu'on jouait autre chose. Et "+0.15" laissait croire a un
+  // gain net : le pot vaut 2x la mise, le gagnant en touche 75%, mais il
+  // avait mise la moitie du pot — son gain NET est donc 0.75*2*s - s = 0.5*s.
+  const s = parseFloat(stakeEth || duelSelectedStake || '0.1');
+  const pot = s * 2;
+  const gross = pot * 0.75;          // ce que le contrat verse au gagnant
+  const net = gross - s;             // gain reel, mise deduite
+  const burned = pot * 0.20;         // 20% du pot brule
+  const fmt = (x) => (Math.round(x * 1000) / 1000).toString();
+
   if (isTie) {
     document.getElementById('duel-res-emoji').textContent = '🤝';
     title.textContent = 'TIE!'; title.style.color = '#c8a84a';
@@ -10983,11 +10995,11 @@ function duelShowResult(isWin, isTie, choiceA, choiceB) {
   } else if (isWin) {
     document.getElementById('duel-res-emoji').textContent = '🏆';
     title.textContent = 'YOU WIN!'; title.style.color = 'var(--teal)';
-    sub.textContent = '+0.15 zkLTC · 0.02 burned forever';
+    sub.textContent = `You receive ${fmt(gross)} zkLTC (net +${fmt(net)}) · ${fmt(burned)} burned`;
   } else {
     document.getElementById('duel-res-emoji').textContent = '💀';
     title.textContent = 'YOU LOSE'; title.style.color = '#ff4466';
-    sub.textContent = '0.02 zkLTC burned forever';
+    sub.textContent = `\u2212${fmt(s)} zkLTC · ${fmt(burned)} burned forever`;
   }
 
   overlay.style.display = 'flex';
@@ -17797,7 +17809,7 @@ body.sv-rail-on section#chronicles-page > div[aria-hidden]{ display:none !import
       <a href="https://liteforge.explorer.caldera.xyz/address/0x0AD3f776C45FF457d2d8e211A3174A4Db201b656" target="_blank" rel="noopener">Ritual</a>
       <a href="https://liteforge.explorer.caldera.xyz/address/0xEA3ac301Fef474c8799924EC58c48f2c4114684B" target="_blank" rel="noopener">Arena</a>
       <a href="https://liteforge.explorer.caldera.xyz/address/0xD21daA1a264eb9770ECA992e9414Fac5058AfB12" target="_blank" rel="noopener">Order</a>
-      <a href="https://liteforge.explorer.caldera.xyz/address/0x8FF2fbfE17Af4746DB4b3d500D34AebB3bF1Fcd8" target="_blank" rel="noopener">Relics</a>
+      <a href="https://liteforge.explorer.caldera.xyz/address/0xAe23A9c55aA48Dd59E88E5080F15175067a71801" target="_blank" rel="noopener">Relics &amp; Forge</a>
       <a href="https://liteforge.explorer.caldera.xyz/address/0x50FbF3fe230c67913e4a8dB9230D538ADAA08Ef7" target="_blank" rel="noopener">Store</a>
     </div>
     <div class="fc-burn">
