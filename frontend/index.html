@@ -15030,16 +15030,52 @@ async function avatarOpen() {
   }).join('');
 }
 
+// Preuve de propriété pour les modifications de profil (avatar).
+// Doit correspondre caractère pour caractère à SIGN_MESSAGE dans /api/avatar.js.
+// ⚠️ Message volontairement DIFFÉRENT de SECRET_SIGN_MESSAGE : cette
+// signature-là sert de clé de chiffrement des secrets de duel et ne doit
+// jamais être envoyée au serveur.
+const PROFILE_SIGN_MESSAGE = 'The Silver Void \u2014 edit my profile';
+let _profileSig = { wallet: null, sig: null };
+async function profileSignature(forceNew) {
+  const w = (connectedAddress || '').toLowerCase();
+  const storeKey = 'sv_profile_sig_' + w;
+  if (!forceNew) {
+    if (_profileSig.wallet === w && _profileSig.sig) return _profileSig.sig;
+    // Mémorisée dans ce navigateur : le joueur signe une seule fois par appareil.
+    // (Pour le mainnet : remplacer par une signature unique à la connexion.)
+    try { const c = localStorage.getItem(storeKey); if (c) { _profileSig = { wallet: w, sig: c }; return c; } } catch(e) {}
+  }
+  if (!signer) throw new Error('Wallet not connected');
+  const sig = await signer.signMessage(PROFILE_SIGN_MESSAGE);
+  _profileSig = { wallet: w, sig };
+  try { localStorage.setItem(storeKey, sig); } catch(e) {}
+  return sig;
+}
+
 async function avatarSelect(id) {
   if (!connectedAddress) { showToast('Connect wallet first'); return; }
   const target = avatarAllUnlocked().find(a => a.id === id);
   if (target && !target.unlocked) { showToast('🔒 Not unlocked yet', true); return; }
   try {
-    const res = await fetch(AVATAR_API, {
+    let signature;
+    try {
+      signature = await profileSignature(false);
+    } catch (e) {
+      showToast('Signature cancelled', true);
+      return;
+    }
+    const post = (sig) => fetch(AVATAR_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet: connectedAddress, avatar: id })
+      body: JSON.stringify({ wallet: connectedAddress, avatar: id, signature: sig })
     });
+    let res = await post(signature);
+    if (res.status === 401) {
+      // Signature mémorisée invalide (changement de compte dans le wallet…) : on redemande.
+      try { signature = await profileSignature(true); } catch (e) { showToast('Signature cancelled', true); return; }
+      res = await post(signature);
+    }
     if (!res.ok) { showToast('Could not save avatar', true); return; }
     _myAvatarId = id;
     // Mettre à jour le cache de profils immédiatement : sinon _profileGet
