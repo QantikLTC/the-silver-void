@@ -20,9 +20,15 @@
 //    avatar:null au lieu d'un 500. Le site affiche l'avatar par défaut au
 //    lieu de casser, et le navigateur n'a aucune raison de relancer en boucle.
 //
-// ⚠️ RESTE À FAIRE (nécessite une modif du front) : le POST n'est pas signé.
-//    N'importe qui peut changer l'avatar de n'importe quel wallet. Même
-//    correctif que /api/username : signature du wallet vérifiée côté serveur.
+// 3. ÉCRITURE SIGNÉE. Le POST exige désormais une signature du wallet sur un
+//    message fixe (même principe que /api/username). Avant, n'importe qui
+//    pouvait changer l'avatar de n'importe quel joueur en une requête.
+//    Le site signe une fois par session et réutilise la signature.
+
+import { verifyMessage } from 'ethers';
+
+// Doit correspondre caractère pour caractère à PROFILE_SIGN_MESSAGE dans index.html.
+const SIGN_MESSAGE = 'The Silver Void — edit my profile';
 
 async function redisCall(path, opts = {}) {
   const url = `${process.env.KV_REST_API_URL}${path}`;
@@ -75,9 +81,20 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { wallet, avatar } = req.body || {};
-      if (!wallet || !avatar) {
-        res.status(400).json({ error: 'Missing wallet or avatar' });
+      const { wallet, avatar, signature } = req.body || {};
+      if (!wallet || !avatar || !signature) {
+        res.status(400).json({ error: 'Missing wallet, avatar, or signature' });
+        return;
+      }
+      let signer;
+      try {
+        signer = verifyMessage(SIGN_MESSAGE, signature);
+      } catch (e) {
+        res.status(401).json({ error: 'Invalid signature' });
+        return;
+      }
+      if (signer.toLowerCase() !== String(wallet).toLowerCase()) {
+        res.status(401).json({ error: 'Signature does not match wallet' });
         return;
       }
       if (avatar.length > MAX_ID_LEN || !ID_REGEX.test(avatar)) {
