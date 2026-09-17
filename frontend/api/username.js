@@ -22,16 +22,18 @@
 //    Plus économique, et sans la course où deux requêtes simultanées
 //    passaient toutes les deux le GET avant le SET.
 //
+// 7. SESSION AU LIEU D'UNE SIGNATURE PAR CHANGEMENT. L'écriture exige la
+//    session de connexion (cookie posé par /api/auth après UNE signature),
+//    partagée avec l'avatar et les skins. Même garantie de propriété, une
+//    seule fenêtre MetaMask pour tout le profil.
+//
 // Business rules (rank required, first change free) still live in the frontend.
 
-import { verifyMessage } from 'ethers';
+import { sessionAddress } from './_session.js';
 
 const MIN_LEN = 3;
 const MAX_LEN = 16;
 const NAME_REGEX = /^[a-zA-Z0-9_-]+$/;
-
-// Must match exactly what the frontend asks the wallet to sign.
-const SIGN_MESSAGE = 'The Silver Void — set my display name';
 
 const ALLOWED_ORIGINS = [
   'https://thesilvervoid.com',
@@ -143,21 +145,15 @@ export default async function handler(req, res) {
 
     // ───────────────────────── POST ─────────────────────────
     if (req.method === 'POST') {
-      const { wallet, username, signature } = req.body || {};
-      if (!wallet || !username || !signature) {
-        res.status(400).json({ error: 'Missing wallet, username, or signature' });
+      const { wallet, username } = req.body || {};
+      if (!wallet || !username) {
+        res.status(400).json({ error: 'Missing wallet or username' });
         return;
       }
 
-      let signer;
-      try {
-        signer = verifyMessage(SIGN_MESSAGE, signature);
-      } catch (e) {
-        res.status(401).json({ error: 'Invalid signature' });
-        return;
-      }
-      if (signer.toLowerCase() !== String(wallet).toLowerCase()) {
-        res.status(401).json({ error: 'Signature does not match wallet' });
+      const me = sessionAddress(req);
+      if (!me || me !== String(wallet).toLowerCase()) {
+        res.status(401).json({ error: 'Sign in required' });
         return;
       }
 

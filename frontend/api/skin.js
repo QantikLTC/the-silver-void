@@ -35,6 +35,12 @@
 //    · Les reliques (feat) restent déclaratives : les hauts faits sont
 //      calculés dans le navigateur. Impact limité aux reliques.
 //    · Le catalogue SKIN_CATALOG doit rester aligné avec SKINS dans index.html.
+//
+// 4. SESSION. Équiper un skin et débloquer une relique exigent la session de
+//    connexion du joueur (cookie de /api/auth). Un achat payé n'en a pas
+//    besoin : la transaction on-chain prouve déjà qui est l'acheteur.
+
+import { sessionAddress } from './_session.js';
 
 const MAX_ID_LEN = 40;
 const ID_REGEX = /^[a-zA-Z0-9_]+$/;
@@ -232,6 +238,11 @@ export default async function handler(req, res) {
           return;
         }
 
+        if (rarity === 'relic' && sessionAddress(req) !== walletKey) {
+          res.status(401).json({ error: 'Sign in required' });
+          return;
+        }
+
         const owned = await getOwned(walletKey);
         if (owned.includes(buy)) {
           res.status(200).json({ ok: true, owned });   // déjà possédé : rien à vérifier
@@ -279,6 +290,10 @@ export default async function handler(req, res) {
       }
 
       // ── EQUIP: set the currently displayed skin ──
+      if (sessionAddress(req) !== walletKey) {
+        res.status(401).json({ error: 'Sign in required' });
+        return;
+      }
       if (!skin) {
         res.status(400).json({ error: 'Missing skin' });
         return;
