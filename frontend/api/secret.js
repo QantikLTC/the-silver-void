@@ -8,8 +8,25 @@
 //
 // Key scheme: "duelsecret:<walletAddress>:<duelId>"
 //   - walletAddress is lowercased before use.
-//   - Each key auto-expires after 7 days (plenty of time to reveal;
-//     keeps the database from growing unbounded with stale data).
+//   - Each key auto-expires after 7 days.
+//
+// ═══ CORRECTIF (audit sécurité) ═══
+//
+// ÉCRITURE UNIQUE. Avant, n'importe qui pouvait ÉCRASER la sauvegarde d'un
+// autre joueur : l'adresse et le numéro de duel sont publics sur la chaîne.
+// Si ce joueur avait perdu son localStorage, sa sauvegarde était remplacée
+// par des données qu'il ne peut pas déchiffrer, et il ne pouvait plus révéler.
+//
+// Le site n'écrit la sauvegarde qu'UNE fois, à la création du duel. On
+// l'impose donc côté serveur : SET ... NX, la première écriture gagne, les
+// suivantes sont refusées (409). Aucun changement nécessaire côté site.
+//
+// Limite restante : un tricheur très rapide pourrait écrire AVANT le joueur,
+// juste après la création du duel. Le localStorage reste la source
+// principale, donc l'impact est faible ; la protection complète serait une
+// signature du wallet avec un message DIFFÉRENT de SECRET_SIGN_MESSAGE
+// (cette signature-là sert de clé de chiffrement et ne doit jamais être
+// envoyée au serveur).
 
 const TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
@@ -17,28 +34,27 @@ function buildKey(wallet, duelId) {
   return `duelsecret:${String(wallet).toLowerCase()}:${String(duelId)}`;
 }
 
-async function redisCall(path, opts = {}) {
-  const url = `${process.env.KV_REST_API_URL}${path}`;
-  const res = await fetch(url, {
-    ...opts,
+async function redisCmd(cmd) {
+  const res = await fetch(process.env.KV_REST_API_URL, {
+    method: 'POST',
     headers: {
       Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
       'Content-Type': 'application/json',
-      ...(opts.headers || {}),
     },
+    body: JSON.stringify(cmd),
   });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Redis call failed (${res.status}): ${text}`);
+  const json = await res.json().catch(() => null);
+  if (!res.ok || (json && json.error)) {
+    throw new Error(`Redis ${cmd[0]}: HTTP ${res.status} ${json && json.error ? json.error : ''}`);
   }
-  return res.json();
+  return json ? json.result : null;
 }
 
 export default async function handler(req, res) {
-  // Basic CORS — adjust origin if you want to lock this down to your domain only.
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {
     res.status(204).end();
@@ -53,18 +69,22 @@ export default async function handler(req, res) {
         res.status(400).json({ error: 'Missing wallet, duelId, or ciphertext' });
         return;
       }
-      // Sanity cap — a chiphertext blob for a single secret should be tiny.
       if (typeof ciphertext !== 'string' || ciphertext.length > 10000) {
         res.status(400).json({ error: 'Invalid ciphertext' });
         return;
       }
+      if (String(duelId).length > 120 || !/^0x[a-fA-F0-9]{40}$/.test(String(wallet))) {
+        res.status(400).json({ error: 'Invalid wallet or duelId' });
+        return;
+      }
 
       const key = buildKey(wallet, duelId);
-      // SET key value EX seconds  →  Upstash REST: /set/<key>/<value>?EX=seconds
-      await redisCall(
-        `/set/${encodeURIComponent(key)}/${encodeURIComponent(ciphertext)}?EX=${TTL_SECONDS}`,
-        { method: 'POST' }
-      );
+      const ok = await redisCmd(['SET', key, ciphertext, 'NX', 'EX', String(TTL_SECONDS)]);
+      if (ok !== 'OK') {
+        // Déjà sauvegardé : on ne remplace jamais une sauvegarde existante.
+        res.status(409).json({ error: 'Backup already exists' });
+        return;
+      }
 
       res.status(200).json({ ok: true });
       return;
@@ -77,15 +97,13 @@ export default async function handler(req, res) {
         return;
       }
 
-      const key = buildKey(wallet, duelId);
-      const data = await redisCall(`/get/${encodeURIComponent(key)}`, { method: 'GET' });
-
-      if (data.result == null) {
+      const data = await redisCmd(['GET', buildKey(wallet, duelId)]);
+      if (data == null) {
         res.status(404).json({ error: 'Not found' });
         return;
       }
 
-      res.status(200).json({ ciphertext: data.result });
+      res.status(200).json({ ciphertext: data });
       return;
     }
 

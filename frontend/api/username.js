@@ -6,26 +6,23 @@
 //
 // ═══ WHAT CHANGED AND WHY ═══
 //
-// 1. SIGNED WRITES. The old POST took { wallet, username } and trusted both.
-//    Anyone could rename any player — including overwriting a name they didn't
-//    own — with a single curl. Writes now require a signature produced by the
-//    wallet's private key over a fixed message; the server recovers the signer
-//    and only accepts the write if it matches the wallet being changed.
+// 1. SIGNED WRITES. Writes require a signature produced by the wallet's private
+//    key over a fixed message; the server recovers the signer and only accepts
+//    the write if it matches the wallet being changed.
+// 2. CORS RESTRICTED to the project's own origins.
+// 3. CACHED READS at the edge for 5 minutes.
+// 4. LIGHT RATE LIMIT on writes, per wallet.
 //
-// 2. CORS RESTRICTED. Was '*', so any site on the internet could call this
-//    endpoint from a visitor's browser. Now limited to the project's own
-//    origins.
+// ═══ CORRECTIFS (audit coûts & robustesse) ═══
 //
-// 3. CACHED READS. GET responses are cacheable at the edge for 5 minutes.
-//    Names change rarely, and a burst of scripted traffic on this route (25k
-//    invocations in an hour, from scattered ASNs) is what prompted this pass —
-//    cached reads are served without invoking the function at all.
+// 5. GET dégradé : si Redis est indisponible, 200 avec username:null au lieu
+//    d'un 500. C'est cette route qui a produit ~3000 erreurs le 17 septembre
+//    pendant l'épuisement du quota Upstash.
+// 6. Limiteur en UNE commande (SET NX EX) au lieu de deux (GET puis SET).
+//    Plus économique, et sans la course où deux requêtes simultanées
+//    passaient toutes les deux le GET avant le SET.
 //
-// 4. LIGHT RATE LIMIT on writes, per wallet, so a leaked signature can't be
-//    replayed into a rename loop.
-//
-// Business rules (rank required, first change free) still live in the frontend;
-// this endpoint guarantees format, uniqueness, and now ownership.
+// Business rules (rank required, first change free) still live in the frontend.
 
 import { verifyMessage } from 'ethers';
 
@@ -36,7 +33,6 @@ const NAME_REGEX = /^[a-zA-Z0-9_-]+$/;
 // Must match exactly what the frontend asks the wallet to sign.
 const SIGN_MESSAGE = 'The Silver Void — set my display name';
 
-// Origins allowed to call this endpoint from a browser.
 const ALLOWED_ORIGINS = [
   'https://thesilvervoid.com',
   'https://www.thesilvervoid.com',
@@ -69,10 +65,26 @@ async function redisCall(path, opts = {}) {
   return res.json();
 }
 
-/// Allows same-origin requests (no Origin header) and the project's own sites.
+/// Commande Redis au format tableau (même forme que dans leaderboard.js).
+async function redisCmd(cmd) {
+  const res = await fetch(process.env.KV_REST_API_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(cmd),
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok || (json && json.error)) {
+    throw new Error(`Redis ${cmd[0]}: HTTP ${res.status} ${json && json.error ? json.error : ''}`);
+  }
+  return json ? json.result : null;
+}
+
 function applyCors(req, res) {
   const origin = req.headers.origin;
-  if (!origin) return true;                       // same-origin / server-side
+  if (!origin) return true;
   if (ALLOWED_ORIGINS.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
@@ -81,16 +93,14 @@ function applyCors(req, res) {
   return false;
 }
 
-/// One rename per wallet per 30s. Enough to stop a loop, invisible to a human.
+/// One rename per wallet per 30s, in a single atomic command.
+/// SET NX renvoie "OK" si la clé n'existait pas (on laisse passer),
+/// null si elle existe déjà (on bloque).
 async function rateLimited(walletKey) {
-  const key = `ratelimit:username:${walletKey}`;
   try {
-    const hit = await redisCall(`/get/${encodeURIComponent(key)}`, { method: 'GET' });
-    if (hit.result) return true;
-    await redisCall(`/set/${encodeURIComponent(key)}/1?EX=30`, { method: 'POST' });
-    return false;
+    const ok = await redisCmd(['SET', `ratelimit:username:${walletKey}`, '1', 'NX', 'EX', '30']);
+    return ok !== 'OK';
   } catch (e) {
-    // A failing limiter must not block legitimate writes.
     console.warn('rate limit check failed:', e.message);
     return false;
   }
@@ -119,12 +129,15 @@ export default async function handler(req, res) {
         return;
       }
       const key = `username:${String(wallet).toLowerCase()}`;
-      const data = await redisCall(`/get/${encodeURIComponent(key)}`, { method: 'GET' });
-
-      // Served from the edge for 5 minutes; stale copies may be reused for an
-      // hour while a fresh one is fetched in the background.
-      res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
-      res.status(200).json({ username: data.result || null });
+      try {
+        const data = await redisCall(`/get/${encodeURIComponent(key)}`, { method: 'GET' });
+        res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
+        res.status(200).json({ username: data.result || null });
+      } catch (e) {
+        console.error('username.js GET degraded:', e.message);
+        res.setHeader('Cache-Control', 'public, s-maxage=10');
+        res.status(200).json({ username: null, degraded: true });
+      }
       return;
     }
 
@@ -136,7 +149,6 @@ export default async function handler(req, res) {
         return;
       }
 
-      // ── Ownership: recover the signer and require it to be the wallet ──
       let signer;
       try {
         signer = verifyMessage(SIGN_MESSAGE, signature);
@@ -157,7 +169,6 @@ export default async function handler(req, res) {
 
       const trimmed = String(username).trim();
 
-      // ── Format ──
       if (trimmed.length < MIN_LEN || trimmed.length > MAX_LEN) {
         res.status(400).json({ error: `Username must be ${MIN_LEN}-${MAX_LEN} characters.` });
         return;
@@ -174,14 +185,12 @@ export default async function handler(req, res) {
       const nameLower = trimmed.toLowerCase();
       const takenKey = `usernametaken:${nameLower}`;
 
-      // ── Uniqueness (case-insensitive) ──
       const existing = await redisCall(`/get/${encodeURIComponent(takenKey)}`, { method: 'GET' });
       if (existing.result && existing.result !== walletKey) {
         res.status(409).json({ error: 'This name is already taken.' });
         return;
       }
 
-      // ── Release the previous reservation, if any ──
       const userKey = `username:${walletKey}`;
       const prev = await redisCall(`/get/${encodeURIComponent(userKey)}`, { method: 'GET' });
       if (prev.result) {
@@ -191,7 +200,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // ── Reserve and save ──
       await redisCall(`/set/${encodeURIComponent(takenKey)}/${encodeURIComponent(walletKey)}`, { method: 'POST' });
       await redisCall(`/set/${encodeURIComponent(userKey)}/${encodeURIComponent(trimmed)}`, { method: 'POST' });
 

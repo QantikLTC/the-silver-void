@@ -1,52 +1,34 @@
 // /api/leaderboard — classement des sacrifiants.
 //
 // ══════════════════════════════════════════════════════════════════════
-// v12 — LECTURE DIRECTE DU STORAGE, CÔTÉ SERVEUR
+// v12.1 — LECTURE DIRECTE DU STORAGE, CÔTÉ SERVEUR
 // ══════════════════════════════════════════════════════════════════════
 //
-// TOUT LE RESTE A ÉTÉ ESSAYÉ ET A ÉCHOUÉ :
+// (Historique v5 → v12 inchangé : Blockscout, getTopBurners() et eth_getLogs
+// ont échoué ; le tableau des burners est lu au SLOT 5 du storage, puis les
+// montants via getBurnerInfo. La lecture est faite une fois et mise en cache
+// dans Redis, pour que mille visiteurs coûtent autant qu'un seul.)
 //
-//   • Indexation des events via l'explorateur Blockscout (v5→v10). Fragile de
-//     bout en bout — pages perdues, curseurs tronqués, verrou inopérant — elle
-//     produisait des montants FAUX ET FIGÉS : un joueur affiché à 62.195 quand
-//     la chaîne disait 90.2954, et des joueurs entiers absents du classement.
-//     Depuis Vercel, l'explorateur part en TIMEOUT à chaque appel.
+// ═══ CORRECTIFS v12.1 (audit coûts & robustesse) ═══
 //
-//   • getTopBurners() du contrat : "out of gas" même avec limit=1. Le tri
-//     parcourt les 1841 burners quel que soit l'argument. Définitivement mort.
+// 1. BUG : `started` était déclaré DANS le try, puis utilisé dans le catch.
+//    En JavaScript, une const déclarée dans un bloc n'existe pas dans le catch
+//    voisin : toute lecture échouée levait donc une ReferenceError dans le
+//    catch lui-même. Résultat, l'erreur remontait jusqu'au handler, qui
+//    répondait 500 « Server error » au lieu de servir le cache conservé —
+//    exactement le scénario que la règle 3 devait empêcher.
 //
-//   • eth_getLogs : timeout à 30 s dès 10 000 blocs sur ce RPC, et la chaîne
-//     compte 33 M de blocs depuis le déploiement (bloc 15 063 366).
+// 2. PAUSE APRÈS ÉCHEC. Avant, une lecture ratée libérait le verrou aussitôt :
+//    la requête suivante relançait une lecture complète (jusqu'à 52 s de
+//    fonction et ~95 lots RPC), et ainsi de suite en boucle tant que la
+//    lecture échouait (RPC saturé, ou trop de burners pour le budget). Le
+//    verrou est désormais conservé 5 minutes après un échec : on sert le
+//    cache pendant ce temps, sans aucune lecture ni commande supplémentaire.
 //
-//   • Aucun accesseur public ne permet d'énumérer les burners.
-//
-// CE QUI MARCHE : le tableau des burners vit dans le storage du contrat, au
-// SLOT 5 — vérifié, l'élément 0 est l'adresse du créateur. Solidity ne
-// l'expose pas, eth_getStorageAt si. Pour un tableau dynamique, les éléments
-// sont à keccak256(slot) + index.
-//
-// On lit donc les N adresses dans le storage, puis leurs montants avec
-// getBurnerInfo. Les montants sont EXACTS PAR CONSTRUCTION : c'est le
-// compteur interne du contrat, pas une somme reconstituée. Rien à indexer,
-// rien qui puisse dériver.
-//
-// ── POURQUOI CÔTÉ SERVEUR ─────────────────────────────────────────────
-//
-// La v11 faisait cette lecture dans le navigateur. Ça marchait — puis le RPC
-// a renvoyé des HTTP 429. Chaque visiteur déclenchait ~3700 appels, et le
-// front s'actualise toutes les 60 s : à quelques visiteurs simultanés, le
-// rate limit tombe et le classement disparaît pour tout le monde.
-//
-// Ici la lecture est faite UNE FOIS et mise en cache dans Redis. Mille
-// visiteurs coûtent donc autant qu'un seul. C'est la seule forme viable.
-//
-// ── RÈGLES DE ROBUSTESSE ──────────────────────────────────────────────
-//
-// 1. Lots de 40, pas 200 : un lot de 200 était refusé d'un bloc par le RPC.
-// 2. Pause entre les lots, et reprises avec attente progressive sur 429.
-// 3. Le dernier classement RÉUSSI est conservé et servi si un cycle échoue.
-//    Un classement d'il y a dix minutes vaut infiniment mieux qu'un tableau
-//    vide — c'était le défaut majeur de toutes les versions précédentes.
+// ⚠️ À SURVEILLER : le temps de lecture grandit avec le nombre de burners.
+//    Si les logs montrent des BUDGET_EPUISE réguliers, la prochaine étape est
+//    de mémoriser les adresses déjà lues (le tableau ne fait que grandir) et
+//    de ne relire que les nouvelles, ce qui divise la lecture par deux.
 
 // ─── CONFIG — à modifier au moment du passage au mainnet ───────────────
 const RPC_URL = 'https://liteforge.rpc.caldera.xyz/http';
@@ -55,43 +37,27 @@ const NETWORK_TAG = 'liteforge-v12';
 
 /// Slot du tableau `burners` dans le storage. VÉRIFIÉ en lisant
 /// keccak256(5)+0, qui renvoie l'adresse du créateur.
-/// ⚠️ C'est une donnée d'IMPLÉMENTATION, pas une interface publique : un
-/// redéploiement du contrat rituel avec les variables déclarées dans un autre
-/// ordre changerait ce slot et casserait le classement. La correction durable
-/// serait un getter public `burnerAt(uint256)` sur le contrat.
+/// ⚠️ Donnée d'IMPLÉMENTATION : un redéploiement du contrat avec les variables
+/// dans un autre ordre changerait ce slot. Correction durable : un getter
+/// public `burnerAt(uint256)` sur le contrat.
 const BURNERS_ARRAY_SLOT = 5n;
 // ─────────────────────────────────────────────────────────────────────
 
 const SEL_BURNER_INFO = '0x39b7a75b';   // keccak("getBurnerInfo(address)")[0:4]
 const SEL_BURNER_COUNT = '0xba8e15f1';  // keccak("getBurnerCount()")[0:4]
 
-const BATCH_SIZE = 40;          // un lot de 200 se faisait refuser en bloc
-const BATCH_PAUSE_MS = 60;      // respiration entre deux vagues
+const BATCH_SIZE = 40;
+const BATCH_PAUSE_MS = 60;
 const MAX_RETRIES = 4;
 const RPC_TIMEOUT_MS = 15000;
 const LEADERBOARD_SIZE = 100;
-
-/// Lots lancés de front. Séquentiel, la lecture ne tenait plus : à 1845
-/// burners il faut 47 lots pour les adresses et 47 pour les montants, soit
-/// 94 allers-retours à la queue leu leu. Les seules pauses faisaient déjà
-/// 11 s, et le tout dépassait le budget — d'où un cache figé et `stale:true`
-/// servi en permanence. Trois de front divisent le temps de mur par trois
-/// sans réveiller le rate limit (la lecture directe en navigateur, qui le
-/// déclenchait, en lançait des centaines).
 const CONCURRENCY = 3;
 
-/// Fraîcheur du cache. Passé de 90 s à 5 min.
-///
-/// Chaque appel qui atteint la fonction coûte au minimum un GET Redis, et
-/// un cycle de rafraîchissement en coûte trois de plus (SET NX du verrou,
-/// SET des données, DEL du verrou). Le quota gratuit d'Upstash est de
-/// 500 000 commandes par mois — atteint à 90 % en quelques jours.
-///
-/// Un classement de burns n'a pas besoin d'être frais à la seconde : le
-/// Codex de chaque joueur, lui, est lu directement sur la chaîne et reste
-/// exact. C'est ce que dit déjà la FAQ.
 const FRESH_MS = 300000;
 const INVOCATION_BUDGET_MS = 52000;   // maxDuration vaut 60 s
+
+/// Durée pendant laquelle aucune nouvelle lecture n'est tentée après un échec.
+const FAIL_COOLDOWN_S = 300;
 
 const KEY_DATA = `leaderboard:${NETWORK_TAG}:data`;
 const KEY_LOCK = `leaderboard:${NETWORK_TAG}:lock`;
@@ -99,7 +65,7 @@ const KEY_LOCK = `leaderboard:${NETWORK_TAG}:lock`;
 export const config = { maxDuration: 60 };
 
 // ═══════════════════════════════════════════════════════════════════════
-// Redis (Upstash REST) — format commande, sans rien à encoder dans l'URL
+// Redis (Upstash REST)
 // ═══════════════════════════════════════════════════════════════════════
 
 async function redisCmd(cmd) {
@@ -123,9 +89,6 @@ async function redisGet(key) {
     const r = await redisCmd(['GET', key]);
     return r ? JSON.parse(r) : null;
   } catch (e) {
-    // Silencieux : une clé absente est un cas normal (premier appel), pas
-    // une erreur. Le vrai échec Redis, s'il y en a un, remonte plus loin
-    // via les catch de tryLock()/readLeaderboard() qui, eux, loggent.
     return null;
   }
 }
@@ -147,6 +110,11 @@ async function unlock() {
   try { await redisCmd(['DEL', KEY_LOCK]); } catch {}
 }
 
+/// Après un échec : on garde le verrou, prolongé, au lieu de le libérer.
+async function holdLockAfterFailure() {
+  try { await redisCmd(['SET', KEY_LOCK, 'cooldown', 'EX', String(FAIL_COOLDOWN_S)]); } catch {}
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // RPC
 // ═══════════════════════════════════════════════════════════════════════
@@ -161,9 +129,6 @@ function withTimeout(promise, ms) {
   ]);
 }
 
-/// Un lot de requêtes JSON-RPC, avec reprises sur 429.
-/// L'attente double à chaque tentative : c'est ce qui laisse au rate limit le
-/// temps de se réarmer au lieu de le marteler.
 async function rpcBatch(reqs) {
   let wait = 400;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -202,9 +167,6 @@ async function rpcSingle(method, params) {
 // Lecture du classement
 // ═══════════════════════════════════════════════════════════════════════
 
-/// keccak256(slot) — début du tableau dynamique dans le storage.
-/// Calculé sans dépendance : keccak est réimplémenté ci-dessous, ce qui évite
-/// d'embarquer ethers côté serveur pour une seule opération.
 function arrayBase(slot) {
   const buf = new Uint8Array(32);
   let v = slot;
@@ -275,7 +237,6 @@ function keccak256(bytes) {
 // ──────────────────────────────────────────────────────────────────────
 
 async function readLeaderboard(deadline) {
-  // 1. Combien de burners ?
   const cntHex = await rpcSingle('eth_call',
     [{ to: CONTRACT_ADDRESS, data: SEL_BURNER_COUNT }, 'latest']);
   const count = Number(BigInt(cntHex));
@@ -283,13 +244,6 @@ async function readLeaderboard(deadline) {
 
   const base = arrayBase(BURNERS_ARRAY_SLOT);
 
-  // 2. Les adresses, depuis le storage.
-  //
-  // Les lots partent par vagues de CONCURRENCY. Chaque lot garde son index
-  // de départ pour que les adresses reviennent DANS L'ORDRE quel que soit
-  // l'ordre d'arrivée des réponses — l'ordre du tableau n'a pas d'incidence
-  // sur le classement final, mais un ordre stable rend les diagnostics
-  // reproductibles d'une lecture à l'autre.
   const addrSlots = new Array(count).fill(null);
   const addrStarts = [];
   for (let i = 0; i < count; i += BATCH_SIZE) addrStarts.push(i);
@@ -314,7 +268,6 @@ async function readLeaderboard(deadline) {
   }
   const addrs = addrSlots.filter(Boolean);
 
-  // 3. Les montants, depuis le compteur interne du contrat.
   const list = [];
   const amtStarts = [];
   for (let i = 0; i < addrs.length; i += BATCH_SIZE) amtStarts.push(i);
@@ -337,8 +290,6 @@ async function readLeaderboard(deadline) {
     await sleep(BATCH_PAUSE_MS);
   }
 
-  // Comparateur qui renvoie bien 0 sur égalité : il y a de vrais ex æquo à
-  // 100.000, et un comparateur incohérent peut désordonner au-delà.
   list.sort((a, b) => {
     const d = BigInt(b.amount) - BigInt(a.amount);
     return d > 0n ? 1 : d < 0n ? -1 : 0;
@@ -363,18 +314,8 @@ export default async function handler(req, res) {
     const cached = await redisGet(KEY_DATA);
     const age = cached ? Date.now() - cached.t : Infinity;
 
-    // Diagnostic : /api/leaderboard?debug=1&key=<DEBUG_KEY>
-    //
-    // CORRIGÉ — ce mode déclenchait un readLeaderboard() COMPLET à chaque
-    // appel, sans verrou ni cache, contrairement au chemin normal. N'importe
-    // qui pouvait appeler cette URL en boucle et forcer des lectures RPC
-    // payantes en continu : c'est le suspect le plus probable derrière le
-    // pic d'Observability Events (1.25M events pour 178K invocations,
-    // ~7 events/appel — un ratio que la lecture normale, gardée par le
-    // cache 90s et le verrou, ne peut pas produire seule).
-    //
-    // Deux garde-fous : protégé par une clé, et ne fait plus JAMAIS de
-    // lecture RPC — il ne fait qu'inspecter l'état déjà en cache.
+    // Diagnostic : /api/leaderboard?debug=1&key=<DEBUG_KEY> — protégé par clé,
+    // n'effectue jamais de lecture RPC.
     if (req.query && req.query.debug === '1') {
       if (!process.env.DEBUG_KEY || req.query.key !== process.env.DEBUG_KEY) {
         res.status(404).json({ error: 'Not found' });
@@ -391,15 +332,12 @@ export default async function handler(req, res) {
         top3: cached ? cached.leaderboard.slice(0, 3).map(e => e.address + ' = ' + e.amount) : [],
       };
       try { out.redis = await redisCmd(['PING']); } catch (e) { out.redisErr = e.message; }
+      try { out.lock = await redisCmd(['GET', KEY_LOCK]); } catch {}
       res.status(200).json(out);
       return;
     }
 
-    // Cache frais : on sert directement, sans toucher au RPC.
     if (cached && age < FRESH_MS) {
-      // Le CDN garde la reponse 2 min et peut servir une version perimee
-      // pendant 10 min de plus pendant qu'il rafraichit en arriere-plan.
-      // C'est ce qui evite que chaque visiteur reveille la fonction.
       res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
       res.status(200).json({
         leaderboard: cached.leaderboard,
@@ -409,32 +347,22 @@ export default async function handler(req, res) {
       return;
     }
 
-    // Une seule invocation relit à la fois : sans ce verrou, dix visiteurs
-    // simultanés déclencheraient dix lectures et le 429 reviendrait aussitôt.
     let fresh = null;
     if (await tryLock()) {
+      const started = Date.now();   // hors du try : visible dans le catch
+      let failed = false;
       try {
-        const started = Date.now();
         const r = await readLeaderboard(started + INVOCATION_BUDGET_MS);
         if (r.list.length > 0) {
           fresh = { t: Date.now(), leaderboard: r.list, totalBurners: r.count };
           await redisSet(KEY_DATA, fresh);
-          // Pas de log de succès ici : ce chemin s'exécute à chaque
-          // rafraîchissement de cache (toutes les ~90s sous trafic), ce qui
-          // en fait à lui seul une source réguliere d'events. Le compte
-          // final (r.list.length, r.count) reste lisible via ?debug=1.
         }
       } catch (e) {
-        // On NE jette PAS le cache existant : un classement daté vaut
-        // infiniment mieux qu'un tableau vide, et c'était le défaut majeur
-        // de toutes les versions précédentes.
-        //
-        // Ce log est le seul moyen de distinguer BUDGET_EPUISE (lecture trop
-        // lente pour le nombre de burners) de RATE_LIMITED (RPC qui refuse) :
-        // sans lui, un `stale:true` permanent reste inexplicable.
-        console.error(`lecture échouée après ${Date.now()-started}ms, cache conservé:`, e.message);
+        failed = true;
+        console.error(`lecture échouée après ${Date.now() - started}ms, cache conservé, pause ${FAIL_COOLDOWN_S}s:`, e.message);
       } finally {
-        await unlock();
+        if (failed) await holdLockAfterFailure();
+        else await unlock();
       }
     }
 
@@ -448,6 +376,7 @@ export default async function handler(req, res) {
         stale: !fresh,
       });
     } else {
+      res.setHeader('Cache-Control', 'public, s-maxage=30');
       res.status(200).json({ leaderboard: [], totalBurners: 0, updatedAt: null, building: true });
     }
   } catch (e) {

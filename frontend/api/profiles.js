@@ -13,6 +13,14 @@
 //
 // Storage read (Upstash Redis REST API via Vercel KV):
 //   username:<wallet>, avatar:<wallet>, skin:<wallet>
+//
+// ═══ CORRECTIF (audit coûts & robustesse) ═══
+//
+// Si Redis est indisponible, la route répond 200 avec des profils vides
+// (degraded:true) au lieu d'un 500. Le 17 septembre, c'est cette route qui
+// est tombée en 500 pendant l'épuisement du quota Upstash : le classement
+// perdait ses pseudos ET le front relançait les appels. Désormais le site
+// affiche simplement les adresses le temps que Redis revienne.
 
 const MAX_WALLETS = 60;
 const WALLET_REGEX = /^0x[a-f0-9]{40}$/;
@@ -65,8 +73,18 @@ export default async function handler(req, res) {
     const keys = [];
     for (const w of wallets) keys.push(`username:${w}`, `avatar:${w}`, `skin:${w}`);
 
-    const data = await redisCall('/mget/' + keys.map(encodeURIComponent).join('/'), { method: 'GET' });
-    const vals = Array.isArray(data.result) ? data.result : [];
+    let vals;
+    try {
+      const data = await redisCall('/mget/' + keys.map(encodeURIComponent).join('/'), { method: 'GET' });
+      vals = Array.isArray(data.result) ? data.result : [];
+    } catch (e) {
+      console.error('profiles.js degraded:', e.message);
+      const empty = {};
+      wallets.forEach(w => { empty[w] = { username: null, avatar: null, skin: null }; });
+      res.setHeader('Cache-Control', 'public, s-maxage=10');
+      res.status(200).json({ profiles: empty, degraded: true });
+      return;
+    }
 
     const profiles = {};
     wallets.forEach((w, i) => {
@@ -79,17 +97,11 @@ export default async function handler(req, res) {
 
     // A player can ask for a single wallet (their own) to bypass the shared
     // board cache — that request is never cached, so a freshly changed
-    // avatar or username shows up immediately instead of waiting for the
-    // edge entry to expire. Board-sized requests keep their cache.
+    // avatar or username shows up immediately. Board-sized requests keep
+    // their cache.
     if (req.query.fresh === '1' || wallets.length === 1) {
       res.setHeader('Cache-Control', 'no-store');
     } else {
-      // CDN edge cache. Kept short: cosmetic changes (avatar, username,
-      // ring skin) must become visible quickly, otherwise a player who
-      // just changed their portrait keeps seeing the old one served from
-      // the edge, with no way to force a refresh. 15s still absorbs the
-      // bulk of repeated scans (every open tab, every 30s refresh cycle)
-      // which is what the quota protection actually needs.
       res.setHeader('Cache-Control', 'public, s-maxage=15, stale-while-revalidate=60');
     }
 
