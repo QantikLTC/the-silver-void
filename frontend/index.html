@@ -780,11 +780,9 @@ footer {
   0%,100%{ text-shadow:0 0 0 rgba(255,193,64,0) }
   50%    { text-shadow:0 0 12px rgba(255,193,64,0.55) }
 }
-#codex-modal .cx-sub b{
-  font-weight:600; margin-left:0.45rem; font-size:0.6rem;
-  color:#1a1005; background:#ffc140; padding:0.08rem 0.42rem; border-radius:9px;
-  vertical-align:middle;
-}
+/* La pastille chiffrée est retirée : vide, elle laissait un point jaune
+   disgracieux, et le halo pulsé suffit à dire qu'il y a de quoi forger. */
+#codex-modal .cx-sub b{ display:none }
 
 /* Grille de selection de la forge. */
 .fg-tier{
@@ -926,11 +924,15 @@ footer {
 }
 #fg-reveal.on{ display:flex }
 .fgr-card{
-  width:230px; border-radius:12px; overflow:hidden; position:relative;
+  width:min(340px, 78vw); border-radius:12px; overflow:hidden; position:relative;
   border:1px solid rgba(255,193,64,0.5); background:rgba(255,255,255,0.03);
   animation:fgrIn 0.75s cubic-bezier(.16,1,.3,1) both;
 }
-.fgr-card img{ width:100%; aspect-ratio:1; object-fit:cover; display:block }
+/* L'illustration porte son titre en bas : la recadrer en carré le coupait.
+   On la montre entière, à hauteur limitée pour laisser voir le bouton. */
+.fgr-card img{
+  width:100%; height:auto; max-height:70vh; object-fit:contain; display:block;
+}
 @keyframes fgrIn{
   0%  { transform:scale(0.72) rotateY(-28deg); opacity:0; filter:brightness(2.4) blur(6px) }
   55% { opacity:1 }
@@ -6638,6 +6640,15 @@ function disconnectWallet(){
   _burnRank = -1; _burnTotal = 0;
   window._arenaRank = 0; window._arenaDuels = 0;
   window._codexOwnedCount = null;
+  // L'inventaire des reliques appartenait au wallet qui vient de partir :
+  // sans ce nettoyage, le Codex gardait les reliques allumées et l'onglet
+  // Forge continuait de pulser comme si elles étaient toujours là.
+  window._ascentInventory = null;
+  if (typeof svUpdateForgeTab === 'function') svUpdateForgeTab();
+  const _cxm = document.getElementById('codex-modal');
+  if (_cxm && _cxm.style.display !== 'none' && typeof codexOpen === 'function') {
+    try { codexOpen(); } catch (e) {}
+  }
   prevRank = -1; _rankSeeded = false;
   if (typeof svRefreshWalletViews === 'function') svRefreshWalletViews();
   // Reset duel panels
@@ -12506,14 +12517,21 @@ function svUpdateForgeTab() {
   if (!tab) return;
 
   const inv = window._ascentInventory;
-  if (!Array.isArray(inv)) return;
+
+  // Sans wallet connecté ou sans inventaire, l'onglet reste éteint : avant,
+  // la fonction s'arrêtait ici et laissait le halo allumé après déconnexion.
+  if (!connectedAddress || !Array.isArray(inv)) {
+    if (badge) badge.textContent = '';
+    tab.classList.remove('can-forge');
+    return;
+  }
 
   // Exemplaires par palier, puis nombre de forges (3 par forge).
   const byTier = [0,0,0,0,0];
   for (let id = 1; id <= 12; id++) byTier[fgRarityOf(id)] += (inv[id - 1] || 0);
   const possible = byTier.slice(0, 4).reduce((a, n) => a + Math.floor(n / 3), 0);
 
-  if (badge) badge.textContent = possible > 0 ? String(possible) : '';
+  if (badge) badge.textContent = '';
   tab.classList.toggle('can-forge', possible > 0);
 }
 
@@ -12636,11 +12654,8 @@ function fgRender() {
 
   fgBench();
 
-  const badge = document.getElementById('cx-sub-forge-n');
-  if (badge) {
-    const possible = byTier.slice(0, 4).reduce((a, n) => a + Math.floor(n / 3), 0);
-    badge.textContent = possible > 0 ? ('· ' + possible) : '';
-  }
+  // L'état de l'onglet Forge est tenu par svUpdateForgeTab (halo pulsé, sans chiffre).
+  if (typeof svUpdateForgeTab === 'function') svUpdateForgeTab();
 }
 
 function fgPickTier(r) {
