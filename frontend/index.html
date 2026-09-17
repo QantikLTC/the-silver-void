@@ -14485,8 +14485,60 @@ async function storeCancel(listingId) {
 <script>
 // ═══ USERNAME SYSTEM ═══
 const USERNAME_API = '/api/username';
-// Must match SIGN_MESSAGE in /api/username.js character for character.
-const USERNAME_SIGN_MESSAGE = 'The Silver Void \u2014 set my display name';
+// ═══ Session de connexion (« Sign in with Ethereum ») ═══════════════════
+// Le joueur signe UNE fois un message de connexion (gratuit, aucune
+// transaction). /api/auth pose alors un cookie de session de 30 jours, qui
+// autorise pseudo, avatar et skins sans nouvelle signature.
+// ⚠️ Message distinct de SECRET_SIGN_MESSAGE (clé de chiffrement des secrets
+// de duel, qui ne doit jamais être envoyée au serveur).
+const AUTH_API = '/api/auth';
+let _svSession = { address: null, checked: false, token: null };
+
+/// En-tête de secours pour les navigateurs qui bloquent les cookies : le jeton
+/// reçu à la connexion est gardé EN MÉMOIRE (jamais stocké) et envoyé ici.
+function svAuthHeaders() {
+  return _svSession.token ? { Authorization: 'Bearer ' + _svSession.token } : {};
+}
+
+/// Doit être identique, caractère pour caractère, à signinMessage() dans api/_session.js.
+function svSigninMessage(address, host, issuedAt) {
+  return 'The Silver Void wants you to sign in with your wallet:\n'
+    + address.toLowerCase() + '\n\n'
+    + 'This signature is free. It sends no transaction and grants no spending rights.\n\n'
+    + 'Site: ' + host + '\n'
+    + 'Issued At: ' + issuedAt;
+}
+
+/// true si une session valide existe pour le wallet connecté.
+/// interactive=true : demande la signature si nécessaire (lève une erreur si
+/// le joueur refuse). interactive=false : ne dérange jamais le joueur.
+async function svEnsureSession(interactive = true) {
+  if (!connectedAddress) return false;
+  const me = connectedAddress.toLowerCase();
+  if (_svSession.address === me) return true;
+  if (!_svSession.checked) {
+    try {
+      const r = await fetch(AUTH_API, { credentials: 'same-origin' });
+      const j = await r.json();
+      _svSession = { address: j.address || null, checked: true, token: null };
+    } catch (e) {}
+    if (_svSession.address === me) return true;
+  }
+  if (!interactive || !signer) return false;
+  const issuedAt = new Date().toISOString();
+  const signature = await signer.signMessage(svSigninMessage(me, location.host, issuedAt));
+  const r = await fetch(AUTH_API, {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address: me, issuedAt, signature })
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Sign-in failed');
+  _svSession = { address: j.address, checked: true, token: j.token || null };
+  return true;
+}
+/// À appeler quand le serveur répond 401 (session expirée ou autre compte).
+function svSessionReset() { _svSession = { address: null, checked: true, token: null }; }
 const USERNAME_CHANGE_FEE = '0.05'; // zkLTC — charged on-chain before any change after the first
 const CREATOR_ADDRESS = '0x5489667F306a6F03F550FCB129F765f83FaCB24E';
 let _myUsername = null; // cached current username for this wallet
@@ -14637,6 +14689,17 @@ async function usernameSubmit() {
   btn.textContent = isChange ? 'Processing payment...' : 'Saving...';
 
   try {
+    // Connexion d'abord : si le joueur refuse de signer, il n'a encore rien payé.
+    btn.textContent = 'Sign in...';
+    try {
+      await svEnsureSession(true);
+    } catch (e) {
+      errBox.textContent = 'Sign-in cancelled.';
+      errBox.style.display = 'block';
+      return;
+    }
+    btn.textContent = isChange ? 'Processing payment...' : 'Saving...';
+
     // Changing an existing name costs a fee, paid on-chain to the creator address
     // before the new name is accepted. First-time naming is free.
     if (isChange) {
@@ -14651,27 +14714,17 @@ async function usernameSubmit() {
       await tx.wait();
     }
 
-    // The API now proves ownership before writing: without a signature anyone
-    // could rename any player with a single request. The message is fixed and
-    // must match the server's SIGN_MESSAGE exactly.
-    btn.textContent = 'Sign to confirm...';
-    let nameSignature;
-    try {
-      nameSignature = await signer.signMessage(USERNAME_SIGN_MESSAGE);
-    } catch (e) {
-      errBox.textContent = 'Signature cancelled.';
-      errBox.style.display = 'block';
-      return;
-    }
-
+    // La session de connexion prouve la propriété du wallet (cookie envoyé
+    // automatiquement) : plus de signature à chaque changement.
     btn.textContent = 'Saving...';
     const res = await fetch(USERNAME_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet: connectedAddress, username: name, signature: nameSignature })
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', ...svAuthHeaders() },
+      body: JSON.stringify({ wallet: connectedAddress, username: name })
     });
     const data = await res.json();
 
+    if (res.status === 401) svSessionReset();
     if (!res.ok) {
       errBox.textContent = data.error || 'Could not save name.';
       errBox.style.display = 'block';
@@ -15030,51 +15083,23 @@ async function avatarOpen() {
   }).join('');
 }
 
-// Preuve de propriété pour les modifications de profil (avatar).
-// Doit correspondre caractère pour caractère à SIGN_MESSAGE dans /api/avatar.js.
-// ⚠️ Message volontairement DIFFÉRENT de SECRET_SIGN_MESSAGE : cette
-// signature-là sert de clé de chiffrement des secrets de duel et ne doit
-// jamais être envoyée au serveur.
-const PROFILE_SIGN_MESSAGE = 'The Silver Void \u2014 edit my profile';
-let _profileSig = { wallet: null, sig: null };
-async function profileSignature(forceNew) {
-  const w = (connectedAddress || '').toLowerCase();
-  const storeKey = 'sv_profile_sig_' + w;
-  if (!forceNew) {
-    if (_profileSig.wallet === w && _profileSig.sig) return _profileSig.sig;
-    // Mémorisée dans ce navigateur : le joueur signe une seule fois par appareil.
-    // (Pour le mainnet : remplacer par une signature unique à la connexion.)
-    try { const c = localStorage.getItem(storeKey); if (c) { _profileSig = { wallet: w, sig: c }; return c; } } catch(e) {}
-  }
-  if (!signer) throw new Error('Wallet not connected');
-  const sig = await signer.signMessage(PROFILE_SIGN_MESSAGE);
-  _profileSig = { wallet: w, sig };
-  try { localStorage.setItem(storeKey, sig); } catch(e) {}
-  return sig;
-}
-
 async function avatarSelect(id) {
   if (!connectedAddress) { showToast('Connect wallet first'); return; }
   const target = avatarAllUnlocked().find(a => a.id === id);
   if (target && !target.unlocked) { showToast('🔒 Not unlocked yet', true); return; }
   try {
-    let signature;
-    try {
-      signature = await profileSignature(false);
-    } catch (e) {
-      showToast('Signature cancelled', true);
-      return;
-    }
-    const post = (sig) => fetch(AVATAR_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wallet: connectedAddress, avatar: id, signature: sig })
+    try { await svEnsureSession(true); } catch (e) { showToast('Sign-in cancelled', true); return; }
+    const post = () => fetch(AVATAR_API, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', ...svAuthHeaders() },
+      body: JSON.stringify({ wallet: connectedAddress, avatar: id })
     });
-    let res = await post(signature);
+    let res = await post();
     if (res.status === 401) {
-      // Signature mémorisée invalide (changement de compte dans le wallet…) : on redemande.
-      try { signature = await profileSignature(true); } catch (e) { showToast('Signature cancelled', true); return; }
-      res = await post(signature);
+      // Session expirée ou autre compte : une nouvelle connexion, puis on réessaie.
+      svSessionReset();
+      try { await svEnsureSession(true); } catch (e) { showToast('Sign-in cancelled', true); return; }
+      res = await post();
     }
     if (!res.ok) { showToast('Could not save avatar', true); return; }
     _myAvatarId = id;
@@ -15354,8 +15379,10 @@ async function mySkinLoad() {
 async function skinEquip(id) {
   if (!connectedAddress) return;
   try {
-    const r = await fetch(SKIN_API, { method:'POST', headers:{'Content-Type':'application/json'},
+    try { await svEnsureSession(true); } catch (e) { showToast('Sign-in cancelled', true); return; }
+    const r = await fetch(SKIN_API, { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json', ...svAuthHeaders()},
       body: JSON.stringify({ wallet: connectedAddress.toLowerCase(), skin: id }) });
+    if (r.status === 401) svSessionReset();
     if (!r.ok) { const e = await r.json().catch(()=>({})); showToast(e.error || 'Equip failed', true); return; }
     _mySkin = id;
     // Purger les caches pour que les classements montrent le nouvel anneau.
@@ -15392,6 +15419,8 @@ async function skinBuy(id) {
   const s = SKINS.find(x => x.id === id);
   if (!s || s.rarity === 'relic' || s.rarity === 'default' || _myOwned.includes(id)) return;
   if (!connectedAddress) { showToast('Connect your wallet first', true); await connectWallet(); if (!connectedAddress) return; }
+  // Connexion avant le paiement : l'équipement qui suit l'achat en a besoin.
+  try { await svEnsureSession(true); } catch (e) { showToast('Sign-in cancelled', true); return; }
   const ltc = await ltcUsdPrice();
   if (!ltc) { showToast('Price feed unavailable — try again in a minute', true); return; }
   const amt = skinZkAmount(SKIN_PRICE_USD[s.rarity], ltc);
@@ -15444,11 +15473,14 @@ async function skinBuy(id) {
 // Relics are granted automatically when their feat unlocks — never sold.
 async function skinGrantRelics() {
   if (!connectedAddress) return;
+  // Appelé automatiquement : sans session, on attend que le joueur se connecte
+  // lors d'une action de profil, plutôt que d'ouvrir MetaMask de lui-même.
+  if (!(await svEnsureSession(false))) return;
   const unlocked = (typeof featsLoad === 'function') ? featsLoad() : {};
   for (const s of SKINS) {
     if (s.rarity !== 'relic' || !s.featId || !unlocked[s.featId] || _myOwned.includes(s.id)) continue;
     try {
-      const r = await fetch(SKIN_API, { method:'POST', headers:{'Content-Type':'application/json'},
+      const r = await fetch(SKIN_API, { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json', ...svAuthHeaders()},
         body: JSON.stringify({ wallet: connectedAddress.toLowerCase(), buy: s.id, tx: 'feat' }) });
       if (r.ok) { _myOwned.push(s.id); showToast('🏆 Relic unlocked: ' + s.name); forgeRender(); }
     } catch(e) {}
