@@ -7923,7 +7923,7 @@ async function duelistLeaderboardScan() {
   if (!duelReadContract) {
     try { await initDuelContract(); } catch(e) {}
   }
-  if (!duelReadContract) return { rows: [], totalPlayed: 0, totalBurnedZkltc: 0, totalPlayers: 0 };
+  if (!duelReadContract) return { rows: [], totalPlayed: null, totalBurnedZkltc: null, totalPlayers: 0, complete: false };
 
   const ZERO = '0x0000000000000000000000000000000000000000';
   const scores = {}; // wallet (lowercase) -> { wins, ties, losses, score }
@@ -8026,8 +8026,10 @@ async function duelistLeaderboardScan() {
   const wallets = Object.keys(scores);
   try {
     const vh = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-    const _played = Object.values(scores).reduce((a, x) => a + x.wins + x.ties + x.losses, 0);
-    if (_played > 0) vh('vh-duels', _played.toLocaleString('en-US'));
+    // « Played » n'est PLUS écrit ici. Ce total venait du scan des duels, qui
+    // peut être partiel (lots manquants, rate limit) : il écrasait alors le
+    // vrai compteur du contrat par un chiffre plus bas. La seule source est
+    // désormais duelCountersAll() (compteurs on-chain, jamais en baisse).
     if (wallets.length > 0 && complete) {
       vh('vh-duelists', wallets.length.toLocaleString('en-US'));
       vh('vh-row-duelists', wallets.length.toLocaleString('en-US'));
@@ -8068,23 +8070,20 @@ async function duelistLeaderboardScan() {
 
   // Sidebar stats — read straight from the contract for accuracy, falling
   // back to derived values from the scan if the contract calls fail.
-  let totalPlayed = 0, totalBurnedZkltc = 0;
+  let totalPlayed = null, totalBurnedZkltc = null;
   // Same convention as the Duels-section stats: "played" = decisive duels
   // (totalDuels) + ties (totalTies) — the contract counts them separately,
   // and the two panels showing different numbers for "duels played"
   // confused testers.
   // Summed across every contract the arena has run on — see duelLoadStats().
   {
-    const _srcs = [duelReadContract, ...(typeof duelLegacyContracts === 'function' ? duelLegacyContracts() : [])];
-    let _burnWei = 0n;
-    for (const c of _srcs) {
-      try {
-        const [tdRaw, ttRaw] = await Promise.all([c.totalDuels(), c.totalTies()]);
-        totalPlayed += Number(tdRaw) + Number(ttRaw);
-      } catch(e) {}
-      try { _burnWei += BigInt(await c.totalBurned()); } catch(e) {}
+    // Même source fiable que duelLoadStats (voir duelCountersAll) : null si
+    // un contrat n'a jamais pu être lu, et l'affichage garde alors l'ancien chiffre.
+    const _c = await duelCountersAll();
+    if (_c) {
+      totalPlayed = Number(_c.td + _c.tt);
+      totalBurnedZkltc = parseFloat(ethers.formatEther(_c.tb));
     }
-    totalBurnedZkltc = parseFloat(ethers.formatEther(_burnWei));
   }
 
   // `complete` dit si TOUS les lots ont ete lus. Sans ce drapeau, un scan
@@ -8186,15 +8185,15 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
     const playedEl = document.getElementById('lb-duel-total-played');
     const burnedEl = document.getElementById('lb-duel-total-burned');
     const playersEl = document.getElementById('lb-duel-total-players');
-    if (playedEl) playedEl.textContent = (stats.totalPlayed ?? 0).toString();
-    if (burnedEl) burnedEl.innerHTML = (stats.totalBurnedZkltc ?? 0).toFixed(3) + '<span class="lb-stat-unit">zkLTC</span>';
+    if (playedEl && stats.totalPlayed != null) playedEl.textContent = stats.totalPlayed.toString();
+    if (burnedEl && stats.totalBurnedZkltc != null) burnedEl.innerHTML = stats.totalBurnedZkltc.toFixed(3) + '<span class="lb-stat-unit">zkLTC</span>';
     if (playersEl) playersEl.textContent = (stats.totalPlayers ?? 0).toString();
 
     // The Ledger reads these from the scan itself rather than copying rendered
     // text: syncHub runs on a 4s timer and could fire before the leaderboard
     // had painted, leaving a stale — or simply lower — figure on the dashboard.
     const vh = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-    vh('vh-duels',    (stats.totalPlayed  ?? 0).toLocaleString('en-US'));
+    if (stats.totalPlayed != null) vh('vh-duels', stats.totalPlayed.toLocaleString('en-US'));
 
     // Le nombre de duellistes uniques ne peut que MONTER : personne ne quitte
     // l'arene. Un scan incomplet qui renvoie moins que le dernier total connu
@@ -10922,6 +10921,54 @@ const ASCENT_ITEMS = [
 // vers ascentCommit / ascentReveal / ascentClearExpired selon l'etat.
 // Le contrat Arena reste utilise ailleurs pour rankOf() (Codex).
 
+
+// ═══ Compteurs de l'arène, fiables ═══════════════════════════════════════
+// BUG CORRIGÉ : chaque lecture d'un contrat était dans son propre try/catch
+// qui renvoyait 0 en cas d'échec. Quand le RPC refusait UN appel (rate limit
+// 429, lenteur mobile), le contrat concerné comptait pour zéro et le total
+// s'effondrait — par exemple ~1500 au lieu de ~3000 si l'ancien contrat ne
+// répondait pas — puis remontait au rafraîchissement suivant.
+//
+// Ces compteurs ne peuvent QUE monter (un duel joué ne disparaît pas). Donc :
+//   · on mémorise la meilleure valeur connue par contrat (localStorage) ;
+//   · en cas d'échec d'un contrat, on réutilise sa dernière valeur connue ;
+//   · un nœud RPC en retard qui renvoie moins est ignoré (on garde le max) ;
+//   · si un contrat n'a JAMAIS pu être lu, on renvoie null et l'affichage
+//     garde son chiffre précédent au lieu d'en montrer un faux.
+const DUEL_COUNTERS_KEY = 'sv_duel_counters_v1';
+async function duelCountersAll() {
+  const srcs = [duelReadContract, ...(typeof duelLegacyContracts === 'function' ? duelLegacyContracts() : [])];
+  let store = {};
+  try { store = JSON.parse(localStorage.getItem(DUEL_COUNTERS_KEY) || '{}') || {}; } catch (e) {}
+  const big = (v) => { try { return BigInt(v); } catch (e) { return 0n; } };
+  const max = (a, b) => (a > b ? a : b);
+  let allKnown = true, allFresh = true;
+  const per = await Promise.all(srcs.map(async (c) => {
+    const key = String(c.target || c.address || '').toLowerCase();
+    const prev = store[key];
+    try {
+      const [d, t, b] = await Promise.all([c.totalDuels(), c.totalTies(), c.totalBurned()]);
+      const best = prev
+        ? { d: max(big(d), big(prev.d)), t: max(big(t), big(prev.t)), b: max(big(b), big(prev.b)) }
+        : { d: big(d), t: big(t), b: big(b) };
+      store[key] = { d: best.d.toString(), t: best.t.toString(), b: best.b.toString() };
+      return best;
+    } catch (e) {
+      allFresh = false;
+      if (!prev) { allKnown = false; return { d: 0n, t: 0n, b: 0n }; }
+      return { d: big(prev.d), t: big(prev.t), b: big(prev.b) };
+    }
+  }));
+  try { localStorage.setItem(DUEL_COUNTERS_KEY, JSON.stringify(store)); } catch (e) {}
+  if (!allKnown) return null;
+  return {
+    td: per.reduce((n, p) => n + p.d, 0n),
+    tt: per.reduce((n, p) => n + p.t, 0n),
+    tb: per.reduce((n, p) => n + p.b, 0n),
+    fresh: allFresh,
+  };
+}
+
 // LOAD STATS
 async function duelLoadStats() {
   try {
@@ -10929,18 +10976,11 @@ async function duelLoadStats() {
     // internal counters that reset to zero on each deploy, so reading only the
     // live contract would wipe the arena's history from the stats panel.
     // openDuelCount is the exception — only the live contract can be joined.
-    const _all = [duelReadContract, ...duelLegacyContracts()];
-    const per = await Promise.all(_all.map(async c => {
-      try {
-        const [d, t, b] = await Promise.all([c.totalDuels(), c.totalTies(), c.totalBurned()]);
-        return [BigInt(d), BigInt(t), BigInt(b)];
-      } catch (e) { return [0n, 0n, 0n]; }
-    }));
-    const td = per.reduce((n, p) => n + p[0], 0n);
-    const tt = per.reduce((n, p) => n + p[1], 0n);
-    const tb = per.reduce((n, p) => n + p[2], 0n);
-    const oc = await duelReadContract.openDuelCount();
     const s = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+    try { s('duel-stat-open', (await duelReadContract.openDuelCount()).toString()); } catch (e) {}
+    const _c = await duelCountersAll();
+    if (!_c) throw new Error('duel counters unavailable'); // on garde les chiffres affichés
+    const { td, tt, tb } = _c;
     // The contract counts decisive duels (totalDuels) and ties (totalTies)
     // separately — "Duels Played: 0" right after playing a tie confused
     // testers, so the display shows their sum as the played count.
@@ -10952,7 +10992,6 @@ async function duelLoadStats() {
     s('vh-duels', (td + tt).toLocaleString('en-US'));
     s('duel-stat-ties',   tt.toString());
     s('duel-stat-burned', parseFloat(ethers.formatEther(tb)).toFixed(3));
-    s('duel-stat-open',   oc.toString());
 
   } catch {}
 
