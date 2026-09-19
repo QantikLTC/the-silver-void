@@ -8042,8 +8042,10 @@ async function duelistLeaderboardScan() {
     // vrai compteur du contrat par un chiffre plus bas. La seule source est
     // désormais duelCountersAll() (compteurs on-chain, jamais en baisse).
     if (wallets.length > 0 && complete) {
-      vh('vh-duelists', wallets.length.toLocaleString('en-US'));
-      vh('vh-row-duelists', wallets.length.toLocaleString('en-US'));
+      const _b = Number(localStorage.getItem('sv_duelists_best') || 0);
+      const _v = Math.max(wallets.length, _b);
+      vh('vh-duelists', _v.toLocaleString('en-US'));
+      vh('vh-row-duelists', _v.toLocaleString('en-US'));
     }
     if (typeof svStatsSave === 'function') svStatsSave();
   } catch (e) {}
@@ -8212,15 +8214,18 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
     // d'afficher un chiffre qu'on sait errone.
     const _players = stats.totalPlayers ?? 0;
     const _best = Number(localStorage.getItem('sv_duelists_best') || 0);
+    let _show = _players;
     if (stats.complete !== false && _players >= _best) {
       try { localStorage.setItem('sv_duelists_best', String(_players)); } catch(e) {}
-      vh('vh-duelists', _players.toLocaleString('en-US'));
     } else if (_best > 0) {
-      vh('vh-duelists', _best.toLocaleString('en-US'));
-    } else {
-      vh('vh-duelists', _players.toLocaleString('en-US'));
+      _show = _best;   // scan incomplet : on garde le meilleur total connu
     }
-    vh('vh-row-duelists', (stats.totalPlayers ?? 0).toLocaleString('en-US'));
+    // BUG CORRIGÉ : la carte de l'Arène écrivait le total BRUT du scan, tandis
+    // que la grande case écrivait le total retenu. D'où deux chiffres
+    // différents à l'écran (par exemple 105 contre 266) alors qu'ils comptent
+    // la même chose. Les deux affichent désormais la même valeur.
+    vh('vh-duelists', _show.toLocaleString('en-US'));
+    vh('vh-row-duelists', _show.toLocaleString('en-US'));
   }
 
   if (!rows || rows.length === 0) {
@@ -11003,6 +11008,13 @@ async function duelLoadStats() {
     s('vh-duels', (td + tt).toLocaleString('en-US'));
     s('duel-stat-ties',   tt.toString());
     s('duel-stat-burned', parseFloat(ethers.formatEther(tb)).toFixed(3));
+
+    // Le Hub affichait « Played » à partir du scan du classement, rafraîchi
+    // seulement toutes les 10 minutes : la carte de l'Arène semblait figée
+    // alors que la page de l'Arène, elle, se met à jour toutes les 25 s.
+    // Même compteur, même source, même rythme.
+    const _vhd = document.getElementById('vh-duels');
+    if (_vhd) _vhd.textContent = Number(td + tt).toLocaleString('en-US');
 
   } catch {}
 
