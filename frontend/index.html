@@ -7196,7 +7196,7 @@ function renderLB(list, page, keepPage){
       <div class="lb-user">
         ${avatarCell}
         <div>
-          <div class="lb-addr">${p.name}</div>
+          <div class="lb-addr">${p.name}${svRitualBadge(svRitualTier(p.ltc), p.tier)}</div>
           <span class="lb-badge-chip" style="background:${bg};border:1px solid ${bc};color:${c}">${p.tier}</span>
         </div>
       </div>
@@ -7397,6 +7397,14 @@ async function loadLeaderboard(){
     }
 
     const apiList = (lbData && Array.isArray(lbData.leaderboard)) ? lbData.leaderboard : [];
+    // Montants par wallet, réutilisés par le classement des duellistes pour
+    // afficher le rang du Rituel à côté du rang d'Arène.
+    try {
+      const _bm = {};
+      apiList.forEach(e => { _bm[String(e.address).toLowerCase()] = parseFloat(ethers.formatEther(BigInt(e.amount))); });
+      window._svBurnByWallet = _bm;
+      localStorage.setItem('sv_burn_by_wallet', JSON.stringify(_bm));
+    } catch (e) {}
     if(lbData && lbData.totalBurners) _lbTotalBurners = Number(lbData.totalBurners);
 
     // Bandeau "dernière mise à jour" : évite qu'un burn tout juste effectué,
@@ -8203,6 +8211,38 @@ function svRankBadge(tier, size, label){
   return `<span class="${cls}" title="${label || t.name}">${orbit}<span class="shield"></span><span class="core">${t.n}</span></span>`;
 }
 
+// ═══ Insigne du Rituel ═══════════════════════════════════════════════
+// Le bouclier (svRankBadge) dit le rang d'ARÈNE. Le losange dit le rang du
+// RITUEL (zkLTC brûlés) : deux progressions distinctes, deux formes
+// distinctes, pour qu'on ne confonde jamais un IV d'Arène et un IV du Rituel.
+const RITUAL_TIERS = [
+  { at: 1e-9, n: 'I', name: 'Simple Holder' },   // « Requires 0 zkLTC » : toute offrande suffit
+  { at: 5,   n: 'II',  name: 'Apprentice Litecoiner' },
+  { at: 20,  n: 'III', name: 'Devoted Litecoiner' },
+  { at: 100, n: 'IV',  name: 'Silver Maximalist' },
+];
+function svRitualTier(zk) {
+  let t = 0;
+  RITUAL_TIERS.forEach((r, i) => { if (zk >= r.at) t = i + 1; });
+  return t;
+}
+function svRitualBadge(tier, label) {
+  if (!tier) return '';
+  const r = RITUAL_TIERS[tier - 1];
+  return `<span class="rit-badge r${tier}" title="${label || r.name}"><b>${r.n}</b></span>`;
+}
+/// Rang du Rituel d'un wallet, d'après le dernier classement des sacrifiants
+/// (top 100, mémorisé dans le navigateur pour s'afficher dès le chargement).
+function svRitualTierOf(wallet) {
+  if (!wallet) return 0;
+  let map = window._svBurnByWallet;
+  if (!map) {
+    try { map = window._svBurnByWallet = JSON.parse(localStorage.getItem('sv_burn_by_wallet') || '{}'); } catch (e) { map = {}; }
+  }
+  const zk = map[String(wallet).toLowerCase()];
+  return zk ? svRitualTier(zk) : 0;
+}
+
 /// Duelist tier from duels played — the same thresholds the Arena contract uses.
 function svDuelistTier(played){
   let tier = 0;
@@ -8299,7 +8339,7 @@ function duelistLeaderboardRender(rows, updatedAt, stats) {
       <div class="dc-rank">${rankLabel}</div>
       ${avatarCell}
       <div class="dc-info">
-        <div class="dc-name">${r.name}${dcInsignia(r)}</div>
+        <div class="dc-name">${r.name}${dcInsignia(r)}${svRitualBadge(svRitualTierOf(r.wallet))}</div>
         <div class="dc-record"><span class="dc-w">${r.wins}W</span><span class="dc-sep">·</span><span class="dc-t">${r.ties}T</span><span class="dc-sep">·</span><span class="dc-l">${r.losses}L</span></div>
       </div>
       <div class="dc-score"><span class="dc-score-val">${r.score}</span><span class="dc-score-unit">pts</span></div>
@@ -18188,6 +18228,26 @@ body.sv-rail-on section#chronicles-page > div[aria-hidden]{ display:none !import
 
 
 /* ═══ Duelist rank badge ═══ */
+.rit-badge{
+  --rc:#8ab0c8;
+  position:relative; display:inline-flex; align-items:center; justify-content:center;
+  width:30px; height:30px; margin-left:0.35rem; vertical-align:middle; flex-shrink:0;
+}
+.rit-badge::before{
+  content:''; position:absolute; inset:4px; transform:rotate(45deg); border-radius:3px;
+  border:1.5px solid var(--rc);
+  background:linear-gradient(160deg, color-mix(in srgb, var(--rc) 26%, transparent), transparent);
+}
+.rit-badge b{ position:relative; font-family:'Cinzel',serif; font-size:0.56rem; font-weight:700; color:var(--rc); line-height:1; letter-spacing:-0.02em }
+.rit-badge.r1{ --rc:#00e5cc }
+.rit-badge.r2{ --rc:#5a9fff }
+.rit-badge.r3{ --rc:#9d7fee }
+.rit-badge.r4{ --rc:#e8c26a }
+.rit-badge.r4::before{ box-shadow:0 0 8px rgba(232,194,106,0.55), 0 0 16px rgba(232,194,106,0.25) }
+@media (prefers-reduced-motion:no-preference){
+  .rit-badge.r4::before{ animation:ritGlow 2.8s ease-in-out infinite }
+  @keyframes ritGlow{ 50%{ box-shadow:0 0 12px rgba(232,194,106,0.8), 0 0 22px rgba(232,194,106,0.35) } }
+}
 .sv-badge{
   width:54px; height:60px; position:relative; display:inline-flex;
   align-items:center; justify-content:center; vertical-align:middle;
