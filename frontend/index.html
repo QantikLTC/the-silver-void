@@ -7022,6 +7022,19 @@ document.addEventListener('DOMContentLoaded',function(){
 // transaction échoue en boucle ("max fee per gas less than block base
 // fee"). On lit donc le feeData juste avant l'envoi et on ajoute +30%.
 // Coût réel négligeable (frais de l'ordre de 0.0001 zkLTC).
+/// Limite une lecture à `ms` millisecondes. Quand le RPC public refuse ou
+/// sature (erreurs CORS / 429 dans la console), ethers réessaie en boucle et
+/// la promesse ne se résout jamais : le bouton restait sur « Confirm in
+/// MetaMask… » sans que MetaMask ne s'ouvre. Passé le délai, on abandonne la
+/// lecture et on laisse le wallet estimer lui-même.
+function svTimeout(promise, ms, label) {
+  let t;
+  return Promise.race([
+    Promise.resolve(promise).finally(() => clearTimeout(t)),
+    new Promise((_, rej) => { t = setTimeout(() => rej(new Error((label || 'rpc') + ' timeout')), ms); }),
+  ]);
+}
+
 async function svGasOverrides(baseOpts = {}) {
   const opts = { ...baseOpts };
   try {
@@ -7029,7 +7042,7 @@ async function svGasOverrides(baseOpts = {}) {
       || (typeof contract !== 'undefined' && contract.runner && contract.runner.provider)
       || (typeof duelContract !== 'undefined' && duelContract.runner && duelContract.runner.provider);
     if (provider) {
-      const feeData = await provider.getFeeData();
+      const feeData = await svTimeout(provider.getFeeData(), 2500, 'feeData');
       if (feeData && feeData.maxFeePerGas) {
         opts.maxFeePerGas = (feeData.maxFeePerGas * 130n) / 100n;
         if (feeData.maxPriorityFeePerGas) {
@@ -7060,7 +7073,7 @@ async function svWithGasLimit(contractMethod, ...args) {
     ? args[args.length - 1] : null;
   try {
     if (contractMethod.estimateGas) {
-      const est = await contractMethod.estimateGas(...args);
+      const est = await svTimeout(contractMethod.estimateGas(...args), 3500, 'estimateGas');
       const withMargin = (est * 125n) / 100n;
       if (opts) opts.gasLimit = withMargin;
     }
@@ -10673,7 +10686,7 @@ async function svFeeOverrides(multiplier) {
   try {
     const provider = window.svReadProvider || (signer && signer.provider);
     if (!provider) return {};
-    const fd = await provider.getFeeData();
+    const fd = await svTimeout(provider.getFeeData(), 2500, 'feeData');
     const base = fd.maxFeePerGas || fd.gasPrice;
     if (!base) return {};
     const maxFee = (BigInt(base) * mult);
@@ -14078,7 +14091,8 @@ function storeBuildCity(resolved) {
 // RPC refuse les plages larges (timeout dès ~10 000 blocs), et un scan complet
 // de l'historique est exactement ce qu'on a supprimé partout ailleurs.
 // Résultat mis en cache 10 minutes dans le navigateur.
-const STORE_SALES_WINDOW = 9000;      // blocs regardés en arrière
+const STORE_SALES_WINDOW = 3000;      // blocs regardés en arrière (9000 saturait le RPC public)
+let _storeSalesBusy = false;
 const STORE_SALES_TTL_MS = 10 * 60 * 1000;
 const STORE_SALE_BURN_BPS = 1700;     // 17 % sur le contrat actuel
 
@@ -14090,12 +14104,17 @@ async function storeLoadRecentSales() {
   let cached = null;
   try { cached = JSON.parse(localStorage.getItem('sv_store_sales') || 'null'); } catch (e) {}
   if (cached && Date.now() - cached.t < STORE_SALES_TTL_MS) { storeRenderRecentSales(cached.rows); return; }
+  if (_storeSalesBusy) return;
+  _storeSalesBusy = true;
+  // Même en cas d'échec, on ne retente pas avant le prochain délai de cache :
+  // relancer à chaque rafraîchissement aggravait la saturation du RPC.
+  try { localStorage.setItem('sv_store_sales', JSON.stringify({ t: Date.now(), rows: (cached && cached.rows) || [] })); } catch (e) {}
 
   try {
     const c = storeReadContract || (typeof initStoreContract === 'function' ? initStoreContract() : null);
     if (!c) return;
     const latest = await window.svReadProvider.getBlockNumber();
-    const logs = await c.queryFilter(c.filters.Sold(), Math.max(0, latest - STORE_SALES_WINDOW), 'latest');
+    const logs = await svTimeout(c.queryFilter(c.filters.Sold(), Math.max(0, latest - STORE_SALES_WINDOW), 'latest'), 8000, 'Sold logs');
     const last = logs.slice(-4).reverse();
     const rows = [];
     for (const ev of last) {
@@ -14117,6 +14136,8 @@ async function storeLoadRecentSales() {
     // qu'un bloc vide.
     console.warn('recent sales unavailable:', e.message);
     if (cached && cached.rows && cached.rows.length) storeRenderRecentSales(cached.rows);
+  } finally {
+    _storeSalesBusy = false;
   }
 }
 
@@ -15000,8 +15021,9 @@ async function storeApprove() {
   btn.disabled = true; btn.textContent = 'Confirm in MetaMask...';
   try {
     const nft = new ethers.Contract(contractAddr, ERC721_MIN_ABI, signer);
-    const owner = await nft.ownerOf(tokenId);
-    if (owner.toLowerCase() !== connectedAddress.toLowerCase()) {
+    let owner = null;
+    try { owner = await svTimeout(nft.ownerOf(tokenId), 6000, 'ownerOf'); } catch (e) { /* le wallet refusera de lui-même si besoin */ }
+    if (owner && owner.toLowerCase() !== connectedAddress.toLowerCase()) {
       throw new Error('You do not own this token');
     }
     const tx = await nft.approve(STORE_CONTRACT_ADDRESS, tokenId, typeof svFeeOverrides === 'function' ? await svFeeOverrides() : {});
@@ -15044,12 +15066,15 @@ async function storeList() {
   const btn = document.getElementById('store-list-btn');
   btn.disabled = true; btn.textContent = 'Confirm in MetaMask...';
   try {
-    const listingCost = await storeContract.LISTING_COST();
+    // LISTING_COST est une constante du contrat (0,0075 zkLTC) : si le RPC
+    // ne répond pas vite, on utilise la valeur connue plutôt que d'attendre.
+    // Lectures lancées en parallèle : les délais ne s'additionnent plus.
+    const [listingCost, gasOpts] = await Promise.all([
+      svTimeout(storeContract.LISTING_COST(), 2500, 'LISTING_COST').catch(() => ethers.parseEther('0.0075')),
+      typeof svGasOverrides === 'function' ? svGasOverrides() : Promise.resolve({}),
+    ]);
     const priceWei = ethers.parseEther(price);
-    const opts = {
-      value: listingCost,
-      ...(typeof svGasOverrides === 'function' ? await svGasOverrides() : {})
-    };
+    const opts = { value: listingCost, ...gasOpts };
     const tx = await svWithGasLimit(storeContract.list, contractAddr, tokenId, priceWei, opts);
     btn.textContent = 'Listing...';
     await tx.wait();
