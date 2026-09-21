@@ -13405,16 +13405,23 @@ async function sagaMint(sagaId) {
         <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,10,32,0.92) 0%,rgba(5,10,32,0.75) 28%,rgba(5,10,32,0.25) 55%,rgba(5,10,32,0) 78%);"></div>
         <!-- Le titre s'aligne sur le bord gauche du bandeau, pas sur la
              colonne centrale : c'est le nom du lieu, posé sur l'image. -->
-        <div class="sh-in" style="position:relative;width:100%;max-width:640px;margin:0;padding:clamp(1.6rem,4vh,2.6rem) clamp(1.4rem,4vw,4rem) 2rem;">
+        <div class="sh-in" style="position:relative;width:100%;max-width:880px;margin:0;padding:clamp(1.6rem,4vh,2.6rem) clamp(1.4rem,4vw,4rem) 2rem;">
           
           <div style="font-family:'Cinzel',serif;font-weight:600;font-size:clamp(1.4rem,4vw,2.3rem);letter-spacing:0.08em;color:#fff;margin:0.35rem 0 0.5rem;text-shadow:0 2px 20px rgba(0,0,0,0.9);">The Lower City</div>
           <div style="max-width:52ch;font-family:'Cormorant Garamond',Georgia,serif;font-size:1.05rem;line-height:1.45;color:rgba(255,255,255,0.8);text-shadow:0 1px 10px rgba(0,0,0,0.9);">
             The quarter where hands change what the Kingdom counts. Every sale here leaves a part of itself in the Void.
           </div>
+          <!-- Taux du contrat mainnet. Le contrat testnet actuel en brûle 17 %. -->
+          <div style="margin-top:0.55rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;color:#ffc140;text-shadow:0 1px 8px rgba(0,0,0,0.9);">
+            On every sale, 3% is sent to the Void
+          </div>
           <div style="display:flex;flex-wrap:wrap;gap:1.4rem;margin-top:1rem;font-family:'Cinzel',serif;font-size:0.52rem;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.5);">
             <div><b id="store-hero-burned" style="display:block;font-size:1.2rem;letter-spacing:0.02em;color:#ffc140;">—</b>zkLTC burned by the City</div>
             <div><b id="store-hero-shops" style="display:block;font-size:1.2rem;letter-spacing:0.02em;color:#fff;">—</b>shops open</div>
             <div><b id="store-hero-listed" style="display:block;font-size:1.2rem;letter-spacing:0.02em;color:#fff;">—</b>relics listed</div>
+            <div><b id="store-hero-sold" style="display:block;font-size:1.2rem;letter-spacing:0.02em;color:#fff;">—</b>sold</div>
+            <div><b id="store-hero-volume" style="display:block;font-size:1.2rem;letter-spacing:0.02em;color:#fff;">—</b>volume zkLTC</div>
+            <div><b id="store-hero-skins" style="display:block;font-size:1.2rem;letter-spacing:0.02em;color:#fff;">—</b>skins forged</div>
           </div>
         </div>
   </div>
@@ -13972,6 +13979,12 @@ function storeBuildCity(resolved) {
   if (hb) { const t = (document.getElementById('store-stat-burned') || {}).textContent; hb.textContent = (t && t !== '—') ? t : '—'; }
   if (hs) hs.textContent = String(shops.length);
   if (hl) hl.textContent = String(resolved.length);
+  // Mêmes chiffres que la carte « The Store » des Records : on les recopie
+  // plutôt que de relire la chaîne une seconde fois.
+  [['store-hero-sold', 'vh-mod-sales'], ['store-hero-volume', 'vh-mod-volume'], ['store-hero-skins', 'vh-mod-skins']].forEach(([to, from]) => {
+    const src = document.getElementById(from), dst = document.getElementById(to);
+    if (src && dst) { const v = (src.textContent || '').trim(); dst.textContent = v && v !== '0' ? v : (v || '—'); }
+  });
 
   if (_storeCityVerifiedOnly) shops = shops.filter(sh => sh.verified);
   if (_storeCityQuery) shops = shops.filter(sh => sh.name.toLowerCase().includes(_storeCityQuery) || sh.addrs.some(a => a.includes(_storeCityQuery)));
@@ -14128,12 +14141,19 @@ function storeSkinShowcase() {
   if (typeof SKIN_FX !== 'function') return '';
   const demo = ['ring_moon', 'ring_ember', 'ring_eclipse'];
   const avatar = (typeof avatarHTMLFor === 'function' && typeof _myAvatarId !== 'undefined')
-    ? avatarHTMLFor(_myAvatarId, 44) : '';
+    ? avatarHTMLFor(_myAvatarId, 40) : '';
+  // Disposition en V : les deux anneaux latéraux en haut, celui du milieu
+  // plus bas, légèrement plus grand. Tailles réduites : la vitrine respire.
+  const place = [
+    'left:calc(50% - 98px);top:16px;',
+    'left:calc(50% - 30px);top:62px;',
+    'left:calc(50% + 42px);top:16px;',
+  ];
   return demo.map((id, k) => {
-    const size = k === 1 ? 82 : 64;   // celui du milieu, un peu plus grand
-    return `<div style="position:relative;width:${size}px;height:${size}px;border-radius:50%;">
+    const size = k === 1 ? 60 : 52;
+    return `<div style="position:absolute;${place[k]}width:${size}px;height:${size}px;border-radius:50%;">
       ${SKIN_FX(id, size, true)}
-      <span style="position:absolute;inset:8px;border-radius:50%;background:#0c0824;z-index:2;display:flex;align-items:center;justify-content:center;overflow:hidden;">${avatar}</span>
+      <span style="position:absolute;inset:6px;border-radius:50%;background:#0c0824;z-index:2;display:flex;align-items:center;justify-content:center;overflow:hidden;">${avatar}</span>
     </div>`;
   }).join('');
 }
