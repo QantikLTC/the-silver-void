@@ -730,6 +730,28 @@ footer {
 /* Menu deroulant du tri du Store. Sans ces deux lignes, les options
    heritaient du blanc du select et disparaissaient sur le fond blanc du
    menu natif : une seule ligne restait lisible. */
+/* Le bandeau de la Cité remonte jusqu'en haut de la page : il annule le
+   rembourrage de la section, qui diffère selon la mise en page. */
+#store-hero{margin:0 0 2.2rem !important;border-radius:0 !important;min-height:clamp(260px,44vh,460px) !important;}
+#store-hero .sh-bg{position:absolute;inset:-30px;background-size:cover;background-position:center 78%;
+  filter:blur(28px) brightness(0.45) saturate(1.1);transform:scale(1.08);}
+#store-hero .sh-img{position:absolute;top:0;bottom:0;left:50%;width:100%;max-width:1700px;transform:translateX(-50%);
+  background-size:cover;background-position:center 78%;   /* on montre davantage le bas de la rue */
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 12%,#000 88%,transparent 100%);
+          mask-image:linear-gradient(90deg,transparent 0,#000 12%,#000 88%,transparent 100%);}
+@media(max-width:1700px){
+  #store-hero .sh-img{-webkit-mask-image:none;mask-image:none;}   /* l'image couvre déjà tout */
+}
+/* Grand écran : la colonne de contenu s'élargit, sinon le titre et les
+   échoppes flottent au milieu d'une page immense. */
+@media(min-width:1700px){
+  #store-page > div[style*="max-width:1000px"]{max-width:1320px !important;}
+}
+/* Sous le rail, la page du Store s'étend sur toute la largeur disponible :
+   le bandeau de la Cité touche les deux bords, le contenu garde sa colonne. */
+body.sv-rail-on #store-page.sv-active,
+body.sv-rail-on section#store-page[data-rail]{max-width:none !important;padding:0 0 4rem !important;}
+@media(max-width:700px){ #store-hero{min-height:clamp(200px,34vh,320px) !important;} }
 #store-sort option{ background:#0b1026; color:#fff; }
 #store-sort{ color-scheme:dark; }
 
@@ -13366,14 +13388,41 @@ async function sagaMint(sagaId) {
   <div aria-hidden="true" style="position:absolute;inset:0;background-image:url('https://arweave.net/4x2F1xk7jjg9ITb1GxrFbhgz6oo6YpsL2wOnBJ-zLHQ');background-size:cover;background-position:right bottom;background-repeat:no-repeat;opacity:0.30;pointer-events:none;z-index:0;-webkit-mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%),linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 15%, rgba(0,0,0,1) 85%, transparent 100%);-webkit-mask-composite:source-in;mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%),linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 15%, rgba(0,0,0,1) 85%, transparent 100%);mask-composite:intersect;"></div>
   <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;z-index:0;background:linear-gradient(to right, rgba(3,6,26,0.72) 0%, rgba(4,8,30,0.62) 40%, rgba(6,10,35,0.40) 70%, rgba(8,13,40,0.18) 100%);-webkit-mask-image:linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,1) 88%, transparent 100%);mask-image:linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,1) 88%, transparent 100%);"></div>
 
+      <!-- ══ LA CITÉ BASSE — bandeau ══════════════════════════════════
+           L'illustration est celle du fragment II des Chroniques : le
+           quartier des artisans, là où les mains échangent ce que le
+           Royaume compte. -->
+  <div id="store-hero" style="position:relative;z-index:1;overflow:hidden;margin:-7.5rem 0 2.2rem;
+       min-height:clamp(260px,44vh,460px);display:flex;align-items:flex-start;background:#050a20;">
+        <!-- Grand écran : l'illustration n'est jamais étirée au-delà de sa
+             taille native. Un calque flou et sombre remplit les côtés, et
+             l'image nette, centrée, s'y fond par ses bords. -->
+        <div class="sh-bg" style="background-image:url('https://arweave.net/u0C83l8TMqa2yYezxOIDKKivuS5DMgGoyqiwqiqBqOw');"></div>
+        <div class="sh-img" style="background-image:url('https://arweave.net/u0C83l8TMqa2yYezxOIDKKivuS5DMgGoyqiwqiqBqOw');"></div>
+        <!-- Deux voiles : l'un vertical pour fondre le bas dans la page,
+             l'autre horizontal pour asseoir le titre sur la gauche. -->
+        <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,10,32,0.30) 0%,rgba(5,10,32,0.20) 45%,rgba(5,10,32,0.97) 100%);"></div>
+        <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,10,32,0.92) 0%,rgba(5,10,32,0.75) 28%,rgba(5,10,32,0.25) 55%,rgba(5,10,32,0) 78%);"></div>
+        <!-- Le titre s'aligne sur le bord gauche du bandeau, pas sur la
+             colonne centrale : c'est le nom du lieu, posé sur l'image. -->
+        <div class="sh-in" style="position:relative;width:100%;max-width:640px;margin:0;padding:clamp(1.6rem,4vh,2.6rem) clamp(1.4rem,4vw,4rem) 2rem;">
+          
+          <div style="font-family:'Cinzel',serif;font-weight:600;font-size:clamp(1.4rem,4vw,2.3rem);letter-spacing:0.08em;color:#fff;margin:0.35rem 0 0.5rem;text-shadow:0 2px 20px rgba(0,0,0,0.9);">The Lower City</div>
+          <div style="max-width:52ch;font-family:'Cormorant Garamond',Georgia,serif;font-size:1.05rem;line-height:1.45;color:rgba(255,255,255,0.8);text-shadow:0 1px 10px rgba(0,0,0,0.9);">
+            The quarter where hands change what the Kingdom counts. Every sale here leaves a part of itself in the Void.
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:1.4rem;margin-top:1rem;font-family:'Cinzel',serif;font-size:0.52rem;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.5);">
+            <div><b id="store-hero-burned" style="display:block;font-size:1.2rem;letter-spacing:0.02em;color:#ffc140;">—</b>zkLTC burned by the City</div>
+            <div><b id="store-hero-shops" style="display:block;font-size:1.2rem;letter-spacing:0.02em;color:#fff;">—</b>shops open</div>
+            <div><b id="store-hero-listed" style="display:block;font-size:1.2rem;letter-spacing:0.02em;color:#fff;">—</b>relics listed</div>
+          </div>
+        </div>
+  </div>
+
   <div style="position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:0 1.5rem;">
 
-    <div style="text-align:center;margin-bottom:1.2rem;">
-      <div style="display:flex;align-items:center;justify-content:center;gap:0.6rem;margin-bottom:0.3rem;">
-        <span style="width:14px;height:1px;background:rgba(0,229,204,0.5);"></span>
-        <span style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.2em;color:var(--teal);text-transform:uppercase;">The Duelist Saga</span>
-        <span style="width:14px;height:1px;background:rgba(0,229,204,0.5);"></span>
-      </div>
+    <!-- Le titre vit désormais dans le bandeau de la Cité, en haut de page. -->
+    <div style="text-align:center;margin-bottom:1.2rem;display:none;">
       <div style="font-family:'Cinzel',serif;font-size:1.6rem;letter-spacing:0.08em;color:#fff;text-transform:uppercase;">The Void Store</div>
       <div style="font-size:0.78rem;color:rgba(255,255,255,0.4);font-style:italic;margin-top:0.2rem;">Every sale feeds the void. 80% to the seller, 17% burned forever, 3% to the order.</div>
     </div>
@@ -13398,37 +13447,53 @@ async function sagaMint(sagaId) {
       </div>
     </div>
 
-    <div style="display:flex;justify-content:center;margin-bottom:1.6rem;">
-      <button onclick="storeClose()" style="background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.1em;padding:0.5rem 1rem;border-radius:3px;cursor:pointer;text-transform:uppercase;flex-shrink:0;">← Back to the Void</button>
-    </div>
+    <!-- Bouton « Back to the Void » retiré : le rail de gauche suffit. -->
 
-    <!-- TABS -->
-    <div style="display:flex;gap:0.5rem;margin-bottom:1.6rem;">
-      <button id="store-tab-acquire" onclick="storeSwitchTab('acquire')" style="flex:1;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:rgba(0,229,204,0.1);border:1px solid rgba(0,229,204,0.35);color:var(--teal);border-radius:3px;">🛒 Acquire</button>
-      <button id="store-tab-sell" onclick="storeSwitchTab('sell')" style="flex:1;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);border-radius:3px;">Sell</button>
-    </div>
+    <!-- Les onglets Acquire / Sell vivent désormais à côté de la recherche. -->
 
     <!-- ACQUIRE FILTER — switch between NFT relics and Forge skins -->
-    <div id="store-acquire-filter" style="display:flex;justify-content:center;gap:0.5rem;margin-bottom:1.4rem;">
-      <button id="store-filter-relics" onclick="storeAcquireFilter('relics')" style="padding:0.45rem 1.3rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);border-radius:999px;transition:all 0.2s;">🏺 Relics (NFT)</button>
-      <button id="store-filter-skins" onclick="storeAcquireFilter('skins')" style="padding:0.45rem 1.3rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;background:rgba(0,229,204,0.14);border:1px solid rgba(0,229,204,0.5);color:var(--teal);border-radius:999px;transition:all 0.2s;">⚒ Ring Skins</button>
-    </div>
+    <!-- Remplacés par les échoppes de la Cité : on choisit une boutique,
+         pas une catégorie. Conservés masqués, car storeApplyFilter() les
+         restyle encore (chip()). -->
+    <!-- Les boutons « Relics NFT » et « Ring Skins » ont été retirés : on
+         choisit une échoppe dans la Cité, pas une catégorie. storeApplyFilter()
+         ignore proprement leur absence (chip() sort si l'élément n'existe pas). -->
 
-    <!-- Les deux blocs sont visibles ensemble par defaut
-         (_storeShow = { skins:true, relics:true }). Le bloc Forge etait
-         declare EN PREMIER dans le HTML, donc les skins cosmetiques
-         s'affichaient au-dessus des NFT reellement en vente. L'ordre est
-         inverse : le marche d'abord, la boutique de skins ensuite. -->
-    <!-- BROWSE TAB -->
-    <div id="store-tab-content-browse">
-
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;">
-        <span style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:rgba(255,255,255,0.4);text-transform:uppercase;">All Relics — by rarity</span>
-        <button id="store-refresh-btn" onclick="storeRefreshListings()" style="background:transparent;border:1px solid rgba(0,229,204,0.3);color:rgba(0,229,204,0.7);font-size:0.6rem;padding:0.35rem 0.6rem;border-radius:3px;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:0.05em;">↻ Refresh</button>
-      </div>
       <!-- Tri et filtres. Ils operent sur les listings DEJA CHARGES
            (_storeResolvedCache) : aucun clic ne relit la chaine, sans quoi
            chaque changement de tri couterait une salve d'appels RPC. -->
+      <!-- ══ LA CITÉ BASSE — NIVEAU 1 : les échoppes ══════════════════
+           Une échoppe par collection présente dans les annonces, construite
+           automatiquement (storeBuildCity). On n'entre dans la grille d'un
+           marchand qu'en ouvrant son échoppe : mélanger toutes les
+           collections dans une seule grille était illisible. -->
+      <div id="store-city">
+      <!-- Recherche et filtre des échoppes -->
+      <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+        <button id="store-tab-acquire" onclick="storeSwitchTab('acquire')" style="padding:0.45rem 0.9rem;font-family:'Cinzel',serif;font-size:0.56rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:rgba(0,229,204,0.1);border:1px solid rgba(0,229,204,0.35);color:var(--teal);border-radius:3px;">🛒 Acquire</button>
+        <button id="store-tab-sell" onclick="storeSwitchTab('sell')" style="padding:0.45rem 0.9rem;font-family:'Cinzel',serif;font-size:0.56rem;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);border-radius:3px;">Sell</button>
+        <input id="store-city-search" oninput="storeCityFilterChanged()" placeholder="Search a shop…"
+          style="flex:1 1 200px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:6px;
+                 color:#fff;padding:0.5rem 0.75rem;font-size:0.8rem;font-family:'Inter',sans-serif;">
+        <span id="store-city-verified" onclick="storeCityToggleVerified()"
+          style="cursor:pointer;padding:0.45rem 0.9rem;border-radius:20px;font-family:'Cinzel',serif;font-size:0.58rem;
+                 letter-spacing:0.12em;text-transform:uppercase;border:1px solid rgba(255,255,255,0.16);color:rgba(255,255,255,0.55);">Verified only</span>
+      </div>
+        <div id="store-city-grid" style="display:grid;gap:0.9rem;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));align-items:start;">
+          <div style="grid-column:1/-1;text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;">Opening the shops…</div>
+        </div>
+
+        <!-- Ce qui vient de changer de main : les dernières ventes du Store,
+             avec la part partie au Void. Masqué tant qu'il n'y a rien. -->
+        <div id="store-recent" style="display:none;margin-top:1.8rem;">
+          <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:0.7rem;">Changed hands</div>
+          <div id="store-recent-list" style="display:grid;gap:0.5rem;border-top:1px solid rgba(255,255,255,0.08);border-bottom:1px solid rgba(255,255,255,0.08);padding:0.8rem 0;"></div>
+        </div>
+      </div>
+
+      <!-- ══ NIVEAU 2 : une échoppe ═══════════════════════════════════ -->
+      <div id="store-shop-view" style="display:none;">
+      <div id="store-shop-head" style="display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap;margin-bottom:1rem;"></div>
       <div id="store-filters" style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;margin-bottom:1rem;">
         <select id="store-sort" onchange="storeApplyFilters()"
           style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);color:#fff;
@@ -13452,6 +13517,7 @@ async function sagaMint(sagaId) {
       </div>
       <div id="store-listings-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:0.85rem;">
         <div style="text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;grid-column:1/-1;">Scanning the store...</div>
+      </div>
       </div>
     </div>
 
@@ -13481,6 +13547,16 @@ async function sagaMint(sagaId) {
         <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:rgba(0,229,204,0.6);text-transform:uppercase;margin-bottom:0.7rem;">Choose a relic to sell</div>
         <div id="store-sell-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.85rem;margin-bottom:1.1rem;">
           <div style="grid-column:1/-1;text-align:center;padding:1.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;font-size:0.75rem;">Connect your wallet to see your relics.</div>
+        </div>
+        <!-- Secours discret : pour un NFT que l'explorateur ne verrait pas. -->
+        <div style="text-align:right;margin:-0.4rem 0 1rem;">
+          <span onclick="storeManualToggle()" style="cursor:pointer;font-size:0.68rem;color:rgba(255,255,255,0.35);text-decoration:underline;text-underline-offset:3px;">My NFT doesn't appear</span>
+        </div>
+        <div id="store-manual-nft" style="display:none;flex-wrap:wrap;gap:0.5rem;align-items:center;margin-bottom:1rem;">
+          <input id="store-manual-contract" placeholder="Collection contract (0x…)" style="flex:2 1 220px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#fff;padding:0.45rem 0.7rem;font-size:0.75rem;">
+          <input id="store-manual-id" placeholder="Token #" style="flex:1 1 90px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#fff;padding:0.45rem 0.7rem;font-size:0.75rem;">
+          <button onclick="storeManualAdd()" style="padding:0.45rem 0.9rem;border-radius:6px;background:rgba(0,229,204,0.12);border:1px solid rgba(0,229,204,0.4);color:var(--teal);font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;">Find</button>
+          <span id="store-manual-msg" style="flex-basis:100%;font-size:0.7rem;color:rgba(255,255,255,0.45);"></span>
         </div>
 
         <div id="store-sell-selected" style="display:none;background:rgba(0,229,204,0.05);border:1px solid rgba(0,229,204,0.2);border-radius:3px;padding:0.7rem 0.9rem;margin-bottom:0.9rem;display:flex;align-items:center;gap:0.7rem;">
@@ -13624,8 +13700,11 @@ function storeAcquireFilter(filter) {
 function storeApplyFilter() {
   const browseContent = document.getElementById('store-tab-content-browse');
   const forgeContent = document.getElementById('store-tab-content-forge');
-  if (browseContent) browseContent.style.display = _storeShow.relics ? 'block' : 'none';
-  if (forgeContent) forgeContent.style.display = _storeShow.skins ? 'block' : 'none';
+  // La Cité décide seule de ce qui est visible (storeOpenShop / storeOpenSkins
+  // / storeBackToCity) : le bloc des annonces reste toujours monté, sinon le
+  // retour à la Cité n'affichait plus rien.
+  if (browseContent) browseContent.style.display = 'block';
+  if (forgeContent && !_storeShow.skins) forgeContent.style.display = 'none';
   const chip = (id, active, color, bg, border) => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -13648,8 +13727,10 @@ function storeApplyFilter() {
 // for the two NFT families we know about (Duelist Saga + ranks). Unknown
 // NFTs from other contracts fall back to a generic "Common" placeholder.
 const STORE_RARITY_ORDER = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+// Mêmes couleurs que le Codex (RARITY_COLOR / CX_RARITY_COLOR) : une
+// relique épique était violette dans le Codex et orange dans le Store.
 const STORE_RARITY_COLOR = {
-  legendary: '#ffaa44', epic: '#ffaa44', rare: '#9d7fee', uncommon: '#9d7fee', common: 'rgba(0,229,204,0.8)'
+  legendary: '#ffc140', epic: '#b075ff', rare: '#5a9fff', uncommon: '#5ec8a0', common: '#9aa8b8'
 };
 
 async function storeResolveRelic(nftContractAddr, tokenId) {
@@ -13738,7 +13819,88 @@ async function storeResolveRelic(nftContractAddr, tokenId) {
       return { name: 'Rank Relic #' + tokenId, rarity: 'common', artUrl: null, family: 'Rank' };
     }
   }
-  return { name: 'Unknown Relic', rarity: 'common', artUrl: null, family: 'External' };
+  // ── Collection extérieure : on lit le contrat lui-même ──────────────
+  // name() donne le nom de l'échoppe, tokenURI() le nom et l'image du jeton.
+  // Tout est mis en cache : une collection inconnue ne doit pas coûter une
+  // lecture par affichage.
+  const ext = await storeResolveExternal(nftContractAddr, tokenId);
+  return ext;
+}
+
+// ═══ LA CITÉ BASSE — collections extérieures ═════════════════════════
+const STORE_EXT_TTL_MS = 24 * 60 * 60 * 1000;
+const _storeExtMem = {};
+
+function _storeExtLoad() {
+  try { return JSON.parse(localStorage.getItem('sv_ext_collections') || '{}') || {}; } catch (e) { return {}; }
+}
+function _storeExtSave(store) {
+  try { localStorage.setItem('sv_ext_collections', JSON.stringify(store)); } catch (e) {}
+}
+function storeShortAddr(a) { return a.slice(0, 6) + '…' + a.slice(-4); }
+
+/// Nom de l'échoppe (name() du contrat), mis en cache 24 h.
+async function storeCollectionName(addr) {
+  const key = addr.toLowerCase();
+  if (_storeExtMem[key]) return _storeExtMem[key];
+  const store = _storeExtLoad();
+  const hit = store[key];
+  if (hit && Date.now() - hit.t < STORE_EXT_TTL_MS) { _storeExtMem[key] = hit.n; return hit.n; }
+  let name = storeShortAddr(addr);
+  try {
+    const c = new ethers.Contract(addr, ['function name() view returns (string)'], window.svReadProvider);
+    const raw = String(await c.name() || '').trim();
+    // Un nom venant d'un contrat tiers n'est jamais affiché brut : pas de
+    // balises, pas de longueur libre — sinon une collection malveillante
+    // casse la mise en page ou tente une injection.
+    if (raw) name = raw.replace(/[<>&"']/g, '').slice(0, 28);
+  } catch (e) {}
+  _storeExtMem[key] = name;
+  store[key] = { n: name, t: Date.now() };
+  _storeExtSave(store);
+  return name;
+}
+
+function _storeIpfs(u) {
+  if (!u) return null;
+  if (u.startsWith('ipfs://')) return 'https://ipfs.io/ipfs/' + u.slice(7).replace(/^ipfs\//, '');
+  return u;
+}
+
+/// Nom + image d'un jeton d'une collection extérieure, via tokenURI().
+async function storeResolveExternal(addr, tokenId) {
+  const collection = await storeCollectionName(addr);
+  const base = { rarity: 'common', family: collection, external: true, contract: addr, collection };
+  const key = addr.toLowerCase() + ':' + tokenId;
+  if (_storeExtMem[key]) return { ...base, ..._storeExtMem[key] };
+  const store = _storeExtLoad();
+  const hit = store[key];
+  if (hit && Date.now() - hit.t < STORE_EXT_TTL_MS) return { ...base, name: hit.n, artUrl: hit.a };
+
+  let name = collection + ' #' + tokenId, artUrl = null;
+  try {
+    const c = new ethers.Contract(addr, ['function tokenURI(uint256) view returns (string)'], window.svReadProvider);
+    let uri = _storeIpfs(String(await c.tokenURI(tokenId)));
+    if (uri && uri.startsWith('data:application/json')) {
+      const b64 = uri.split(',')[1] || '';
+      const meta = JSON.parse(uri.includes(';base64,') ? atob(b64) : decodeURIComponent(b64));
+      if (meta.name) name = String(meta.name).replace(/[<>&"']/g, '').slice(0, 40);
+      artUrl = _storeIpfs(meta.image);
+    } else if (uri && /^https?:/.test(uri)) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 6000);   // un serveur lent ne bloque pas la vitrine
+      const r = await fetch(uri, { signal: ctrl.signal });
+      clearTimeout(t);
+      const meta = await r.json();
+      if (meta.name) name = String(meta.name).replace(/[<>&"']/g, '').slice(0, 40);
+      artUrl = _storeIpfs(meta.image);
+    }
+  } catch (e) {}
+
+  _storeExtMem[key] = { name, artUrl };
+  store[key] = { n: name, a: artUrl, t: Date.now() };
+  _storeExtSave(store);
+  return { ...base, name, artUrl };
 }
 
 // ═══ TRI, FILTRES ET REGROUPEMENT ════════════════════════════════════
@@ -13749,6 +13911,304 @@ async function storeResolveRelic(nftContractAddr, tokenId) {
 let _storeResolvedCache = [];
 let _storeSellerNames = {};
 let _storeRarityFilter = new Set();
+let _storeShopFilter = new Set();   // adresses de collections ; vide = toute la Cité
+
+/// Noms d'enseigne des maisons du Void (le champ `family` est technique).
+const STORE_HOUSE_NAMES = { Ascent: 'Silver Void Relics', Saga: 'Duelist Saga', Rank: 'Rank Relics', External: 'External' };
+
+/// Les échoppes de la Cité, avec leur devanture : image, nom, sceau,
+/// nombre d'annonces et prix plancher. C'est la page d'accueil du Store.
+function storeCityShops(resolved) {
+  const shops = new Map();
+  resolved.forEach(r => {
+    const addr = String(r.l.nftContract).toLowerCase();
+    // Une maison du Void peut vivre sur PLUSIEURS contrats (le courant et les
+    // anciens) : elle n'a pourtant qu'une seule échoppe. On regroupe donc par
+    // famille pour les collections maison, par contrat pour les autres.
+    const key = r.relic.external ? addr : ('house:' + (r.relic.family || 'void'));
+    const sh = shops.get(key) || {
+      key, addr, addrs: [], imgs: [],
+      name: r.relic.external ? (r.relic.collection || storeShortAddr(addr)) : (STORE_HOUSE_NAMES[r.relic.family] || r.relic.family || 'The Void'),
+      verified: !r.relic.external,
+      img: null, n: 0, floor: null,
+    };
+    if (!sh.addrs.includes(addr)) sh.addrs.push(addr);
+    sh.n++;
+    if (r.relic.artUrl && !sh.imgs.includes(r.relic.artUrl) && sh.imgs.length < 4) sh.imgs.push(r.relic.artUrl);
+    if (sh.floor === null || r.l.price < sh.floor) sh.floor = r.l.price;
+    shops.set(key, sh);
+  });
+  return [...shops.values()].sort((a, b) => (b.verified - a.verified) || (b.n - a.n));
+}
+
+let _storeCityQuery = '';
+let _storeCityVerifiedOnly = false;
+
+function storeCityFilterChanged() {
+  const el = document.getElementById('store-city-search');
+  _storeCityQuery = el ? el.value.trim().toLowerCase() : '';
+  storeBuildCity(_storeResolvedCache);
+}
+function storeCityToggleVerified() {
+  _storeCityVerifiedOnly = !_storeCityVerifiedOnly;
+  const el = document.getElementById('store-city-verified');
+  if (el) {
+    el.style.borderColor = _storeCityVerifiedOnly ? 'rgba(0,229,204,0.5)' : 'rgba(255,255,255,0.16)';
+    el.style.color = _storeCityVerifiedOnly ? 'var(--teal)' : 'rgba(255,255,255,0.55)';
+    el.style.background = _storeCityVerifiedOnly ? 'rgba(0,229,204,0.08)' : 'transparent';
+  }
+  storeBuildCity(_storeResolvedCache);
+}
+
+function storeBuildCity(resolved) {
+  const grid = document.getElementById('store-city-grid');
+  if (!grid) return;
+  let shops = storeCityShops(resolved);
+
+  // Chiffres du bandeau : ils décrivent la Cité entière, avant filtrage.
+  const hb = document.getElementById('store-hero-burned');
+  const hs = document.getElementById('store-hero-shops');
+  const hl = document.getElementById('store-hero-listed');
+  if (hb) { const t = (document.getElementById('store-stat-burned') || {}).textContent; hb.textContent = (t && t !== '—') ? t : '—'; }
+  if (hs) hs.textContent = String(shops.length);
+  if (hl) hl.textContent = String(resolved.length);
+
+  if (_storeCityVerifiedOnly) shops = shops.filter(sh => sh.verified);
+  if (_storeCityQuery) shops = shops.filter(sh => sh.name.toLowerCase().includes(_storeCityQuery) || sh.addrs.some(a => a.includes(_storeCityQuery)));
+  if (!shops.length) {
+    grid.innerHTML = (_storeCityQuery || _storeCityVerifiedOnly)
+      ? '<div style="grid-column:1/-1;text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;">No shop matches — clear the filters to see the whole City.</div>'
+      : '<div style="grid-column:1/-1;text-align:center;padding:2.5rem 0;color:rgba(255,255,255,0.3);font-style:italic;">No shop is open today. Be the first to list a relic.</div>';
+    return;
+  }
+  // L'échoppe des Ring Skins : elle ne vient pas des annonces du contrat
+  // Store (les skins sont vendus par la Forge), mais elle a sa place sur la
+  // place du marché comme n'importe quelle autre boutique.
+  const skinsCard = (!_storeCityVerifiedOnly || true) && (!_storeCityQuery || 'ring skins'.includes(_storeCityQuery))
+    ? `
+    <div onclick="storeOpenSkins()" tabindex="0" role="button"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();storeOpenSkins()}"
+         style="cursor:pointer;border:1px solid rgba(255,210,122,0.25);border-radius:10px;overflow:hidden;
+                background:rgba(255,210,122,0.04);transition:border-color .2s,transform .2s;"
+         onmouseover="this.style.borderColor='rgba(255,210,122,0.6)';this.style.transform='translateY(-2px)'"
+         onmouseout="this.style.borderColor='rgba(255,210,122,0.25)';this.style.transform=''">
+      <div style="position:relative;height:152px;background:radial-gradient(circle at 50% 55%,rgba(255,210,122,0.07),rgba(4,8,23,0.99));
+                  display:flex;align-items:center;justify-content:center;gap:0.9rem;">
+        ${storeSkinShowcase()}
+      </div>
+      <div style="padding:0.75rem 0.95rem 0.95rem;">
+        <div style="display:flex;align-items:center;gap:0.45rem;flex-wrap:wrap;">
+          <span style="font-family:'Cinzel',serif;font-weight:600;font-size:0.95rem;letter-spacing:0.04em;color:#fff;">Ring Skins</span>
+          <span style="font-family:'Cinzel',serif;font-size:0.5rem;letter-spacing:0.12em;text-transform:uppercase;color:#ffd27a;border:1px solid rgba(255,210,122,0.45);border-radius:999px;padding:0.05rem 0.45rem;">The Forge</span>
+        </div>
+        <div style="display:flex;gap:1.3rem;margin-top:0.6rem;font-family:'Cinzel',serif;font-size:0.52rem;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.45);">
+          <div><b style="display:block;font-size:0.95rem;letter-spacing:0.02em;color:#fff;">${(typeof SKINS !== 'undefined' ? SKINS.length : 0)}</b>skins</div>
+          <div><b style="display:block;font-size:0.95rem;letter-spacing:0.02em;color:#fff;">50%</b>burned</div>
+        </div>
+      </div>
+    </div>`
+    : '';
+
+  // La première échoppe (la mieux fournie) tient la grande devanture ;
+  // l'échoppe de la Forge vient juste après.
+  const cards = shops.map((sh, i) => {
+    // La première échoppe tient toujours la grande devanture, même quand
+    // elle est seule : c'est la vitrine de la Cité.
+    const big = i === 0;
+    const floor = sh.floor !== null ? parseFloat(ethers.formatEther(sh.floor)).toFixed(3) : '—';
+    // Vitrine : plusieurs reliques côte à côte plutôt qu'une image étirée.
+    // Vitrine : trois pièces côte à côte pour la grande échoppe, deux pour
+    // les autres, séparées par un filet doré et fondues l'une dans l'autre.
+    const nImg = big ? 3 : 2;
+    const shown = (sh.imgs || []).slice(0, nImg);
+    const art = shown.length
+      ? `<div style="position:absolute;inset:0;display:grid;grid-template-columns:repeat(${shown.length},1fr);">
+           ${shown.map((u, k) => `
+             <div style="position:relative;background:url('${u}') center/cover no-repeat;">
+               ${k ? `<div style="position:absolute;left:0;top:0;bottom:0;width:1px;background:linear-gradient(180deg,rgba(255,193,64,0) 0%,rgba(255,193,64,0.75) 35%,rgba(255,193,64,0.75) 65%,rgba(255,193,64,0) 100%);box-shadow:0 0 10px rgba(255,193,64,0.35);"></div>
+                    <div style="position:absolute;left:0;top:0;bottom:0;width:38px;background:linear-gradient(90deg,rgba(5,10,32,0.65),rgba(5,10,32,0));"></div>` : ''}
+               ${k < shown.length - 1 ? `<div style="position:absolute;right:0;top:0;bottom:0;width:38px;background:linear-gradient(270deg,rgba(5,10,32,0.65),rgba(5,10,32,0));"></div>` : ''}
+             </div>`).join('')}
+         </div>`
+      : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2rem;opacity:0.35;">◇</div>`;
+    const seal = sh.verified
+      ? `<span style="font-family:'Cinzel',serif;font-size:0.5rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--teal);border:1px solid rgba(0,229,204,0.45);border-radius:999px;padding:0.05rem 0.45rem;">Verified</span>`
+      : `<span title="${sh.addrs.join(' ')}" style="font-family:'Cinzel',serif;font-size:0.5rem;letter-spacing:0.12em;text-transform:uppercase;color:#ffc140;border:1px solid rgba(255,193,64,0.45);border-radius:999px;padding:0.05rem 0.45rem;">Unverified</span>`;
+    return `
+    <div onclick="storeOpenShop('${sh.key}')" tabindex="0" role="button"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();storeOpenShop('${sh.key}')}"
+         style="grid-column:${big ? 'span 2' : 'span 1'};cursor:pointer;border:1px solid rgba(255,255,255,0.10);
+                border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.02);transition:border-color .2s,transform .2s;"
+         onmouseover="this.style.borderColor='rgba(0,229,204,0.4)';this.style.transform='translateY(-2px)'"
+         onmouseout="this.style.borderColor='rgba(255,255,255,0.10)';this.style.transform=''">
+      <div style="position:relative;height:152px;background:#0a1330;">
+        ${art}
+        <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,10,32,0.15),rgba(5,10,32,0.92));"></div>
+      </div>
+      <div style="padding:0.75rem 0.95rem 0.95rem;">
+        <div style="display:flex;align-items:center;gap:0.45rem;flex-wrap:wrap;">
+          <span style="font-family:'Cinzel',serif;font-weight:600;font-size:0.95rem;letter-spacing:0.04em;color:#fff;">${sh.name}</span>
+          ${seal}
+        </div>
+        <div style="display:flex;gap:1.3rem;margin-top:0.6rem;font-family:'Cinzel',serif;font-size:0.52rem;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.45);">
+          <div><b style="display:block;font-size:0.95rem;letter-spacing:0.02em;color:#fff;">${sh.n}</b>listed</div>
+          <div><b style="display:block;font-size:0.95rem;letter-spacing:0.02em;color:#fff;">${floor}</b>floor</div>
+        </div>
+      </div>
+    </div>`;
+  });
+  grid.innerHTML = cards.length ? cards[0] + skinsCard + cards.slice(1).join('') : skinsCard;
+}
+
+// ═══ « Changed hands » — les dernières ventes ════════════════════════
+// Les événements Sold ne sont lus que sur une FENÊTRE RÉCENTE de blocs : ce
+// RPC refuse les plages larges (timeout dès ~10 000 blocs), et un scan complet
+// de l'historique est exactement ce qu'on a supprimé partout ailleurs.
+// Résultat mis en cache 10 minutes dans le navigateur.
+const STORE_SALES_WINDOW = 9000;      // blocs regardés en arrière
+const STORE_SALES_TTL_MS = 10 * 60 * 1000;
+const STORE_SALE_BURN_BPS = 1700;     // 17 % sur le contrat actuel
+
+async function storeLoadRecentSales() {
+  const box = document.getElementById('store-recent');
+  const list = document.getElementById('store-recent-list');
+  if (!box || !list) return;
+
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem('sv_store_sales') || 'null'); } catch (e) {}
+  if (cached && Date.now() - cached.t < STORE_SALES_TTL_MS) { storeRenderRecentSales(cached.rows); return; }
+
+  try {
+    const c = storeReadContract || (typeof initStoreContract === 'function' ? initStoreContract() : null);
+    if (!c) return;
+    const latest = await window.svReadProvider.getBlockNumber();
+    const logs = await c.queryFilter(c.filters.Sold(), Math.max(0, latest - STORE_SALES_WINDOW), 'latest');
+    const last = logs.slice(-4).reverse();
+    const rows = [];
+    for (const ev of last) {
+      try {
+        const l = await c.getListing(ev.args.listingId);
+        const relic = await storeResolveRelic(l.nftContract, l.tokenId);
+        rows.push({
+          name: relic.name,
+          buyer: String(ev.args.buyer),
+          price: ethers.formatEther(ev.args.price),
+          burned: ethers.formatEther((BigInt(ev.args.price) * BigInt(STORE_SALE_BURN_BPS)) / 10000n),
+        });
+      } catch (e) {}
+    }
+    try { localStorage.setItem('sv_store_sales', JSON.stringify({ t: Date.now(), rows })); } catch (e) {}
+    storeRenderRecentSales(rows);
+  } catch (e) {
+    // Fenêtre refusée par le RPC, ou aucune vente : on n'affiche rien plutôt
+    // qu'un bloc vide.
+    console.warn('recent sales unavailable:', e.message);
+    if (cached && cached.rows && cached.rows.length) storeRenderRecentSales(cached.rows);
+  }
+}
+
+function storeRenderRecentSales(rows) {
+  const box = document.getElementById('store-recent');
+  const list = document.getElementById('store-recent-list');
+  if (!box || !list) return;
+  if (!rows || !rows.length) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  list.innerHTML = rows.map(r => `
+    <div style="display:flex;gap:0.7rem;align-items:baseline;flex-wrap:wrap;font-family:'Cormorant Garamond',Georgia,serif;font-size:1rem;color:rgba(255,255,255,0.55);">
+      <span style="color:#fff;font-weight:600;">${r.name}</span>
+      <span>→ ${r.buyer.slice(0, 6)}…${r.buyer.slice(-4)}</span>
+      <span style="margin-left:auto;white-space:nowrap;color:#ffc140;">${parseFloat(r.price).toFixed(3)} zkLTC · ${parseFloat(r.burned).toFixed(3)} burned</span>
+    </div>`).join('');
+}
+
+/// Trois portraits portant un anneau, comme exemple de ce qu'on forge.
+/// Reprend exactement le rendu du Codex (SKIN_FX + avatar au centre), en
+/// mode « lite » : trois anneaux animés suffisent, inutile de charger le GPU.
+function storeSkinShowcase() {
+  if (typeof SKIN_FX !== 'function') return '';
+  const demo = ['ring_moon', 'ring_ember', 'ring_eclipse'];
+  const avatar = (typeof avatarHTMLFor === 'function' && typeof _myAvatarId !== 'undefined')
+    ? avatarHTMLFor(_myAvatarId, 44) : '';
+  return demo.map((id, k) => {
+    const size = k === 1 ? 82 : 64;   // celui du milieu, un peu plus grand
+    return `<div style="position:relative;width:${size}px;height:${size}px;border-radius:50%;">
+      ${SKIN_FX(id, size, true)}
+      <span style="position:absolute;inset:8px;border-radius:50%;background:#0c0824;z-index:2;display:flex;align-items:center;justify-content:center;overflow:hidden;">${avatar}</span>
+    </div>`;
+  }).join('');
+}
+
+/// Entrer dans une échoppe : niveau 2, avec les filtres et la grille.
+function storeOpenShop(key) {
+  _storeView = 'shop';
+  const sh = storeCityShops(_storeResolvedCache).find(x => x.key === key || x.addr === String(key).toLowerCase());
+  _storeShopFilter = new Set(sh ? sh.addrs : [String(key).toLowerCase()]);
+  const city = document.getElementById('store-city');
+  const shop = document.getElementById('store-shop-view');
+  if (city) city.style.display = 'none';
+  if (shop) shop.style.display = 'block';
+
+  const head = document.getElementById('store-shop-head');
+  if (head && sh) {
+    head.innerHTML = `
+      <span onclick="storeBackToCity()" style="cursor:pointer;font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.5);">← The Lower City</span>
+      <span style="font-family:'Cinzel',serif;font-weight:600;font-size:1rem;letter-spacing:0.05em;color:#fff;">${sh.name}</span>
+      ${sh.verified
+        ? '<span style="font-family:\'Cinzel\',serif;font-size:0.5rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--teal);border:1px solid rgba(0,229,204,0.45);border-radius:999px;padding:0.05rem 0.45rem;">Verified</span>'
+        : '<span style="font-family:\'Cinzel\',serif;font-size:0.5rem;letter-spacing:0.12em;text-transform:uppercase;color:#ffc140;border:1px solid rgba(255,193,64,0.45);border-radius:999px;padding:0.05rem 0.45rem;">Unverified</span>'}
+      <span style="margin-left:auto;font-size:0.62rem;color:rgba(255,255,255,0.35);font-family:'Inter',sans-serif;">${sh.addrs.length > 1 ? sh.addrs.length + ' contracts' : sh.addrs[0].slice(0,6) + '…' + sh.addrs[0].slice(-4)}</span>`;
+  }
+  storeApplyFilters();
+}
+
+/// L'échoppe de la Forge : mêmes allées et venues que les autres boutiques.
+let _storeView = 'city';   // 'city' | 'shop' | 'skins'
+
+function storeOpenSkins() {
+  _storeView = 'skins';
+  const city = document.getElementById('store-city');
+  const shop = document.getElementById('store-shop-view');
+  const forge = document.getElementById('store-tab-content-forge');
+  if (city) city.style.display = 'none';
+  if (shop) shop.style.display = 'none';
+  if (forge) {
+    forge.style.display = 'block';
+    // Même en-tête que les autres échoppes : retour, enseigne, sceau.
+    let head = document.getElementById('store-skins-back');
+    if (!head) {
+      head = document.createElement('div');
+      head.id = 'store-skins-back';
+      head.style.cssText = 'display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap;margin-bottom:1rem;';
+      forge.insertBefore(head, forge.firstChild);
+    }
+    head.innerHTML = `
+      <span onclick="storeBackToCity()" style="cursor:pointer;font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.5);">← The Lower City</span>
+      <span style="font-family:'Cinzel',serif;font-weight:600;font-size:1rem;letter-spacing:0.05em;color:#fff;">Ring Skins</span>
+      <span style="font-family:'Cinzel',serif;font-size:0.5rem;letter-spacing:0.12em;text-transform:uppercase;color:#ffd27a;border:1px solid rgba(255,210,122,0.45);border-radius:999px;padding:0.05rem 0.45rem;">The Forge</span>
+      <span style="margin-left:auto;font-size:0.62rem;color:rgba(255,255,255,0.35);font-family:'Inter',sans-serif;">Half of every purchase is burned in the Ritual</span>`;
+    // L'ancien grand titre centré faisait doublon avec cet en-tête.
+    const oldHead = forge.querySelector(':scope > div[style*="text-align:center"]');
+    if (oldHead) { oldHead.dataset.svHidden = '1'; oldHead.style.display = 'none'; }
+  }
+  if (typeof _storeShow !== 'undefined') { _storeShow.skins = true; _storeShow.relics = false; }
+  if (typeof forgeRender === 'function') { try { forgeRender(); } catch (e) {} }
+}
+
+function storeBackToCity() {
+  _storeView = 'city';
+  const _forge = document.getElementById('store-tab-content-forge');
+  const _old = _forge && _forge.querySelector(':scope > div[data-sv-hidden]');
+  if (_old) { _old.style.display = ''; delete _old.dataset.svHidden; }
+  _storeShopFilter.clear();
+  const city = document.getElementById('store-city');
+  const shop = document.getElementById('store-shop-view');
+  const forge = document.getElementById('store-tab-content-forge');
+  if (shop) shop.style.display = 'none';
+  if (forge) forge.style.display = 'none';
+  if (typeof _storeShow !== 'undefined') { _storeShow.skins = false; _storeShow.relics = true; }
+  if (city) city.style.display = 'block';
+  storeBuildCity(_storeResolvedCache);
+}
 
 /// Pseudo + avatar de chaque vendeur, une seule fois par adresse.
 async function storeResolveSellers(resolved) {
@@ -13796,6 +14256,11 @@ function storeApplyFilters() {
   if (!grid) return;
   let rows = _storeResolvedCache.slice();
 
+  // Échoppe(s) choisie(s) dans la Cité ; vide = tout le marché.
+  if (_storeShopFilter.size) {
+    rows = rows.filter(r => _storeShopFilter.has(String(r.l.nftContract).toLowerCase()));
+  }
+
   if (_storeRarityFilter.size) {
     rows = rows.filter(r => _storeRarityFilter.has(r.relic.rarity));
   }
@@ -13820,7 +14285,9 @@ function storeApplyFilters() {
   // annonce les autres. C'est ce qui compresse vraiment une liste longue.
   const groups = new Map();
   rows.forEach(r => {
-    const key = r.relic.name;
+    // La clé inclut la collection : deux projets peuvent nommer un jeton
+    // de la même façon sans que leurs annonces soient fusionnées.
+    const key = String(r.l.nftContract).toLowerCase() + '|' + r.relic.name;
     const g = groups.get(key);
     if (!g) groups.set(key, { best: r, count: 1 });
     else {
@@ -13884,6 +14351,7 @@ function storeRelicCard(l, relic, alsoListed) {
     </div>
     <div class="vb-body">
       <div class="vb-name">${relic.name}</div>
+      ${relic.external ? `<div style="font-size:0.58rem;letter-spacing:0.08em;text-transform:uppercase;font-family:'Cinzel',serif;color:#ffc140;margin:0.1rem 0 0.2rem;" title="Unverified collection — ${l.nftContract}">${relic.collection || 'External'} · unverified</div>` : ''}
       <div class="vb-desc" style="min-height:0;">${sellerBlock}</div>
       ${alsoListed > 1 ? `<div style="font-size:0.62rem;color:rgba(255,255,255,0.35);margin-top:0.15rem;">${alsoListed} listings · from ${priceStr} zkLTC</div>` : ''}
       <div class="vb-foot">
@@ -14060,10 +14528,11 @@ async function storeRefreshListings() {
       const res = await storeReadContract.getActiveListings(cursor, 100);
       for (let i = 0; i < res.ids.length; i++) {
         const l = res.page[i];
-        // On ne garde que les reliques du Void. Le contrat Store accepte
-        // n'importe quel NFT ; un jeton etranger liste par appel direct
-        // s'affichait en "Unknown Relic". On le masque de la vitrine.
-        if (!svIsAllowedNft(l.nftContract)) continue;
+        // LA CITÉ BASSE : la vitrine n'est plus réservée aux reliques du
+        // Void. Toute collection LitVM listée ici apparaît d'elle-même, dans
+        // sa propre échoppe. Les maisons vérifiées (svIsAllowedNft) sont
+        // mises en avant ; les autres sont affichées telles quelles, avec
+        // leur adresse de contrat et la mention « unverified ».
         active.push({ id: Number(res.ids[i]), seller: l.seller, nftContract: l.nftContract, tokenId: l.tokenId, price: l.price, active: l.active });
       }
       cursor = Number(res.nextCursor);
@@ -14088,7 +14557,21 @@ async function storeRefreshListings() {
     // et c'est la meme personne qu'on croise au classement et a l'Arene.
     await storeResolveSellers(resolved);
 
+    storeBuildCity(resolved);
+    storeLoadRecentSales();
     storeBuildRarityFilters(resolved);
+    // On revient toujours à la Cité après un rafraîchissement, sauf si le
+    // joueur est déjà dans une échoppe encore ouverte.
+    // On reste là où le joueur se trouve : un rafraîchissement des annonces
+    // le renvoyait à la Cité, y compris depuis l'échoppe des skins — d'où la
+    // page qui « sortait toute seule » au bout de quelques secondes.
+    if (_storeView === 'skins') { /* on ne touche à rien */ }
+    else {
+      const _cur = [..._storeShopFilter][0];
+      const _openShop = _cur ? storeCityShops(resolved).find(sh => sh.addrs.includes(_cur)) : null;
+      if (_openShop) storeOpenShop(_openShop.key);
+      else storeBackToCity();
+    }
     storeApplyFilters();
     if (btn) { btn.innerHTML = btnOriginalText; btn.style.opacity = ''; btn.disabled = false; }
     return;
@@ -14210,6 +14693,11 @@ async function storeScanMyNFTs() {
   window._myRelicNames = owned.map(n => n.name);
   storeRenderMyNFTs();
 
+  // LA CITÉ BASSE : les NFT des autres projets LitVM, trouvés par
+  // l'explorateur de blocs. Lancé après le rendu, pour que les reliques
+  // s'affichent tout de suite sans attendre l'explorateur.
+  storeScanExternalNFTs();
+
   // Les anciens NFT de saga N'APPARAISSENT PLUS dans la galerie de vente.
   //
   // Ils venaient d'un contrat retire, avec des noms qui doublonnent ceux des
@@ -14270,6 +14758,96 @@ async function storeScanLegacyNFTs() {
   }
 }
 
+// ═══ NFT des autres projets LitVM ════════════════════════════════════
+// L'explorateur (Blockscout) sait lister tous les NFT d'une adresse, toutes
+// collections confondues : le joueur n'a ni adresse de contrat ni numéro à
+// saisir. Seuls les ERC-721 sont retenus, car c'est ce qu'accepte le Store.
+const STORE_EXPLORER_API = 'https://liteforge.explorer.caldera.xyz/api/v2';
+const STORE_EXT_MAX_PAGES = 3;          // 50 NFT par page environ
+const STORE_EXT_TIMEOUT_MS = 8000;
+
+function _storeClean(t, n) { return String(t || '').replace(/[<>&"']/g, '').trim().slice(0, n); }
+
+async function storeScanExternalNFTs() {
+  if (!connectedAddress) return;
+  const me = connectedAddress.toLowerCase();
+  const found = [];
+  let params = '';
+  try {
+    for (let page = 0; page < STORE_EXT_MAX_PAGES; page++) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), STORE_EXT_TIMEOUT_MS);
+      const r = await fetch(`${STORE_EXPLORER_API}/addresses/${me}/nft?type=ERC-721${params}`, { signal: ctrl.signal });
+      clearTimeout(t);
+      if (!r.ok) break;
+      const data = await r.json();
+      for (const it of (data.items || [])) {
+        const addr = String((it.token && it.token.address) || it.token_address || '').toLowerCase();
+        const tokenId = it.id != null ? String(it.id) : null;
+        if (!addr || tokenId === null) continue;
+        // Les collections maison sont déjà trouvées par storeScanMyNFTs().
+        if (typeof svIsAllowedNft === 'function' && svIsAllowedNft(addr)) continue;
+        const meta = it.metadata || {};
+        const collection = _storeClean(it.token && it.token.name, 28) || storeShortAddr(addr);
+        found.push({
+          contract: addr,
+          tokenId,
+          name: _storeClean(meta.name, 40) || (collection + ' #' + tokenId),
+          artUrl: _storeIpfs(it.image_url || meta.image || null),
+          rarity: 'common',
+          copies: 1,
+          kind: 'external',
+          collection,
+        });
+      }
+      if (!data.next_page_params) break;
+      params = '&' + new URLSearchParams(data.next_page_params).toString();
+    }
+  } catch (e) {
+    // Explorateur lent ou injoignable : on garde les collections maison,
+    // et le lien « My NFT doesn't appear » reste disponible.
+    console.warn('explorer NFT scan:', e.message);
+  }
+  if (!found.length) return;
+  // Le joueur a pu se déconnecter ou changer de compte entre-temps.
+  if (!connectedAddress || connectedAddress.toLowerCase() !== me) return;
+  const known = new Set((_storeMyNFTs || []).map(n => n.contract.toLowerCase() + ':' + n.tokenId));
+  _storeMyNFTs = (_storeMyNFTs || []).concat(found.filter(n => !known.has(n.contract + ':' + n.tokenId)));
+  storeRenderMyNFTs();
+}
+
+/// Secours : pour le rare NFT que l'explorateur ne voit pas.
+function storeManualToggle() {
+  const box = document.getElementById('store-manual-nft');
+  if (box) box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+}
+async function storeManualAdd() {
+  const addrEl = document.getElementById('store-manual-contract');
+  const idEl = document.getElementById('store-manual-id');
+  const msg = document.getElementById('store-manual-msg');
+  const addr = (addrEl.value || '').trim();
+  const tokenId = (idEl.value || '').trim();
+  const say = (t) => { if (msg) msg.textContent = t; };
+  if (!/^0x[a-fA-F0-9]{40}$/.test(addr) || !/^\d+$/.test(tokenId)) { say('Check the contract address and the token number.'); return; }
+  if (!connectedAddress) { say('Connect your wallet first.'); return; }
+  say('Checking…');
+  try {
+    const c = new ethers.Contract(addr, ['function ownerOf(uint256) view returns (address)'], window.svReadProvider);
+    const owner = await c.ownerOf(tokenId);
+    if (owner.toLowerCase() !== connectedAddress.toLowerCase()) { say('This NFT is not in your wallet.'); return; }
+    const info = await storeResolveExternal(addr, tokenId);
+    _storeMyNFTs = (_storeMyNFTs || []).concat([{
+      contract: addr.toLowerCase(), tokenId, name: info.name, artUrl: info.artUrl,
+      rarity: 'common', copies: 1, kind: 'external', collection: info.collection,
+    }]);
+    storeRenderMyNFTs();
+    storeSelectMyNFT(_storeMyNFTs.length - 1);
+    say('Found. Set your price below.');
+  } catch (e) {
+    say('Not found. Is it an ERC-721 on LitVM?');
+  }
+}
+
 /// Rendu de la galerie. Les doublons sont annonces explicitement : c'est
 /// toute la raison d'etre du Store, autant que le joueur les voie.
 function storeRenderMyNFTs() {
@@ -14286,7 +14864,7 @@ function storeRenderMyNFTs() {
   // des doubles, et le vendeur vient d'abord pour elles. Les anciens NFT de
   // rang et de saga suivent. A famille egale, les doubles remontent : ce sont
   // les seuls qu'on peut vendre sans perdre une piece de sa collection.
-  const familyOrder = { relic: 0, saga: 1, rank: 2 };
+  const familyOrder = { relic: 0, saga: 1, rank: 2, external: 3 };
   const sorted = owned.slice().sort((a, b) => {
     const fa = familyOrder[a.kind] ?? 3, fb = familyOrder[b.kind] ?? 3;
     if (fa !== fb) return fa - fb;
@@ -14328,7 +14906,7 @@ function storeRenderMyNFTs() {
         <div style="font-family:'Cinzel',serif;font-size:0.78rem;color:#fff;line-height:1.3;
                     min-height:2.1em;">${nft.name}</div>
         <div style="margin-top:0.3rem;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:${col};">
-          ${nft.rarity}${spare > 0 ? ` · ${spare} spare` : ''}
+          ${nft.kind === 'external' ? `<span style="color:#ffc140;">${nft.collection || 'External'} · unverified</span>` : nft.rarity}${spare > 0 ? ` · ${spare} spare` : ''}
         </div>
       </div>
     </div>`;
@@ -14439,13 +15017,9 @@ async function storeList() {
   if (!tokenId) { errBox.textContent = 'Pick a relic from the gallery above first.'; errBox.style.display = 'block'; return; }
   if (!price || parseFloat(price) <= 0) { errBox.textContent = 'Enter a valid price.'; errBox.style.display = 'block'; return; }
 
-  // Ne lister que des reliques du Void. Le contrat, lui, accepterait tout —
-  // c'est le seul garde-fou cote interface.
-  if (!svIsAllowedNft(contractAddr)) {
-    errBox.textContent = 'Only Silver Void relics can be listed here.';
-    errBox.style.display = 'block';
-    return;
-  }
+  // LA CITÉ BASSE : toute collection ERC-721 peut désormais être listée.
+  // Le garde-fou « reliques du Void uniquement » est retiré ; la vitrine
+  // marque les collections extérieures « unverified ».
 
   const btn = document.getElementById('store-list-btn');
   btn.disabled = true; btn.textContent = 'Confirm in MetaMask...';
