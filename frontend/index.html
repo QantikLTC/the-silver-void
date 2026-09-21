@@ -16801,6 +16801,8 @@ async function fbSubmit() {
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     alert('That email address looks incomplete. Leave it blank if you prefer.');
     emailEl.focus();
+    // Le bouton était resté sur « Sending... », désactivé : on le rétablit.
+    if (submitBtn) { submitBtn.textContent = origText; submitBtn.disabled = false; }
     return;
   }
 
@@ -16820,6 +16822,21 @@ async function fbSubmit() {
     page: location.href,
     device: navigator.userAgent
   };
+
+  // Copie de sauvegarde sur notre propre serveur : Web3Forms classe parfois
+  // de vrais messages en spam, sans e-mail. Envoyée en parallèle, sans
+  // attendre : un échec ici ne doit jamais empêcher l'envoi principal.
+  try {
+    fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        category: payload.category, chronicle: payload.chronicle, satisfaction: payload.satisfaction,
+        email: email, wallet: payload.wallet, page: payload.page, device: payload.device, message: payload.message
+      }),
+      keepalive: true
+    }).catch(() => {});
+  } catch (e) {}
 
   try {
     const res = await fetch('https://api.web3forms.com/submit', {
