@@ -13325,6 +13325,14 @@ async function codexOpen(addr){
     // Sidebar counters — the incomplete fractions are the whole point.
     const setN = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
     setN('cx-n-relics', ownedCount + '/' + totalCount);
+    // Les autres onglets (Paths, Ring Skins, Feats) ne calculaient leur
+    // compteur qu'au clic : après connexion, la barre latérale gardait
+    // « — » ou les valeurs de l'aperçu scellé. On les remplit tout de suite.
+    if (isSelf) {
+      try { Promise.resolve(codexRenderBadges(target)).catch(() => {}); } catch (e) {}
+      try { if (typeof codexSkinsRender === 'function') codexSkinsRender(); } catch (e) {}
+      try { if (typeof featsOpen === 'function') featsOpen(); } catch (e) {}
+    }
     // Publish for the profile panel, which shows the same fraction without
     // having to re-read the chain.
     if (isSelf) { window._codexOwnedCount = ownedCount; window._codexTotalCount = totalCount; }
@@ -16100,6 +16108,7 @@ async function mySkinLoad() {
     _myOwned = Array.isArray(d.owned) ? d.owned : [];
     skinApplyMine();
     skinGrantRelics();
+    try { if (typeof codexSkinsRender === 'function' && document.getElementById('cx-n-skins')) codexSkinsRender(); } catch (e) {}
   } catch(e) { console.warn('skin load failed:', e); }
 }
 async function skinEquip(id) {
@@ -17953,6 +17962,21 @@ body.sv-rail-on #hero{
   box-shadow:0 24px 60px rgba(0,0,0,0.5), 0 0 30px rgba(255,106,61,0.06) !important;
 }
 .burn-card .b-badge{ color:#ffb08d !important }
+/* Page du Rituel : le feu est la couleur de la page. Les accents turquoise,
+   verts et bleus hérités (zkLTC, rang, NFT Claimed, liens) passent à la
+   teinte braise, pour une page cohérente. */
+#ritual{ --ember:#ffae7a; --ember-soft:rgba(255,174,122,0.35); }
+#ritual .live-status,
+#ritual .vt-unit,
+#ritual .burn-inp-unit,
+#ritual #xp-rank-label,
+#ritual #rcc-nft,
+#ritual .bpreset.on,
+#ritual .bpreset.on .bpr-hint{ color:var(--ember) !important; }
+#ritual .bpreset.on{ border-color:var(--ember-soft) !important; background:rgba(255,174,122,0.08) !important; }
+#ritual .xp-fill{ background:linear-gradient(90deg,#ff7a45,#ffc08a) !important; box-shadow:0 0 10px rgba(255,140,80,0.45) !important; }
+#ritual #nft-claim-btn{ color:var(--ember) !important; border-color:var(--ember-soft) !important; background:rgba(255,140,80,0.10) !important; }
+#ritual .ritual-rank-col [onclick*="svRailGo('arena')"]{ color:var(--ember) !important; border-color:var(--ember-soft) !important; }
 
 /* ═══ Site background — "Depth" ═══
    Was a near-flat radial from #071033 to #03061a: dark enough that panels and
@@ -18244,10 +18268,12 @@ body.sv-rail-on section#chronicles-page > div[aria-hidden]{ display:none !import
 .rit-badge.r2{ --rc:#5a9fff }
 .rit-badge.r3{ --rc:#9d7fee }
 .rit-badge.r4{ --rc:#e8c26a }
-.rit-badge.r4::before{ box-shadow:0 0 8px rgba(232,194,106,0.55), 0 0 16px rgba(232,194,106,0.25) }
+/* La lueur passe par drop-shadow, qui épouse la forme dessinée (le losange),
+   et non par box-shadow, qui dessinait un carré autour sur certains rendus. */
+.rit-badge.r4{ filter:drop-shadow(0 0 4px rgba(232,194,106,0.55)) }
 @media (prefers-reduced-motion:no-preference){
-  .rit-badge.r4::before{ animation:ritGlow 2.8s ease-in-out infinite }
-  @keyframes ritGlow{ 50%{ box-shadow:0 0 12px rgba(232,194,106,0.8), 0 0 22px rgba(232,194,106,0.35) } }
+  .rit-badge.r4{ animation:ritGlow 2.8s ease-in-out infinite }
+  @keyframes ritGlow{ 50%{ filter:drop-shadow(0 0 7px rgba(232,194,106,0.85)) } }
 }
 .sv-badge{
   width:54px; height:60px; position:relative; display:inline-flex;
