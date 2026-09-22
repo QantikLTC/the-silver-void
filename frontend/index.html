@@ -14429,12 +14429,13 @@ function storeRelicCard(l, relic, alsoListed) {
     <div class="vb-art" style="padding:0;overflow:hidden;">
       ${img}
       <span class="vb-rar" style="--rc:${color};">${relic.rarity}</span>
+      ${alsoListed > 1 ? `<span title="${alsoListed} listings of this relic — the cheapest is shown" style="position:absolute;top:0.5rem;right:0.5rem;z-index:2;padding:0.18rem 0.55rem;border-radius:999px;background:rgba(5,10,32,0.85);border:1px solid rgba(255,193,64,0.6);color:#ffc140;font-family:'Cinzel',serif;font-size:0.72rem;font-weight:600;letter-spacing:0.04em;box-shadow:0 0 10px rgba(255,193,64,0.25);">×${alsoListed}</span>` : ''}
     </div>
     <div class="vb-body">
       <div class="vb-name">${relic.name}</div>
       ${relic.external ? `<div style="font-size:0.58rem;letter-spacing:0.08em;text-transform:uppercase;font-family:'Cinzel',serif;color:#ffc140;margin:0.1rem 0 0.2rem;" title="Unverified collection — ${l.nftContract}">${relic.collection || 'External'} · unverified</div>` : ''}
       <div class="vb-desc" style="min-height:0;">${sellerBlock}</div>
-      ${alsoListed > 1 ? `<div style="font-size:0.62rem;color:rgba(255,255,255,0.35);margin-top:0.15rem;">${alsoListed} listings · from ${priceStr} zkLTC</div>` : ''}
+      ${alsoListed > 1 ? `<div style="font-size:0.66rem;color:rgba(255,193,64,0.75);margin-top:0.15rem;">${alsoListed} for sale · from ${priceStr} zkLTC</div>` : ''}
       <div class="vb-foot">
         <div class="vb-price"><span class="vb-zk">${priceStr}</span><span class="vb-usd">zkLTC</span></div>
         ${cta}
