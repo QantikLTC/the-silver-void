@@ -8094,6 +8094,11 @@ async function duelistLeaderboardScan() {
   } catch (e) {}
 
   if (typeof profilesBatchPrefetch === 'function') await profilesBatchPrefetch(wallets);
+  // Son propre profil est relu sans le cache du CDN : un skin ou un avatar
+  // tout juste changé s'affichait encore à l'ancien dans le classement.
+  if (connectedAddress && typeof profilesBatchPrefetch === 'function') {
+    try { await profilesBatchPrefetch([connectedAddress.toLowerCase()]); } catch (e) {}
+  }
   // Par vagues de 8 : lancer 210 resolutions de front sature un RPC mobile,
   // qui repond alors par des 502 — et chaque echec coute une reprise.
   const rows = [];
@@ -16054,7 +16059,10 @@ function SKIN_FX(id, size, lite) {
       + (lite ? '' : '<span class="fgl" style="inset:-2px;background:conic-gradient(transparent,rgba(60,20,110,0.5) 50%,transparent);animation:fgspinr 6s linear infinite;filter:blur(3px);"></span>')
       + '<span class="fgp" style="top:0;left:30%;width:3px;height:3px;background:#c9a2ff;box-shadow:0 0 5px #a86bff;animation:fgfall 2.2s ease-in infinite;"></span>'
       + '<span class="fgp" style="top:0;left:55%;width:3px;height:3px;background:#fff;box-shadow:0 0 4px #c9a2ff;animation:fgfall 1.7s ease-in 0.8s infinite;"></span>';
-    default: return '';
+    // Un identifiant inconnu (skin retiré du catalogue, valeur ancienne)
+    // renvoyait une chaîne vide : l'anneau disparaissait complètement et
+    // l'avatar s'affichait « cassé ». On retombe sur l'anneau par défaut.
+    default: return '<span class="fgl" style="background:conic-gradient(rgba(0,229,204,0.55) 0 100%);opacity:0.75;"></span>';
   }
 }
 
