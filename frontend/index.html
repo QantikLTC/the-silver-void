@@ -9286,6 +9286,11 @@ async function duelistLeaderboardScan() {
   } catch (e) {}
 
   if (typeof profilesBatchPrefetch === 'function') await profilesBatchPrefetch(wallets);
+  // Son propre profil est relu sans le cache du CDN : un skin ou un avatar
+  // tout juste changé s'affichait encore à l'ancien dans le classement.
+  if (connectedAddress && typeof profilesBatchPrefetch === 'function') {
+    try { await profilesBatchPrefetch([connectedAddress.toLowerCase()]); } catch (e) {}
+  }
   // Par vagues de 8 : lancer 210 resolutions de front sature un RPC mobile,
   // qui repond alors par des 502 — et chaque echec coute une reprise.
   const rows = [];
@@ -14517,6 +14522,14 @@ async function codexOpen(addr){
     // Sidebar counters — the incomplete fractions are the whole point.
     const setN = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
     setN('cx-n-relics', ownedCount + '/' + totalCount);
+    // Les autres onglets (Paths, Ring Skins, Feats) ne calculaient leur
+    // compteur qu'au clic : après connexion, la barre latérale gardait
+    // « — » ou les valeurs de l'aperçu scellé. On les remplit tout de suite.
+    if (isSelf) {
+      try { Promise.resolve(codexRenderBadges(target)).catch(() => {}); } catch (e) {}
+      try { if (typeof codexSkinsRender === 'function') codexSkinsRender(); } catch (e) {}
+      try { if (typeof featsOpen === 'function') featsOpen(); } catch (e) {}
+    }
     // Publish for the profile panel, which shows the same fraction without
     // having to re-read the chain.
     if (isSelf) { window._codexOwnedCount = ownedCount; window._codexTotalCount = totalCount; }
@@ -15651,12 +15664,13 @@ function storeRelicCard(l, relic, alsoListed) {
     <div class="vb-art" style="padding:0;overflow:hidden;">
       ${img}
       <span class="vb-rar" style="--rc:${color};">${relic.rarity}</span>
+      ${alsoListed > 1 ? `<span title="${alsoListed} listings of this relic — the cheapest is shown" style="position:absolute;top:0.5rem;right:0.5rem;z-index:2;padding:0.18rem 0.55rem;border-radius:999px;background:rgba(5,10,32,0.85);border:1px solid rgba(255,193,64,0.6);color:#ffc140;font-family:'Cinzel',serif;font-size:0.72rem;font-weight:600;letter-spacing:0.04em;box-shadow:0 0 10px rgba(255,193,64,0.25);">×${alsoListed}</span>` : ''}
     </div>
     <div class="vb-body">
       <div class="vb-name">${relic.name}</div>
       ${relic.external ? `<div style="font-size:0.58rem;letter-spacing:0.08em;text-transform:uppercase;font-family:'Cinzel',serif;color:#ffc140;margin:0.1rem 0 0.2rem;" title="Unverified collection — ${l.nftContract}">${relic.collection || 'External'} · unverified</div>` : ''}
       <div class="vb-desc" style="min-height:0;">${sellerBlock}</div>
-      ${alsoListed > 1 ? `<div style="font-size:0.62rem;color:rgba(255,255,255,0.35);margin-top:0.15rem;">${alsoListed} listings · from ${priceStr} zkLTC</div>` : ''}
+      ${alsoListed > 1 ? `<div style="font-size:0.66rem;color:rgba(255,193,64,0.75);margin-top:0.15rem;">${alsoListed} for sale · from ${priceStr} zkLTC</div>` : ''}
       <div class="vb-foot">
         <div class="vb-price"><span class="vb-zk">${priceStr}</span><span class="vb-usd">zkLTC</span></div>
         ${cta}
@@ -17267,7 +17281,10 @@ function SKIN_FX(id, size, lite) {
       + (lite ? '' : '<span class="fgl" style="inset:-2px;background:conic-gradient(transparent,rgba(60,20,110,0.5) 50%,transparent);animation:fgspinr 6s linear infinite;filter:blur(3px);"></span>')
       + '<span class="fgp" style="top:0;left:30%;width:3px;height:3px;background:#c9a2ff;box-shadow:0 0 5px #a86bff;animation:fgfall 2.2s ease-in infinite;"></span>'
       + '<span class="fgp" style="top:0;left:55%;width:3px;height:3px;background:#fff;box-shadow:0 0 4px #c9a2ff;animation:fgfall 1.7s ease-in 0.8s infinite;"></span>';
-    default: return '';
+    // Un identifiant inconnu (skin retiré du catalogue, valeur ancienne)
+    // renvoyait une chaîne vide : l'anneau disparaissait complètement et
+    // l'avatar s'affichait « cassé ». On retombe sur l'anneau par défaut.
+    default: return '<span class="fgl" style="background:conic-gradient(rgba(0,229,204,0.55) 0 100%);opacity:0.75;"></span>';
   }
 }
 
@@ -17321,6 +17338,7 @@ async function mySkinLoad() {
     _myOwned = Array.isArray(d.owned) ? d.owned : [];
     skinApplyMine();
     skinGrantRelics();
+    try { if (typeof codexSkinsRender === 'function' && document.getElementById('cx-n-skins')) codexSkinsRender(); } catch (e) {}
   } catch(e) { console.warn('skin load failed:', e); }
 }
 async function skinEquip(id) {
@@ -19174,6 +19192,21 @@ body.sv-rail-on #hero{
   box-shadow:0 24px 60px rgba(0,0,0,0.5), 0 0 30px rgba(255,106,61,0.06) !important;
 }
 .burn-card .b-badge{ color:#ffb08d !important }
+/* Page du Rituel : le feu est la couleur de la page. Les accents turquoise,
+   verts et bleus hérités (zkLTC, rang, NFT Claimed, liens) passent à la
+   teinte braise, pour une page cohérente. */
+#ritual{ --ember:#ffae7a; --ember-soft:rgba(255,174,122,0.35); }
+#ritual .live-status,
+#ritual .vt-unit,
+#ritual .burn-inp-unit,
+#ritual #xp-rank-label,
+#ritual #rcc-nft,
+#ritual .bpreset.on,
+#ritual .bpreset.on .bpr-hint{ color:var(--ember) !important; }
+#ritual .bpreset.on{ border-color:var(--ember-soft) !important; background:rgba(255,174,122,0.08) !important; }
+#ritual .xp-fill{ background:linear-gradient(90deg,#ff7a45,#ffc08a) !important; box-shadow:0 0 10px rgba(255,140,80,0.45) !important; }
+#ritual #nft-claim-btn{ color:var(--ember) !important; border-color:var(--ember-soft) !important; background:rgba(255,140,80,0.10) !important; }
+#ritual .ritual-rank-col [onclick*="svRailGo('arena')"]{ color:var(--ember) !important; border-color:var(--ember-soft) !important; }
 
 /* ═══ Site background — "Depth" ═══
    Was a near-flat radial from #071033 to #03061a: dark enough that panels and
