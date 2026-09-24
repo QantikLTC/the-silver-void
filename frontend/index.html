@@ -4277,22 +4277,335 @@ function svIntroParticles() {
   <div aria-hidden="true" style="position:absolute;inset:0;background-image:url('https://arweave.net/FFoxnpQMAPTGHXuO9jM2KFkrUkJhe-Dg35eix2eV5DI');background-size:cover;background-position:right center;background-repeat:no-repeat;opacity:0.30;pointer-events:none;z-index:0;-webkit-mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%),linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 15%, rgba(0,0,0,1) 85%, transparent 100%);-webkit-mask-composite:source-in;mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%),linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 15%, rgba(0,0,0,1) 85%, transparent 100%);mask-composite:intersect;"></div>
   <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;z-index:0;background:linear-gradient(to right, rgba(3,6,26,0.72) 0%, rgba(4,8,30,0.62) 40%, rgba(6,10,35,0.40) 70%, rgba(8,13,40,0.18) 100%);-webkit-mask-image:linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,1) 88%, transparent 100%);mask-image:linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,1) 88%, transparent 100%);"></div>
 
+  <!-- ═══════════════════════════════════════════════════════════════
+       LE SPHÉRIER — plein écran, aperçu à droite au clic.
+       Réglages et contenu : SPHERIER_SEASON / SPHERIER_NODES, dans le
+       script « LE SPHÉRIER — logique », après celui des Chroniques.
+       ═══════════════════════════════════════════════════════════════ -->
+  <!-- En-tête des Chroniques, sur le modèle de la Cité Basse : une bande
+       d'image pleine largeur, voilée à gauche, le titre en haut à gauche et,
+       dessous, le résumé de l'histoire. -->
+  <div id="sph-top">
+    <!-- Même image que la carte (SPHERIER_SEASON.bg), posée par spherierRender :
+         le bandeau et le chemin ne font qu'un seul décor. -->
+    <div class="st-img"></div>
+    <div class="st-veil"></div>
+    <div class="st-in">
+      <div class="st-title">Chronicles of the Void</div>
+      <div class="st-sub">A Tale of Sound Money</div>
+      <p id="chron-blurb" class="st-blurb"></p>
+      <!-- Le compteur vit ici, dans la zone du titre : il ne bouge plus d'une
+           vue à l'autre. -->
+      <!-- Compteur à gauche, note d'intention à sa droite. -->
+      <div class="sph-hero-row">
+        <div class="sph-head">
+          <div class="sph-kicker" id="sph-kicker"></div>
+          <div class="sph-title" id="sph-title"></div>
+          <div class="sph-next" id="sph-next"></div>
+          <div class="sph-demo" id="sph-demo" hidden></div>
+        </div>
+        <div id="chron-intent" style="max-width:720px;margin:0 auto 2.2rem;padding:1.4rem 1.6rem;border:1px solid rgba(0,229,204,0.22);border-left:3px solid var(--teal);border-radius:6px;background:rgba(0,229,204,0.045);text-align:left;font-family:'Cormorant Garamond',Georgia,serif;font-size:1.16rem;line-height:1.7;color:rgba(255,255,255,0.82);"></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Barre de navigation : bien visible sous le bandeau, pas coincée dans un coin. -->
+  <div id="sph-bar">
+    <div class="sph-top-lang">
+      <div id="chron-lang">
+        <button data-lang="en" onclick="chroniclesSetLang('en')">EN</button>
+        <button data-lang="fr" onclick="chroniclesSetLang('fr')">FR</button>
+      </div>
+    </div>
+    <div class="sph-view-switch">
+      <button type="button" id="sph-view-map" class="on" onclick="spherierShowIndex(false)">◈ &nbsp;The Path</button>
+      <button type="button" id="sph-view-index" onclick="spherierShowIndex(true)">☰ &nbsp;Index</button>
+    </div>
+  </div>
+
+  <div id="sph" aria-label="Sphérier">
+    <div class="sph-scroll" id="sph-scroll" tabindex="0">
+      <svg id="sph-svg" xmlns="http://www.w3.org/2000/svg" role="img"></svg>
+    </div>
+
+
+    <div class="sph-nav">
+      <button type="button" onclick="spherierNudge(-1)" aria-label="Back">&#8249;</button>
+      <button type="button" onclick="spherierFocusFront()" class="sph-nav-front" id="sph-nav-front"></button>
+      <button type="button" onclick="spherierNudge(1)" aria-label="Forward">&#8250;</button>
+    </div>
+
+    <aside class="sph-panel" id="sph-panel" aria-live="polite" aria-hidden="true">
+      <button type="button" class="sph-close" onclick="spherierClosePanel()" aria-label="Close">&#8250;</button>
+      <div class="sph-panel-in" id="sph-panel-in"></div>
+    </aside>
+
+    <div class="sph-scrollhint" id="sph-scrollhint">&#8595;</div>
+  </div>
+
+  <!-- Sommaire : la même matière que la carte, en liste. Fragments à gauche,
+       annexes en face. Bascule par le bouton Map / Index. -->
+  <div id="sph-index" style="display:none;">
+    <div class="sx-rows" id="sx-rows"></div>
+  </div>
+
+  <style>
+    #sph{position:relative;z-index:1;margin:0 -1.5rem 3.5rem;height:calc(100vh - 12rem);min-height:520px;overflow:hidden;
+      background:#040817 center 70%/cover no-repeat;}   /* image posée par spherierRender, fixe */
+    /* Le bandeau monte jusqu'en haut de la page : il annule le rembourrage
+       de la section, qui diffère selon la mise en page. */
+    #sph-top{position:relative;z-index:1;overflow:hidden;min-height:clamp(240px,34vh,380px);background:#050a20;}
+    body:not(.sv-rail-on) #sph-top{margin-top:-7.5rem;}
+    #sph-top .st-img{position:absolute;inset:0;background-size:cover;background-position:center 40%;}
+    #sph-top .st-veil{position:absolute;inset:0;background:
+      linear-gradient(180deg,rgba(5,10,32,0.25) 0%,rgba(5,10,32,0.15) 50%,#040817 100%),
+      linear-gradient(90deg,rgba(5,10,32,0.94) 0%,rgba(5,10,32,0.8) 30%,rgba(5,10,32,0.3) 58%,rgba(5,10,32,0) 80%);}
+    #sph-top .sph-hero-row{display:flex;gap:2rem;align-items:flex-start;flex-wrap:wrap;}
+    #sph-top .sph-hero-row > .sph-head{flex:0 0 auto;}
+    #sph-top #chron-intent{flex:1 1 300px;max-width:440px !important;margin:1.6rem 0 0 !important;padding:0.9rem 1.1rem !important;
+      background:rgba(4,8,23,0.45) !important;border:1px solid rgba(255,255,255,0.10) !important;border-left:2px solid rgba(0,229,204,0.35) !important;
+      font-size:0.95rem !important;line-height:1.55 !important;}
+    @media(max-width:900px){ #sph-top #chron-intent{max-width:none !important;} }
+    #sph-top .st-in{position:relative;max-width:min(1200px,80vw);padding:clamp(1.6rem,4vh,2.6rem) clamp(1.4rem,4vw,4rem) 2.2rem;}
+    #sph-top .st-title{font-family:'Cinzel',serif;font-weight:600;font-size:clamp(1.5rem,4vw,2.4rem);letter-spacing:0.08em;color:#fff;text-shadow:0 2px 20px rgba(0,0,0,0.9);}
+    #sph-top .st-sub{font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--teal);margin-top:0.5rem;}
+    #sph-top .st-blurb{margin:1rem 0 0;max-width:74ch;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:1.12rem;line-height:1.6;color:rgba(255,255,255,0.82);text-shadow:0 1px 10px rgba(0,0,0,0.9);}
+    #sph-top .sph-top-lang{position:absolute;right:1.4rem;top:1.2rem;}
+    #sph-top #chron-lang{background:rgba(4,8,23,0.6);}
+    #chron-filters,#chron-featured,#chron-grid{display:none !important;}
+    /* Le bandeau touche le haut : plus de rembourrage au-dessus de lui. */
+    body.sv-rail-on #chronicles-page.sv-active,
+    body.sv-rail-on section#chronicles-page[data-rail]{max-width:none !important;padding:0 0 3rem !important;margin:0 !important;}
+    body.sv-rail-on #chronicles-page #sph{margin:0 0 3rem !important;}
+    body.sv-rail-on #chronicles-page > div[style*="z-index:1"]{padding:0 1.6rem !important;}
+    @media(max-width:760px){
+      #sph-top .st-in{padding:1.2rem 1.2rem 1.6rem;}
+      #sph-top .st-veil{background:linear-gradient(180deg,rgba(5,10,32,0.55) 0%,rgba(5,10,32,0.75) 60%,#040817 100%);}
+      #sph-top .sph-top-lang{position:relative;right:auto;top:auto;display:flex;padding:0 1.2rem 1rem;}
+    }
+
+    #sph::before{content:'';position:absolute;inset:0 auto 0 0;width:min(620px,70%);background:linear-gradient(90deg,rgba(4,8,23,0.75),rgba(4,8,23,0));pointer-events:none;z-index:2;}
+    #sph::after{content:'';position:absolute;inset:0 0 0 auto;width:26%;background:linear-gradient(90deg,rgba(4,8,23,0),#040817 92%);pointer-events:none;z-index:2;}
+    #sph .sph-scroll{position:absolute;inset:0;overflow-x:auto;overflow-y:hidden;cursor:grab;scrollbar-width:none;overscroll-behavior-x:contain;}
+    #sph .sph-scroll::-webkit-scrollbar{display:none;}
+    #sph .sph-scroll.is-drag{cursor:grabbing;}
+    #sph .sph-scroll:focus-visible{outline:1px solid rgba(0,229,204,0.5);outline-offset:-2px;}
+    #sph svg{display:block;user-select:none;-webkit-user-select:none;}
+
+    /* Titre de saison, posé sur la carte comme le nom d'une région */
+    #sph-top .sph-head{position:relative;margin-top:1.6rem;max-width:460px;padding:1rem 1.2rem 1.1rem;
+      border-left:2px solid var(--teal);background:linear-gradient(90deg,rgba(0,229,204,0.10),rgba(0,229,204,0));}
+    #sph-top .sph-n-lab{font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.26em;text-transform:uppercase;color:var(--teal);}
+    #sph-top .sph-n-name{font-family:'Cinzel',serif;font-weight:600;font-size:1.12rem;letter-spacing:0.05em;color:#fff;margin-top:0.3rem;}
+    #sph-top .sph-n-big{font-family:'Cinzel',serif;margin-top:0.55rem;color:rgba(255,255,255,0.55);font-size:0.95rem;}
+    #sph-top .sph-n-big b{font-size:2rem;color:#fff;font-weight:600;letter-spacing:0.02em;}
+    #sph-top .sph-n-note{font-family:'Cormorant Garamond',Georgia,serif;font-size:0.98rem;font-style:italic;color:rgba(255,255,255,0.5);margin-top:0.5rem;}
+    #sph-top .sph-n-note.waiting{color:#ffc140;font-style:normal;font-size:0.92rem;}
+    #sph-top .sph-head .sph-title{display:none;}
+    #sph-top .sph-head .sph-gauge{height:5px;max-width:320px;margin-top:0.7rem;background:rgba(255,255,255,0.14);border-radius:2px;overflow:hidden;}
+    #sph-top .sph-head .sph-gauge i{display:block;height:100%;background:var(--teal);box-shadow:0 0 10px rgba(0,229,204,0.6);}
+    #sph-top .sph-demo{margin-top:0.9rem;display:flex;gap:0.45rem;flex-wrap:wrap;}
+    #sph-top .sph-demo button{font-family:'Cinzel',serif;font-size:0.56rem;letter-spacing:0.1em;text-transform:uppercase;
+      padding:0.42rem 0.85rem;border-radius:999px;background:rgba(4,8,23,0.7);border:1px dashed rgba(255,255,255,0.35);
+      color:rgba(255,255,255,0.8);cursor:pointer;}
+    /* Le titre de la page vit désormais dans l'en-tête : « The Path » devient
+       une petite étiquette, pour ne pas empiéter sur le chemin. */
+    #sph .sph-title{font-size:clamp(0.95rem,1.8vw,1.2rem) !important;letter-spacing:0.14em !important;margin:0 0 0.35rem !important;}
+    #sph .sph-next{font-size:0.98rem !important;}
+    #sph .sph-gauge{max-width:240px !important;}
+    #sph .sph-kicker{font-family:'Cinzel',serif;font-size:0.66rem;letter-spacing:0.32em;text-transform:uppercase;color:var(--teal);text-shadow:0 1px 8px rgba(0,0,0,0.9);}
+    #sph .sph-title{font-family:'Cinzel',serif;font-size:clamp(1.6rem,3.6vw,2.7rem);letter-spacing:0.1em;line-height:1.1;color:#fff;font-weight:600;margin:0.4rem 0 1rem;text-shadow:0 2px 18px rgba(0,0,0,0.95),0 0 2px rgba(0,0,0,0.9);}
+    #sph .sph-next{font-family:'Cormorant Garamond',Georgia,serif;font-size:1.12rem;line-height:1.45;color:rgba(255,255,255,0.85);text-shadow:0 1px 10px rgba(0,0,0,0.95);}
+    #sph .sph-next b{font-weight:600;color:#fff;}
+    #sph .sph-gauge{height:3px;background:rgba(255,255,255,0.16);border-radius:2px;margin-top:0.7rem;max-width:320px;overflow:hidden;}
+    #sph .sph-gauge i{display:block;height:100%;width:0;background:var(--teal);box-shadow:0 0 12px rgba(0,229,204,0.7);transition:width 0.8s ease;}
+    #sph .sph-demo{margin-top:0.9rem;display:flex;gap:0.45rem;flex-wrap:wrap;pointer-events:auto;}
+    #sph .sph-demo button{font-family:'Cinzel',serif;font-size:0.56rem;letter-spacing:0.1em;text-transform:uppercase;padding:0.42rem 0.85rem;border-radius:999px;background:rgba(4,8,23,0.7);border:1px dashed rgba(255,255,255,0.35);color:rgba(255,255,255,0.8);cursor:pointer;}
+
+    #sph .sph-nav{position:absolute;left:50%;bottom:1.6rem;transform:translateX(-50%);z-index:3;display:flex;gap:0.5rem;align-items:center;transition:left 0.4s;}
+    #sph.panel-open .sph-nav{left:calc((100% - var(--sph-pw)) / 2);}
+    #sph .sph-nav button{height:40px;min-width:40px;border-radius:999px;background:rgba(4,8,23,0.78);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.85);font-size:1.3rem;line-height:1;cursor:pointer;backdrop-filter:blur(4px);}
+    #sph .sph-nav button:hover{border-color:rgba(0,229,204,0.55);color:var(--teal);}
+    #sph .sph-nav .sph-nav-front{white-space:nowrap;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.16em;text-transform:uppercase;padding:0 1.1rem;}
+    #sph .sph-scrollhint{position:absolute;right:1.4rem;bottom:1.9rem;z-index:2;color:rgba(255,255,255,0.35);font-size:1.1rem;pointer-events:none;}
+
+    /* Nœuds : marqueurs de carte */
+    #sph .sph-node{cursor:pointer;outline:none;}
+    #sph .sph-node .mk{fill:#0a1024;stroke:rgba(255,255,255,0.35);stroke-width:2;transition:fill 0.6s,stroke 0.6s;}
+    #sph .sph-node .dot{fill:rgba(255,255,255,0.3);transition:fill 0.6s;}
+    #sph .sph-node .nm{font-family:'Cinzel',serif;font-size:17px;font-weight:600;fill:rgba(255,255,255,0.5);text-anchor:middle;dominant-baseline:central;pointer-events:none;}
+    #sph .sph-node .lb{font-family:'Cinzel',serif;font-size:16px;font-weight:600;letter-spacing:0.02em;fill:rgba(255,255,255,0.42);paint-order:stroke;stroke:rgba(3,6,20,0.7);stroke-width:3px;stroke-linejoin:round;}
+    #sph .sph-node .sub{font-family:'Cinzel',serif;font-size:10px;letter-spacing:0.22em;text-transform:uppercase;fill:rgba(255,255,255,0.4);paint-order:stroke;stroke:rgba(3,6,20,0.7);stroke-width:2.5px;}
+    #sph .sph-node.is-lit .mk{fill:#0a1024;stroke:#e9f4f2;}
+    #sph .sph-node.is-lit .dot{fill:#e9f4f2;}
+    #sph .sph-node.is-lit .nm{fill:#fff;paint-order:stroke;stroke:rgba(4,8,23,0.9);stroke-width:3px;}
+    #sph .sph-node.is-lit .lb{fill:#fff;}
+    #sph .sph-node.is-lit .sub{fill:rgba(255,255,255,0.7);}
+    #sph .sph-node.is-front .mk,#sph .sph-node.is-pending .mk{stroke:var(--teal);}
+    #sph .sph-node.is-front .dot,#sph .sph-node.is-pending .dot{fill:var(--teal);}
+    #sph .sph-node.is-front .lb,#sph .sph-node.is-pending .lb{fill:#fff;}
+    #sph .sph-node.is-front .sub,#sph .sph-node.is-pending .sub{fill:var(--teal);}
+    #sph .sph-node .hl{fill:none;stroke:var(--teal);stroke-width:1.5;opacity:0;transition:opacity 0.25s;}
+    #sph .sph-node:hover .hl{opacity:0.5;}
+    #sph .sph-node.is-sel .hl{opacity:1;}
+    #sph .sph-node:focus-visible .hl{opacity:1;stroke-width:2.5;}
+    #sph .sph-node.k-place  { --kc:#5a9fff; }
+    #sph .sph-node.k-archive{ --kc:#e8c26a; }
+    #sph .sph-node.k-legend { --kc:#b98cff; }
+    #sph .sph-node.k-figure { --kc:#ff9d7a; }
+    #sph .sph-node.k-relic  { --kc:#ffc140; }
+    #sph .sph-node:not(.k-fragment) .mk{ stroke:color-mix(in srgb, var(--kc) 45%, transparent); }
+    #sph .sph-node:not(.k-fragment) .dot{ fill:color-mix(in srgb, var(--kc) 45%, transparent); stroke:color-mix(in srgb, var(--kc) 45%, transparent); }
+    #sph .sph-node:not(.k-fragment) .sub{ fill:color-mix(in srgb, var(--kc) 70%, transparent); }
+    #sph .sph-node.is-lit:not(.k-fragment) .mk,
+    #sph .sph-node.is-front:not(.k-fragment) .mk{ stroke:var(--kc); fill:color-mix(in srgb, var(--kc) 18%, #0a1024); }
+    #sph .sph-node.is-lit:not(.k-fragment) .dot,
+    #sph .sph-node.is-front:not(.k-fragment) .dot{ fill:var(--kc); stroke:var(--kc); }
+    #sph .sph-node.is-lit:not(.k-fragment) .sub,
+    #sph .sph-node.is-front:not(.k-fragment) .sub{ fill:var(--kc); }
+    #sph-bar{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:0.7rem;
+      padding:1.1rem 1.2rem 1.3rem;background:#040817;}
+    #sph-bar .sph-top-lang{position:static;}
+    #sph-bar .sph-view-switch{display:flex;gap:0.5rem;}
+    #sph-bar .sph-view-switch button{font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:0.18em;text-transform:uppercase;
+      padding:0.72rem 1.7rem;border-radius:999px;cursor:pointer;color:rgba(255,255,255,0.6);
+      background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.16);transition:color .2s,border-color .2s,background .2s;}
+    #sph-bar .sph-view-switch button:hover{color:#fff;border-color:rgba(255,255,255,0.35);}
+    #sph-bar .sph-view-switch button.on{color:var(--teal);border-color:rgba(0,229,204,0.55);background:rgba(0,229,204,0.10);
+      box-shadow:0 0 16px rgba(0,229,204,0.15);}
+    @media(max-width:600px){ #sph-bar .sph-view-switch button{padding:0.6rem 1.1rem;font-size:0.6rem;letter-spacing:0.12em;} }
+
+    #sph-index{max-width:1000px;margin:0 auto 3rem;padding:0 1.5rem;}
+    #sph-index .sx-head{display:block;padding:0.4rem 0 1.4rem;
+      border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:1.6rem;}
+    #sph-index .sx-title{font-family:'Cinzel',serif;font-weight:600;font-size:1.05rem;letter-spacing:0.14em;color:#fff;}
+    #sph-index .sx-next{font-family:'Cormorant Garamond',Georgia,serif;font-size:1.05rem;color:rgba(255,255,255,0.6);}
+    #sph-index .sx-next b{color:var(--teal);font-weight:600;}
+    /* La jauge du compteur, la même que sur la carte. */
+    #sph-index .sph-gauge{display:block;height:3px;width:240px;max-width:50vw;margin-top:0.6rem;background:rgba(255,255,255,0.12);border-radius:2px;overflow:hidden;}
+    #sph-index .sph-gauge i{display:block;height:100%;background:var(--teal);box-shadow:0 0 10px rgba(0,229,204,0.6);}
+    #sph-index .sx-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1.2rem;align-items:start;
+      padding:1.1rem 0;border-bottom:1px solid rgba(255,255,255,0.06);}
+    #sph-index .sx-frag{display:flex;gap:0.9rem;align-items:flex-start;}
+    #sph-index .sx-num{font-family:'Cinzel',serif;font-size:1.1rem;color:rgba(255,255,255,0.45);min-width:2.2rem;padding-top:0.15rem;}
+    #sph-index .sx-title{font-family:'Cinzel',serif;font-weight:600;font-size:1.02rem;color:#fff;letter-spacing:0.03em;line-height:1.3;}
+    #sph-index .sx-meta{font-family:'Cinzel',serif;font-size:0.54rem;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-top:0.3rem;}
+    #sph-index .sx-row.locked .sx-title{color:rgba(255,255,255,0.35);font-style:italic;}
+    #sph-index .sx-read{margin-top:0.5rem;font-family:'Cinzel',serif;font-size:0.54rem;letter-spacing:0.16em;text-transform:uppercase;
+      padding:0.42rem 0.9rem;border-radius:4px;cursor:pointer;background:rgba(0,229,204,0.10);border:1px solid rgba(0,229,204,0.4);color:var(--teal);}
+    #sph-index .sx-read:hover{background:rgba(0,229,204,0.2);}
+    #sph-index .sx-annexes{display:grid;gap:0.5rem;}
+    #sph-index .sx-annex{--kc:#e8c26a;display:flex;gap:0.7rem;align-items:center;text-align:left;width:100%;
+      padding:0.6rem 0.8rem;border-radius:6px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);}
+    #sph-index .sx-annex.open{cursor:pointer;border-color:color-mix(in srgb, var(--kc) 40%, transparent);}
+    #sph-index .sx-annex.open:hover{background:color-mix(in srgb, var(--kc) 10%, transparent);}
+    #sph-index .sx-annex.k-place{--kc:#5a9fff;} #sph-index .sx-annex.k-legend{--kc:#b98cff;}
+    #sph-index .sx-annex.k-figure{--kc:#ff9d7a;} #sph-index .sx-annex.k-relic{--kc:#ffc140;}
+    #sph-index .sx-annex .sx-ico{width:26px;height:26px;flex-shrink:0;}
+    #sph-index .sx-annex .sx-n{font-family:'Cinzel',serif;font-size:0.9rem;color:#fff;letter-spacing:0.03em;}
+    #sph-index .sx-annex .sx-k{font-family:'Cinzel',serif;font-size:0.5rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--kc);margin-top:0.15rem;}
+    #sph-index .sx-annex.sealed{opacity:0.55;}
+    #sph-index .sx-annex.sealed .sx-n{color:rgba(255,255,255,0.5);font-style:italic;}
+    #sph-index .sx-empty{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;color:rgba(255,255,255,0.25);font-size:1rem;}
+    @media(max-width:760px){
+      #sph-index .sx-row{grid-template-columns:1fr;gap:0.7rem;}
+      #sph-index .sx-annexes{padding-left:3rem;}
+    }
+    #sph-reader{position:fixed;inset:0;z-index:9000;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;
+      padding:clamp(1rem,5vh,3.5rem) 1rem;background:rgba(2,5,16,0.82);backdrop-filter:blur(6px);}
+    #sph-reader.on{display:flex;}
+    #sph-reader .rd-sheet{--kc:#e8c26a;position:relative;width:100%;max-width:720px;border-radius:12px;overflow:hidden;
+      background:linear-gradient(180deg,#0a1026,#060b1e);border:1px solid rgba(255,255,255,0.10);box-shadow:0 30px 80px rgba(0,0,0,0.6);}
+    #sph-reader .rd-sheet.k-place{--kc:#5a9fff;}
+    #sph-reader .rd-sheet.k-legend{--kc:#b98cff;}
+    #sph-reader .rd-sheet.k-figure{--kc:#ff9d7a;}
+    #sph-reader .rd-hero{height:clamp(150px,26vh,240px);background:#0a1020 center/cover no-repeat;position:relative;}
+    #sph-reader .rd-hero::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,11,30,0.1),#0a1026);}
+    #sph-reader .rd-head{padding:0 clamp(1.3rem,5vw,3rem);margin-top:-2.2rem;position:relative;}
+    #sph-reader .rd-kind{font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.26em;text-transform:uppercase;color:var(--kc);}
+    #sph-reader .rd-title{font-family:'Cinzel',serif;font-weight:600;font-size:clamp(1.5rem,4vw,2.2rem);letter-spacing:0.05em;color:#fff;margin:0.4rem 0 0;line-height:1.2;}
+    #sph-reader .rd-body{padding:1.4rem clamp(1.3rem,5vw,3rem) 2.6rem;font-family:'Cormorant Garamond',Georgia,serif;font-size:1.22rem;line-height:1.8;color:rgba(255,255,255,0.86);}
+    #sph-reader .rd-body p{margin:0 0 1.1rem;}
+    #sph-reader .rd-body p:first-child::first-letter{font-family:'Cinzel',serif;font-size:2.6em;float:left;line-height:0.9;padding:0.3rem 0.5rem 0 0;color:var(--kc);}
+    #sph-reader .rd-art{display:grid;grid-template-columns:2.6rem 1fr;gap:0.6rem;margin:0 0 1.1rem;padding:0.8rem 0 0;border-top:1px solid rgba(255,255,255,0.07);}
+    #sph-reader .rd-num{font-family:'Cinzel',serif;font-weight:600;font-size:1rem;color:var(--kc);padding-top:0.2rem;}
+    #sph-reader .rd-art b{font-family:'Cinzel',serif;font-weight:600;font-size:0.95rem;letter-spacing:0.04em;color:#fff;}
+    #sph-reader .rd-motto{text-align:center;font-style:italic;font-size:1.3rem;color:var(--kc);margin:2rem 0 0.4rem;}
+    #sph-reader .rd-close{position:absolute;top:0.8rem;right:0.8rem;z-index:2;width:40px;height:40px;border-radius:50%;cursor:pointer;
+      background:rgba(4,8,23,0.8);border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:1.5rem;line-height:1;}
+    #sph-reader .rd-close:hover{border-color:var(--kc);color:var(--kc);}
+    @media(max-width:600px){ #sph-reader .rd-body{font-size:1.1rem;line-height:1.7;} }
+    #sph .sph-pulse{fill:none;stroke:var(--teal);stroke-width:1.5;transform-box:fill-box;transform-origin:center;animation:sphPulse 2.4s ease-out infinite;}
+    @keyframes sphPulse{0%{transform:scale(1);opacity:0.8}100%{transform:scale(2.1);opacity:0}}
+
+    /* Aperçu à droite */
+    #sph{--sph-pw:min(440px,38vw);}
+    #sph .sph-panel{position:absolute;top:0;right:0;bottom:0;width:var(--sph-pw);z-index:4;background:linear-gradient(180deg,#070c1f 0%,#050918 100%);border-left:1px solid rgba(255,255,255,0.08);box-shadow:-30px 0 60px rgba(0,0,0,0.45);transform:translateX(100%);transition:transform 0.45s cubic-bezier(.2,.8,.2,1);}
+    #sph.panel-open .sph-panel{transform:translateX(0);}
+    #sph .sph-close{position:absolute;left:-22px;top:clamp(1.6rem,5vh,3rem);width:44px;height:44px;transform:rotate(45deg);background:#070c1f;border:1px solid rgba(255,255,255,0.18);color:#fff;cursor:pointer;z-index:2;}
+    #sph .sph-close::before{content:'\203A';display:block;transform:rotate(-45deg);font-size:1.4rem;line-height:40px;}
+    #sph .sph-close{font-size:0;}
+    #sph .sph-close:hover{border-color:rgba(0,229,204,0.6);}
+    #sph:not(.panel-open) .sph-close{visibility:hidden;}
+    #sph .sph-panel-in{height:100%;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.12) transparent;}
+    #sph .sp-hero{position:relative;height:clamp(160px,26vh,240px);background:#0a1020 center/cover no-repeat;}
+    #sph .sp-hero::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,9,24,0.1) 0%,rgba(5,9,24,0.35) 55%,#060b1e 100%);}
+    #sph .sp-hero.is-sealed{filter:grayscale(1) brightness(0.45) blur(2px);}
+    #sph .sp-body{padding:0 2rem 2.4rem;margin-top:-2.4rem;position:relative;}
+    #sph .sp-top{display:flex;gap:1rem;align-items:center;}
+    #sph .sp-emblem{flex:0 0 auto;width:58px;height:58px;}
+    #sph .sp-title{font-family:'Cinzel',serif;font-size:clamp(1.35rem,2vw,1.8rem);line-height:1.15;color:#fff;font-weight:600;letter-spacing:0.04em;}
+    #sph .sp-kind{font-family:'Cinzel',serif;font-size:0.64rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--silver-dim);margin-top:0.35rem;}
+    #sph .sp-sep{position:relative;height:1px;background:rgba(255,255,255,0.1);margin:1.6rem 0;}
+    #sph .sp-sep::before,#sph .sp-sep::after{content:'';position:absolute;top:-3px;width:7px;height:7px;border:1px solid rgba(255,255,255,0.22);transform:rotate(45deg);background:#060b1e;}
+    #sph .sp-sep::before{left:0}#sph .sp-sep::after{right:0}
+    #sph .sp-stats{display:grid;grid-template-columns:1fr 1fr;gap:1rem 1.2rem;}
+    #sph .sp-stat span{display:block;font-family:'Cormorant Garamond',Georgia,serif;font-size:0.98rem;color:rgba(255,255,255,0.55);}
+    #sph .sp-stat b{display:block;font-family:'Cinzel',serif;font-size:0.82rem;letter-spacing:0.08em;text-transform:uppercase;color:#fff;margin-top:0.15rem;font-weight:600;}
+    #sph .sp-stat .tr{height:2px;background:rgba(255,255,255,0.1);margin-top:0.45rem;overflow:hidden;}
+    #sph .sp-stat .tr i{display:block;height:100%;background:var(--teal);transition:width 0.6s;}
+    #sph .sp-text{font-family:'Cormorant Garamond',Georgia,serif;font-size:1.2rem;line-height:1.7;color:rgba(255,255,255,0.86);margin:0;white-space:pre-line;}
+    #sph .sp-text.is-quote{font-style:italic;border-left:2px solid var(--teal);padding-left:1rem;}
+    #sph .sp-note{font-family:'Cormorant Garamond',Georgia,serif;font-size:1.02rem;line-height:1.55;color:rgba(255,255,255,0.6);margin:1rem 0 0;}
+    #sph .sp-cta{display:inline-block;margin-top:1.4rem;font-family:'Cinzel',serif;font-size:0.64rem;letter-spacing:0.18em;text-transform:uppercase;padding:0.8rem 1.6rem;border-radius:4px;cursor:pointer;background:rgba(0,229,204,0.12);border:1px solid rgba(0,229,204,0.5);color:var(--teal);}
+    #sph .sp-cta:hover{background:rgba(0,229,204,0.22);}
+    #sph .sp-h{font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.14em;text-transform:uppercase;color:#fff;font-weight:600;margin:0 0 1rem;}
+    #sph .sp-links{display:grid;gap:0.6rem;}
+    #sph .sp-link{position:relative;display:flex;align-items:flex-end;height:86px;padding:0.8rem 1rem;border-radius:4px;overflow:hidden;cursor:pointer;background:#0a1020 center/cover no-repeat;border:1px solid rgba(255,255,255,0.08);text-align:left;width:100%;}
+    #sph .sp-link::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,8,23,0.92) 0%,rgba(4,8,23,0.55) 70%,rgba(4,8,23,0.35) 100%);}
+    #sph .sp-link.is-sealed{filter:grayscale(1);}
+    #sph .sp-link:hover{border-color:rgba(0,229,204,0.45);}
+    #sph .sp-link div{position:relative;}
+    #sph .sp-link b{display:block;font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.06em;color:#fff;font-weight:600;}
+    #sph .sp-link small{display:block;font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.55);margin-top:0.2rem;}
+
+    @media(max-width:760px){
+      #sph{height:86vh;min-height:520px;--sph-pw:100%;}
+      #sph .sph-panel{top:auto;height:72%;width:100%;border-left:0;border-top:1px solid rgba(255,255,255,0.1);border-radius:14px 14px 0 0;transform:translateY(100%);}
+      #sph.panel-open .sph-panel{transform:translateY(0);}
+      #sph.panel-open .sph-nav{left:50%;opacity:0;pointer-events:none;}
+      #sph .sph-close{left:50%;top:-22px;margin-left:-22px;transform:rotate(45deg);}
+      #sph .sph-close::before{transform:rotate(45deg);}
+      #sph .sp-body{padding:0 1.2rem 2rem;}
+      #sph .sp-hero{height:140px;}
+      }
+    @media (prefers-reduced-motion: reduce){
+      #sph .sph-pulse{animation:none;opacity:0.5;}
+      #sph .sph-panel,#sph .sph-gauge i,#sph .sp-stat .tr i,#sph .sph-node .mk{transition:none;}
+    }
+  </style>
+
   <div style="position:relative;z-index:1;max-width:1100px;margin:0 auto;">
 
-  <div style="display:flex;justify-content:flex-start;margin-bottom:2rem;">
-    <button onclick="chroniclesClose()" style="background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.1em;padding:0.5rem 1rem;border-radius:3px;cursor:pointer;text-transform:uppercase;">← Back to the Void</button>
-  </div>
+  <!-- Bouton « Back to the Void » retiré : le rail de gauche suffit. -->
 
-  <div style="text-align:center;padding:1rem 0 2.5rem;">
-    <div style="font-family:'Cinzel',serif;font-size:clamp(1.5rem,4.4vw,2.5rem);letter-spacing:0.22em;text-transform:uppercase;color:#fff;font-weight:600;text-shadow:0 0 30px rgba(90,159,255,0.25);">Chronicles of the Void</div>
-    <div style="font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--silver-dim);margin-top:0.8rem;">A Tale of Sound Money</div>
-  </div>
 
   <!-- Résumé "dos de livre" — rempli selon la langue par chroniclesRender -->
   <!-- Note d'intention : explique pourquoi ces récits existent sur la plateforme -->
-  <div id="chron-intent" style="max-width:720px;margin:0 auto 2.2rem;padding:1.4rem 1.6rem;border:1px solid rgba(0,229,204,0.22);border-left:3px solid var(--teal);border-radius:6px;background:rgba(0,229,204,0.045);text-align:left;font-family:'Cormorant Garamond',Georgia,serif;font-size:1.16rem;line-height:1.7;color:rgba(255,255,255,0.82);"></div>
 
-  <p id="chron-blurb" style="max-width:640px;margin:0 auto 3rem;text-align:center;font-family:'Cormorant Garamond',Georgia,serif;font-size:1.24rem;line-height:1.75;color:rgba(255,255,255,0.78);font-style:italic;"></p>
+
 
   <div id="chron-filters" style="display:flex;gap:0.6rem;justify-content:center;margin-bottom:3rem;flex-wrap:wrap;">
     <div class="chron-filter on" data-cat="all" onclick="chroniclesFilter('all',this)" style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;padding:0.5rem 1.3rem;border-radius:999px;cursor:pointer;transition:all 0.2s;background:rgba(0,229,204,0.12);border:1px solid rgba(0,229,204,0.45);color:var(--teal);">All</div>
@@ -4300,13 +4613,8 @@ function svIntroParticles() {
     <div class="chron-filter" data-cat="Philosophy" onclick="chroniclesFilter('Philosophy',this)" style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;padding:0.5rem 1.3rem;border-radius:999px;cursor:pointer;transition:all 0.2s;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.5);">Philosophy</div>
     <div class="chron-filter" data-cat="Updates" onclick="chroniclesFilter('Updates',this)" style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;padding:0.5rem 1.3rem;border-radius:999px;cursor:pointer;transition:all 0.2s;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.5);">Updates</div>
 
-    <!-- Séparateur : la langue n'est pas un filtre, on l'isole -->
-    <div style="width:1px;align-self:stretch;background:rgba(255,255,255,0.10);margin:0 0.5rem;"></div>
 
-    <div id="chron-lang">
-      <button data-lang="en" onclick="chroniclesSetLang('en')">EN</button>
-      <button data-lang="fr" onclick="chroniclesSetLang('fr')">FR</button>
-    </div>
+
   </div>
 
   <div id="chron-featured"></div>
@@ -5960,6 +6268,14 @@ function chroniclesFilter(cat, el) {
 }
 
 function chroniclesRender() {
+  if (typeof spherierRender === 'function') {
+    try {
+      const _idx = document.getElementById('sph-index');
+      // Changement de langue : le Sommaire doit se redessiner lui aussi.
+      if (_idx && _idx.style.display === 'block') spherierIndexRender();
+      else spherierRender();
+    } catch (e) { console.warn('Sph\u00e9rier:', e); }
+  }
   const all = chroniclesSorted();
   const list = _chronCurrentFilter === 'all' ? all : all.filter(a => a.category === _chronCurrentFilter);
   const featEl = document.getElementById('chron-featured');
@@ -6243,6 +6559,857 @@ function chroniclesRouteFromHash() {
 // Deep-linking désactivé au chargement pour éviter toute ouverture intempestive.
 // (On peut le réactiver plus tard si on veut des liens partageables #chronicles/slug.)
 // window.addEventListener('DOMContentLoaded', chroniclesRouteFromHash);
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     LE SPHÉRIER — logique
+     ═══════════════════════════════════════════════════════════════
+     Un chemin horizontal, sans fin visible. Les fragments publiés
+     sont déjà éclairés ; les nœuds suivants s'allument quand la
+     communauté a assez brûlé depuis le début de la saison.
+
+     POUR AJOUTER UN NŒUD : ajouter un bloc à la fin de SPHERIER_NODES.
+       id       — identifiant unique
+       type     — 'fragment' | 'place' | 'archive' | 'figure' | 'relic'
+       slug     — (fragment) slug de l'article dans CHRONICLES_ARTICLES
+       num      — (fragment) chiffre romain affiché dans le cercle
+       title / title_fr — titre (visible seulement quand le nœud est
+                  en cours ou éclairé ; sinon « Scellé »)
+       text / text_fr   — la bribe révélée (lieux, archives, figures…)
+       burn     — zkLTC brûlés DEPUIS LE DÉBUT DE LA SAISON (cumul)
+       burners  — nouveaux Sacrifiants depuis le début de la saison (cumul)
+       date     — (optionnel) 'AAAA-MM-JJ' : le nœud s'ouvre au plus tard
+                  ce jour-là, même si le seuil n'est pas atteint
+       bg       — (optionnel, fragment) image du tronçon qui suit ce
+                  fragment ; par défaut sa couverture, sinon SPHERIER_SEASON.bg
+
+     RÈGLES
+       · Un nœud ne s'allume que si tous les précédents sont allumés.
+       · Un fragment n'est « lu » que lorsque son article existe et n'est
+         plus marqué coming. Tant qu'il ne l'est pas, le chemin s'arrête
+         sur lui (sceau brisé, parution imminente) : aucune bribe
+         postérieure ne peut divulgâcher la suite.
+       · Test sans chaîne : ajouter ?spherier=demo à l'URL.
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+// Plus de saisons : un seul chemin, qui s'éclaire au fil des burns.
+// Chaque tranche de STEP zkLTC brûlés (Rituel + Arène + Store) débloque le
+// nœud suivant, dans l'ordre de SPHERIER_NODES.
+const SPHERIER_SEASON = {
+  kicker: '', kicker_fr: '',
+  title: 'The Path', title_fr: 'Le Chemin',
+  // Le décompte ne démarre qu'au mainnet, avec de vrais burns. Tant que
+  // `live` est false, le compteur reste à 0 et rien ne se débloque : le
+  // chemin s'arrête à la rue des Suies, et le fragment VII attend.
+  live: false,
+  step: 50,        // zkLTC brûlés par palier, pour ce qui reste à venir
+  openAtLaunch: 0, // éléments supplémentaires déjà ouverts au lancement
+  // Total brûlé au LANCEMENT du chemin : les paliers se comptent à partir de
+  // là. Tant que la valeur est null, le chemin démarre au chiffre lu à
+  // l'ouverture de la page (rien ne progresse) ; la valeur actuelle est
+  // écrite dans la console du navigateur, à recopier ici.
+  baselineBurned: null,
+  baselineBurners: 0,
+  // Deux décors distincts : celui du bandeau (en-tête de la page) et celui
+  // de la carte, sur lequel la lumière se promène.
+  heroBg: 'https://arweave.net/Qk_3yxq_1DH4E7MO90r2j1dgZOh4jt-nnQbiXwChHvA',
+  // Décor de la carte. `null` = décor DESSINÉ (nébuleuse et poussière
+  // d'étoiles, net à toutes les tailles, sans fichier à charger). Mettre une
+  // adresse d'image ici repasse à une illustration.
+  bg: null
+};
+
+// Seuils : calculés automatiquement (un palier de SPHERIER_SEASON.step par
+// nœud). Un nœud peut garder son propre `burn` pour y déroger. Textes : descriptions du
+// monde, Décret et Légende (validés), fidèles aux fragments III à V.
+const SPHERIER_NODES = [
+  // Chaque annexe porte `after` : le fragment après lequel elle apparaît.
+  // Rythme : un fragment, puis une ou deux annexes.
+  { id: 'lower-city', after: 'fragment-vi', type: 'place', long: true,
+    title: 'The Lower City', title_fr: 'La Cité Basse',
+    text: `The Lower City is the Kingdom's working and trading heart. Where the white stone of the upper quarters ends, the narrow lanes begin: canvas-covered stalls, workshops open onto the street, and canals carrying water beneath the stone. Here live the bakers, weavers, water-carriers, smiths, and countless small craftsmen whose labour feeds and sustains the whole city.
+
+The quarter lives to the rhythm of trade. People buy, sell, and weigh a coin twice before accepting it. Its inhabitants know the true price of things better than anyone, for they pay it every day.
+
+Several places mark the Lower City, among them Soot Street and the Quarter of the Locks, where canals run between the oldest workshops.`,
+    text_fr: `La Cité Basse est le cœur marchand et laborieux du Royaume. Là où la pierre blanche des hauts quartiers s'arrête, commencent les ruelles étroites, les étals couverts de toile, les ateliers ouverts sur la rue et les canaux qui courent sous la pierre. On y trouve les boulangers, les tisserands, les porteurs d'eau, les forgerons et d'innombrables petits artisans dont le travail nourrit et fait vivre la ville entière.
+
+Le quartier vit au rythme du commerce : on y achète, on y vend, on y pèse la monnaie deux fois avant de l'accepter. Ses habitants connaissent mieux que quiconque le prix réel des choses, car ils le paient chaque jour.
+
+Plusieurs lieux marquent la Cité Basse, parmi lesquels la rue des Suies et le quartier des Écluses, où les canaux courent entre les plus vieux ateliers.` },
+
+  { id: 'soot-street', after: 'fragment-vi', type: 'place', long: true,
+    title: 'Soot Street', title_fr: 'La rue des Suies',
+    text: `Soot Street owes its name to the smoke that settles over it day and night. The Royal Forges, where the Kingdom's coin is struck behind the walls of the Crown, never go cold, and their soot blackens the façades, the linen, even the bread.
+
+It is a street of craftsmen and modest traders, where everyone knows everyone. Marn's bakery stands at the end of the street.
+
+To those who live there, the smoke of the Forges is so familiar that no one notices it anymore. It remains, all the same, a constant reminder that the Kingdom's wealth is made only a few streets away.`,
+    text_fr: `La rue des Suies doit son nom à la fumée qui se dépose sur elle jour et nuit. Les Forges Royales, où l'on frappe la monnaie du Royaume derrière les remparts de la Couronne, ne refroidissent jamais, et leur suie noircit les façades, le linge et jusqu'au pain.
+
+C'est une rue d'artisans et de commerçants modestes, où chacun se connaît. La boulangerie de Marn s'y trouve, au bout de la rue.
+
+Pour les habitants, la fumée des Forges est si familière qu'on ne la remarque plus. Elle n'en reste pas moins le rappel constant que la richesse du Royaume se fabrique à quelques rues de là seulement.` },
+
+  { id: 'decree', after: 'fragment-iii', type: 'archive', long: true,
+    cover: 'https://arweave.net/Ec2tTGObSNqr3XetdkvF9ShT_L4GWxcUXKqctWizHQE',
+    title: 'The Standard Decree', title_fr: 'Le Décret d\u2019Étalon',
+    text: `Year One of the Kingdom. An oath spoken on the stone bridge that spans the river of Silver, before the princes of the seven kingdoms and before the people.
+
+Not a law fallen from a throne, but an oath graven into the gold itself, so that no future king could undo it unseen.
+
+I. Of gold. Every gold coin struck by the Crown shall represent an exact measure of pure gold extracted from the royal mines. No more, no less.
+
+II. Of equality before the metal. The king keeps no gold finer than the baker's. The prince's coin and the water-carrier's are made of the same gold, and weigh the same.
+
+III. Of the Light. What answers for the coin is neither the word of a king nor the ink of a decree, but the Anchor Light, which serves no heart moved by greed. Every striking is made under its keeping.
+
+IV. Of verification. What the Crown strikes, anyone may weigh. No one is bound to take on faith what he can verify with his own hands.
+
+V. Of memory. Every striking is entered in the Royal Mint Ledgers: the gold received from the mines, and the coins struck from it. The ledgers are never corrected; they are only added to.
+
+VI. Of perjury. Whoever shaves, alloys with lead, or mixes dross into the Kingdom's coin breaks the promise of Year One, and brings back the Great Distrust.
+
+So it was sworn, that gold may be gold.`,
+    text_fr: `An I du Royaume. Serment prononcé sur le pont de pierre qui enjambe le fleuve d'Argent, devant les princes des sept royaumes et devant le peuple.
+
+Non pas une loi tombée d'un trône, mais un serment gravé dans l'or même, afin qu'aucun roi futur ne pût le défaire à l'insu de tous.
+
+I. De l'or. Toute pièce d'or frappée par la Couronne représentera une mesure exacte d'or pur extrait des mines royales. Ni plus, ni moins.
+
+II. De l'égalité devant le métal. Le roi ne se réserve aucun or meilleur que celui du boulanger. La pièce du prince et la pièce du porteur d'eau sont faites du même or, et pèsent le même poids.
+
+III. De la Lumière. Ce qui répond de la pièce n'est ni la parole d'un roi, ni l'encre d'un décret, mais la Lumière d'Ancre, qui ne sert aucun cœur mû par la convoitise. Toute frappe se fait sous sa garde.
+
+IV. De la vérification. Ce que la Couronne frappe, chacun peut le peser. Nul n'est tenu de croire sur parole ce qu'il peut vérifier de ses mains.
+
+V. De la mémoire. Chaque frappe est inscrite aux Registres de la Monnaie Royale : l'or reçu des mines, et les pièces qui en ont été frappées. Les registres ne se corrigent pas ; ils s'ajoutent.
+
+VI. Du parjure. Qui rogne, allonge de plomb ou mêle de scories la monnaie du Royaume rompt la promesse de l'An I, et fait revenir la Grande Défiance.
+
+Ainsi fut juré, pour que l'or soit de l'or.` },
+
+  { id: 'legend', after: 'fragment-iv', type: 'legend', long: true,
+    title: 'The Legend of the Seven', title_fr: 'La Légende des Sept',
+    text: `In the beginning, there was no Kingdom. There were seven, and they hated one another.
+
+Each had its prince, and each prince had his coin. Seven coins, each lying in its own way. The princes shaved their coins, alloyed them with lead, and swore upon their crowns that a copper eagle was worth a gold one. A man could cross three borders and watch the fruit of a year's labour melt away in his purse without having spent a thing. Merchants weighed, doubted, and ruined themselves. Oaths were worth nothing, and a king's word was worth less than the metal it was struck on.
+
+That age was called the Great Distrust.
+
+Then came a man born without a title. A smith, or a smith's son, the tales say: one of those who know metal because they have beaten it, not because they have owned it. He had no army, and wished to conquer nothing. He wanted one thing only: that the metal should tell the truth.
+
+He summoned the princes of the seven kingdoms onto the stone bridge that spans the river of Silver. Crowds had come from both banks. Before them, he took off his own crown.
+
+He lit no embers and worked no bellows. He only laid his bare hands upon the gold. And the metal began to glow with a pure white radiance: the Anchor Light, an ancient magic that no heart moved by greed can command. The crown melted. And the gold did not merely melt: it purified itself, casting out its dross onto the stone flags, as if matter itself refused the lie.
+
+From that gold he struck the first just coins. He had melted his own crown, and no one else's, so that none could say the king kept for himself a gold finer than the baker's.
+
+The seven princes saw the light. The crowds saw it. And for the first time, no one had to take anyone at their word, for anyone could verify.
+
+So the Founder united seven kingdoms, not by the sword, but by a promise: that gold be gold. He graved that promise into the gold itself, as the Standard Decree, so that no future king could undo it unseen.
+
+The centuries have erased his name. All that remains of him is a crowned profile, worn by hands and years, struck on every coin of the Kingdom. Everyone touches that face every day, without ever looking at it.
+
+But the promise remains. It is engraved on the coins. It is sung in the temples:
+
+The Anchor Light keeps your gold.`,
+    text_fr: `Au commencement, il n'y avait pas de Royaume. Il y en avait sept, et ils se haïssaient.
+
+Chacun avait son prince, et chaque prince avait sa monnaie. Sept monnaies, qui mentaient chacune à leur façon. Les princes rognaient leurs pièces, les allongeaient de plomb, et juraient sur leur couronne qu'un aigle de cuivre valait un aigle d'or. Un homme pouvait traverser trois frontières et voir le fruit d'une année de labeur fondre dans sa bourse sans avoir rien dépensé. Les marchands pesaient, doutaient, se ruinaient. Les serments ne valaient rien, et la parole d'un roi valait moins que le métal dont on l'avait frappée.
+
+On appela ce temps la Grande Défiance.
+
+C'est alors que vint un homme né sans titre. Forgeron, ou fils de forgeron, disent les récits : de ceux qui connaissent le métal parce qu'ils l'ont battu, et non parce qu'ils l'ont possédé. Il n'avait pas d'armée, et il ne voulait rien conquérir. Il voulait une seule chose : que le métal dise vrai.
+
+Il convoqua les princes des sept royaumes sur le pont de pierre qui enjambe le fleuve d'Argent. Les foules étaient venues des deux rives. Devant elles, il ôta sa propre couronne.
+
+Il n'alluma aucune braise et n'actionna aucun soufflet. Il posa seulement ses mains nues sur l'or. Alors le métal se mit à luire d'un éclat blanc et pur : la Lumière d'Ancre, une magie ancienne que nul cœur mû par la convoitise ne peut commander. La couronne fondit. Et l'or ne fondit pas seulement : il s'épura de lui-même, et rejeta ses scories sur les dalles de pierre, comme si la matière elle-même refusait le mensonge.
+
+De cet or, il frappa les premières pièces justes. Il avait fondu sa couronne, et non celle d'un autre, afin que nul ne pût dire que le roi se réservait un or meilleur que celui du boulanger.
+
+Les sept princes virent la lumière. Les foules la virent. Et pour la première fois, personne n'eut besoin de croire sur parole, car chacun pouvait vérifier.
+
+Ainsi le Fondateur unit-il sept royaumes, non par l'épée, mais par une promesse : que l'or soit de l'or. Cette promesse, il la grava dans le métal même, sous la forme du Décret d'Étalon, pour qu'aucun roi futur ne pût la défaire sans que tous le vissent.
+
+Les siècles ont effacé son nom. Il ne reste de lui qu'un profil couronné, usé par les mains et les années, frappé sur chaque pièce du Royaume. Ce visage, chacun le touche chaque jour, sans jamais le regarder.
+
+Mais la promesse, elle, demeure. On la grave sur les pièces. On la chante dans les temples :
+
+La Lumière d'Ancre garde votre or.` },
+
+  { id: 'f7', type: 'fragment', slug: 'fragment-vii', num: 'VII', date: null,
+    title: 'Fragment VII', title_fr: 'Fragment VII' },
+
+  { id: 'academy', after: 'fragment-vii', type: 'place', long: true,
+    title: 'The Academy', title_fr: 'L\u2019Académie',
+    text: `The Academy trains the Kingdom's apprentices and mages. It crowns the Upper City from a granite promontory, and its towers, visible from the whole city, are said to shine with a silver gleam in the light of storms.
+
+Ancient knowledge is taught there: alchemy, the history of the Kingdom, the calligraphy of the old kings. Its teaching rests on a simple idea: the value of things is protected by the wisdom of the elders, and the Crown watches over the people.
+
+Apprentices wear the robe of the Academy and live apart from the city. They go down into the Lower City only on the seventh day, to supply the kitchens.
+
+Beneath the building stretch vaulted halls, the Scriptorium among them.`,
+    text_fr: `L'Académie forme les apprentis et les mages du Royaume. Elle domine la Cité Haute depuis un promontoire de granit, et ses tours, visibles de toute la ville, sont réputées briller d'un éclat d'argent sous la lumière des orages.
+
+On y enseigne les savoirs anciens : l'alchimie, l'histoire du Royaume, la calligraphie des anciens rois. L'enseignement repose sur une idée simple : la valeur des choses est protégée par la sagesse des anciens, et la Couronne veille sur le peuple.
+
+Les apprentis portent la robe de l'Académie et vivent à l'écart de la ville. Ils ne descendent dans la Cité Basse que le septième jour, pour approvisionner les cuisines.
+
+Sous l'édifice s'étendent des salles voûtées, parmi lesquelles le Scriptorium.` },
+
+  { id: 'scriptorium', after: 'fragment-vii', type: 'place', long: true,
+    title: 'The Scriptorium', title_fr: 'Le Scriptorium',
+    text: `The Scriptorium keeps the written memory of the Kingdom. It looks less like a library than a city built for books, where generations have added galleries, walkways and reading rooms without ever following a plan. Ancient arches carry newer structures, and vast shelves climb to the vaults, linked by wooden bridges that seem to float in the half-light.
+
+Copyists reproduce texts exactly, down to the handwriting of the old kings. The most precious registers are kept with care: they are waxed, so that time will not erase them.
+
+The Scriptorium is in the keeping of an archivist, Edric. Some volumes are kept there under seal.`,
+    text_fr: `Le Scriptorium conserve la mémoire écrite du Royaume. Il ressemble moins à une bibliothèque qu'à une cité bâtie pour les livres, où les générations ont ajouté galeries, passerelles et salles de lecture sans jamais suivre de plan. Des arches anciennes soutiennent des constructions plus récentes, et d'immenses rayonnages montent jusqu'aux voûtes, reliés par des ponts de bois qui semblent flotter dans la pénombre.
+
+Les copistes y reproduisent les textes à l'identique, jusqu'à l'écriture des anciens rois. Les registres les plus précieux sont entretenus avec soin : on les cire pour que le temps ne les efface pas.
+
+Le Scriptorium est placé sous la garde d'un archiviste, Edric. Certains volumes y sont conservés scellés.` },
+
+  { id: 'f8', type: 'fragment', slug: 'fragment-viii', num: 'VIII', date: null,
+    title: 'Fragment VIII', title_fr: 'Fragment VIII' }
+];
+
+const SPH_I18N = {
+  en: { fragment: 'Fragment', place: 'Place', archive: 'Archive', legend: 'Legend', figure: 'Figure', relic: 'Relic',
+        sealed: 'Sealed', lit: 'Revealed', front: 'The light is moving toward this seal.', far: 'Light the path that leads here first.',
+        readFull: 'Read', close: 'Close', unlocked: 'unlocked', burned: 'zkLTC toward this unlock', unlocksAt: 'Unlocks at', burners: 'New Sacrifiants', read: 'Read the fragment',
+        pending: 'The seal is broken. The fragment is being prepared for publication.',
+        byDate: 'Opens on {d} at the latest, even if the seal holds. Offerings only hasten the story.',
+        whale: 'The amount is reached, but the seal resists: {n} more Sacrifiant(s) are needed. No single wallet can open it.',
+        next: 'Next unlock: <b>{t}</b>', nextLabel: 'Next unlock', burnedNote: 'burned by the community since the last unlock',
+        mainnetNote: 'The count begins on mainnet, with real burns. Nothing is counted on testnet.', nextMeta: '{b} / {B} zkLTC to the next unlock',
+        loading: 'Reading the chain\u2026', end: 'Beyond this point, the path is still in darkness.',
+        published: 'Published', status: 'State', season: 'Season', stLit: 'Revealed', stFront: 'In progress', stPending: 'Seal broken', stSealed: 'Sealed', stPub: 'Published', deadline: 'Opens at the latest', onPath: 'Along this path', toFront: 'Current seal', prevL: 'Before', nextL: 'After', demoB: '+5 zkLTC (demo)', demoS: '+1 Sacrifiant (demo)', demoR: 'Reset' },
+  fr: { fragment: 'Fragment', place: 'Lieu', archive: 'Archive', legend: 'L\u00e9gende', figure: 'Figure', relic: 'Relique',
+        sealed: 'Scell\u00e9', lit: 'R\u00e9v\u00e9l\u00e9', front: 'La lumi\u00e8re avance vers ce sceau.', far: '\u00c9clairez d\u2019abord le chemin qui y m\u00e8ne.',
+        readFull: 'Lire', close: 'Fermer', unlocked: 'd\u00e9bloqu\u00e9s', burned: 'zkLTC vers ce d\u00e9blocage', unlocksAt: 'Se d\u00e9bloque \u00e0', burners: 'Nouveaux Sacrifiants', read: 'Lire le fragment',
+        pending: 'Le sceau est bris\u00e9. Le fragment est en cours de pr\u00e9paration.',
+        byDate: 'S\u2019ouvre au plus tard le {d}, m\u00eame si le sceau r\u00e9siste. Les offrandes ne font qu\u2019acc\u00e9l\u00e9rer l\u2019histoire.',
+        whale: 'Le montant est atteint, mais le sceau r\u00e9siste : il manque {n} Sacrifiant(s). Un seul portefeuille ne peut pas l\u2019ouvrir.',
+        next: 'Prochain d\u00e9blocage : <b>{t}</b>', nextLabel: 'Prochain d\u00e9blocage', burnedNote: 'br\u00fbl\u00e9s par la communaut\u00e9 depuis le dernier d\u00e9blocage',
+        mainnetNote: 'Le d\u00e9compte commencera au mainnet, avec de vrais burns. Rien n\u2019est compt\u00e9 sur le testnet.', nextMeta: '{b} / {B} zkLTC avant le prochain d\u00e9blocage',
+        loading: 'Lecture de la cha\u00eene\u2026', end: 'Au-del\u00e0, le chemin est encore dans l\u2019ombre.',
+        published: 'Publi\u00e9', status: '\u00c9tat', season: 'Saison', stLit: 'R\u00e9v\u00e9l\u00e9', stFront: 'En cours', stPending: 'Sceau bris\u00e9', stSealed: 'Scell\u00e9', stPub: 'Publi\u00e9', deadline: 'Ouverture au plus tard', onPath: 'Sur ce chemin', toFront: 'Sceau en cours', prevL: 'Avant', nextL: 'Apr\u00e8s', demoB: '+5 zkLTC (d\u00e9mo)', demoS: '+1 Sacrifiant (d\u00e9mo)', demoR: 'R\u00e9initialiser' }
+};
+
+const _sph = {
+  burned: null, burners: null,          // valeurs absolues lues sur la chaîne
+  base: null,                           // { burned, burners } de début de saison
+  demo: /[?&]spherier=demo\b/.test(location.search),
+  sel: null, layout: null, didScroll: false
+};
+
+function _sphLang() { return (typeof _chronLang !== 'undefined' && _chronLang === 'fr') ? 'fr' : 'en'; }
+function _sphT(key, vars) {
+  let s = SPH_I18N[_sphLang()][key] || key;
+  if (vars) Object.keys(vars).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+  return s;
+}
+function _sphF(o, key) { return (_sphLang() === 'fr' && o[key + '_fr']) ? o[key + '_fr'] : (o[key] || ''); }
+function _sphEsc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function _sphFmt(n) { return (Math.round(n * 100) / 100).toLocaleString(_sphLang() === 'fr' ? 'fr-CH' : 'en', { maximumFractionDigits: 2 }); }
+
+// Appelé par loadChainData() à chaque lecture de la chaîne.
+function svSpherierUpdate(combinedBurnedWei, totalBurners) {
+  if (_sph.demo) return;
+  try {
+    _sph.burned = parseFloat(ethers.formatEther(combinedBurnedWei));
+    _sph.burners = Number(totalBurners);
+  } catch (e) { return; }
+  if (!_sph.base) {
+    const b = SPHERIER_SEASON.baselineBurned, s = SPHERIER_SEASON.baselineBurners;
+    _sph.base = { burned: (b == null ? _sph.burned : b), burners: (s == null ? _sph.burners : s) };
+    if (b == null || s == null) {
+      console.info('[Sph\u00e9rier] baseline non d\u00e9finie. Valeurs actuelles \u00e0 recopier dans SPHERIER_SEASON :',
+        { baselineBurned: _sph.burned, baselineBurners: _sph.burners });
+    }
+  }
+  const page = document.getElementById('chronicles-page');
+  if (page && page.offsetWidth > 0) spherierRender();
+}
+
+function _sphSince() {
+  // Testnet : décompte gelé à zéro (le mode démo reste utilisable pour tester).
+  if (!SPHERIER_SEASON.live && !_sph.demo) return { burned: 0, burners: 0 };
+  if (_sph.burned == null || !_sph.base) return null;
+  return { burned: Math.max(0, _sph.burned - _sph.base.burned), burners: Math.max(0, _sph.burners - _sph.base.burners) };
+}
+
+function _sphArticle(slug) {
+  if (!slug || typeof CHRONICLES_ARTICLES === 'undefined') return null;
+  return CHRONICLES_ARTICLES.find(a => a.slug === slug) || null;
+}
+function _sphPublished(slug) { const a = _sphArticle(slug); return !!(a && !a.coming); }
+
+// Construit la liste complète : fragments déjà publiés, puis les nœuds de la saison.
+function _sphBuild() {
+  // Ordre du chemin : chaque fragment (publié ou à venir), suivi de ses
+  // annexes (`after`). Les fragments publiés restent toujours éclairés ; les
+  // annexes et les fragments à venir s'allument un par un, un palier de
+  // SPHERIER_SEASON.step zkLTC chacun, dans l'ordre du chemin.
+  const cfgFrags = SPHERIER_NODES.filter(n => n.type === 'fragment');
+  const futureSlugs = new Set(cfgFrags.map(n => n.slug));
+  const past = (typeof CHRONICLES_ARTICLES === 'undefined' ? [] : CHRONICLES_ARTICLES)
+    .filter(a => a.order != null && !a.coming && !futureSlugs.has(a.slug))
+    .sort((a, b) => a.order - b.order)
+    .map(a => ({
+      id: 'p-' + a.slug, type: 'fragment', slug: a.slug, past: true, cover: a.cover,
+      num: a.order === 0 ? '\u2735' : _sphRoman(a.order),
+      title: a.title, title_fr: a.title_fr
+    }));
+  const annexOf = (slug) => SPHERIER_NODES.filter(n => n.type !== 'fragment' && n.after === slug);
+  const ordered = [];
+  past.forEach(f => { ordered.push(f); annexOf(f.slug).forEach(a => ordered.push(Object.assign({}, a))); });
+  cfgFrags.forEach(f => { ordered.push(Object.assign({}, f)); annexOf(f.slug).forEach(a => ordered.push(Object.assign({}, a))); });
+
+  const since = _sphSince();
+  const today = new Date().toISOString().slice(0, 10);
+  const step = SPHERIER_SEASON.step || 20;
+  let blocked = false, k = 0, prevB = 0;
+  // Une annexe rattachée à un fragment DÉJÀ PUBLIÉ fait partie du passé de
+  // l'histoire : elle est ouverte d'office, comme son fragment. Seul ce qui
+  // vient après le dernier fragment publié se débloque au burn. (Une annexe
+  // qui porte un `burn` explicite garde son palier.)
+  const publishedSlugs = new Set(ordered.filter(n => n.past || (n.type === 'fragment' && _sphPublished(n.slug))).map(n => n.slug));
+  ordered.forEach(n => {
+    const art = _sphArticle(n.slug);
+    if (art && art.cover) n.cover = art.cover;
+    // Un fragment publié est toujours éclairé, et ne bloque rien.
+    if (n.past || (n.type === 'fragment' && _sphPublished(n.slug))) { n.state = 'lit'; return; }
+    if (n.type !== 'fragment' && n.burn == null && publishedSlugs.has(n.after)) { n.state = 'lit'; return; }
+    k++;
+    if (n.burn == null) n.burn = k * step;           // 20, 40, 60…
+    n.burners = 0;
+    n.prevB = prevB; n.prevS = 0;
+    const reached = k <= (SPHERIER_SEASON.openAtLaunch || 0) || (!!since && since.burned >= n.burn);
+    const dated = !!n.date && today >= n.date;
+    if (blocked) n.state = 'sealed';
+    else if (reached || dated) n.state = (n.type === 'fragment') ? 'pending' : 'lit';
+    else n.state = 'front';
+    // Un fragment pas encore publié retient tout ce qui le suit : aucune
+    // annexe ne peut dévoiler la suite avant lui.
+    if (n.state === 'front' || n.state === 'pending') blocked = true;
+    prevB = n.burn;
+  });
+  return ordered;
+}
+
+function _sphRoman(n) {
+  const r = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]; let s = '';
+  r.forEach(([v, l]) => { while (n >= v) { s += l; n -= v; } });
+  return s;
+}
+
+
+function _sphStatus(n) {
+  if (n.state === 'lit') return n.type === 'fragment' ? _sphT('stPub') : _sphT('stLit');
+  return _sphT({ front: 'stFront', pending: 'stPending', sealed: 'stSealed' }[n.state]);
+}
+function _sphVisible(n) { return n.state !== 'sealed' || n.type === 'fragment'; }
+function _sphMobile() { return window.matchMedia('(max-width:760px)').matches; }
+
+function spherierRender() {
+  const root = document.getElementById('sph'); if (!root) return;
+  const svg = document.getElementById('sph-svg');
+  const scroll = document.getElementById('sph-scroll');
+  const mobile = _sphMobile();
+  const topY = root.getBoundingClientRect().top + window.scrollY;
+  if (topY > 0) root.style.height = Math.max(480, Math.round(window.innerHeight - topY)) + 'px';
+  const VW = scroll.clientWidth || 1200, H = scroll.clientHeight || 720;
+  // Ligne droite : les titres des fragments s'écrivent sous la ligne, il
+  // leur faut de la place pour ne pas se chevaucher.
+  // Resserré : on doit pouvoir parcourir le chemin sans faire défiler à l'infini.
+  const gapPast = mobile ? 150 : 210, gapFuture = mobile ? 165 : 230;
+  const lead = mobile ? 70 : Math.max(180, VW * 0.16);
+  const laneF = mobile ? 0.6 : 0.63, lanes = mobile ? [0.44, 0.8, 0.5, 0.76] : [0.47, 0.82, 0.53, 0.78];
+
+  const nodes = _sphBuild();
+  // ── Disposition : une ligne droite, des embranchements ──────────────
+  // Les FRAGMENTS sont posés sur la ligne principale, qui file droit d'un
+  // bout à l'autre. Les ANNEXES sont accrochées par une tige oblique, en
+  // haut ou en bas alternativement : l'histoire suit la ligne, les à-côtés
+  // s'en écartent.
+  const midY = Math.round(H * (mobile ? 0.56 : 0.54));
+  const stemDX = mobile ? 40 : 58;
+  const stemDY = mobile ? 70 : 96;
+  let x = lead, upNext = true, fragUp = false;
+  nodes.forEach((n, i) => {
+    if (i > 0) x += (n.past && nodes[i - 1].past) ? gapPast : gapFuture;
+    n.x = x;
+    if (n.type === 'fragment') {
+      // Titres alternés, un au-dessus, un en dessous : ils ne se chevauchent
+      // plus quand deux fragments sont proches.
+      n.y = midY; n.onLine = true; n.labelUp = fragUp; fragUp = !fragUp;
+    }
+    else {
+      n.y = midY + (upNext ? -stemDY : stemDY);
+      n.labelUp = upNext;
+      n.stemX = x - stemDX;      // point d'attache sur la ligne
+      upNext = !upNext;
+    }
+  });
+  const ghosts = [];
+  let gUp = upNext;
+  for (let g = 1; g <= 7; g++) {
+    x += gapFuture;
+    const frag = g % 3 === 0;
+    ghosts.push({
+      x, frag, o: Math.max(0.04, 0.42 - g * 0.06),
+      y: frag ? midY : midY + (gUp ? -stemDY : stemDY),
+      stemX: frag ? null : x - stemDX,
+    });
+    if (!frag) gUp = !gUp;
+  }
+  const W = x + VW * 0.7;
+  svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  const cuts = nodes.filter((n, i) => n.type === 'fragment' && (!n.past || !(nodes[i + 1] && nodes[i + 1].past)));
+  const segs = []; let segX = 0, segImg = SPHERIER_SEASON.bg;
+  cuts.forEach(n => { segs.push({ x0: segX, x1: n.x, img: segImg }); segX = n.x; segImg = n.bg || n.cover || SPHERIER_SEASON.bg; });
+  segs.push({ x0: segX, x1: W, img: segImg });
+  // Image d'un nœud : la sienne si elle existe (couverture d'un fragment,
+  // illustration d'une annexe), sinon celle du tronçon, sinon le décor.
+  nodes.forEach(n => {
+    const sg = segs.find(sg => n.x >= sg.x0 && n.x < sg.x1) || segs[segs.length - 1];
+    n.img = n.cover || (sg && sg.img) || SPHERIER_SEASON.heroBg || null;
+  });
+  // Le fond est une image FIXE derrière la carte (voir #sph) ; le chemin
+  // défile par-dessus. Un voile sombre la recouvre, percé autour des nœuds
+  // éclairés : c'est la lumière qui se déplace sur le tableau, pas le tableau.
+  root.style.backgroundImage = SPHERIER_SEASON.bg ? `url('${SPHERIER_SEASON.bg}')` : 'none';
+  const _heroImg = document.querySelector('#sph-top .st-img');
+  if (_heroImg && (SPHERIER_SEASON.heroBg || SPHERIER_SEASON.bg)) _heroImg.style.backgroundImage = `url('${SPHERIER_SEASON.heroBg || SPHERIER_SEASON.bg}')`;
+
+  const since = _sphSince();
+  let edges = '';
+  const lastX = (ghosts.length ? ghosts[ghosts.length - 1].x : nodes[nodes.length - 1].x);
+  // Progression de la lumière le long de la ligne : jusqu'au dernier nœud
+  // éclairé, puis la part du palier en cours vers le nœud suivant.
+  const frontN = nodes.find(n => n.state === 'front' || n.state === 'pending');
+  // La pulsation marque l'étape ATTEINTE (le dernier élément éclairé), pas
+  // l'étape encore verrouillée : c'est là qu'en est le chemin.
+  const lastLit = [...nodes].reverse().find(n => n.state === 'lit') || nodes[0];
+  nodes.forEach(n => { n.isCurrent = (n === lastLit); });
+  let litX = lastLit ? lastLit.x : lead;
+  if (frontN && since) {
+    const span = Math.max(0.0001, frontN.burn - frontN.prevB);
+    const ratio = Math.max(0, Math.min(0.96, (since.burned - frontN.prevB) / span));
+    litX = (frontN.onLine ? lastLit.x : lastLit.x) + (frontN.x - lastLit.x) * ratio;
+  }
+  // 1. la ligne principale, en pointillés, qui se perd au loin
+  edges += `<path d="M${lead - 60} ${midY} H${lastX + 120}" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.8" stroke-dasharray="3 7"/>`;
+  // 2. la part déjà éclairée, pleine
+  if (litX > lead - 60) {
+    edges += `<path d="M${lead - 60} ${midY} H${litX}" fill="none" stroke="#00e5cc" stroke-width="2.6" stroke-linecap="round" style="filter:drop-shadow(0 0 5px rgba(0,229,204,0.75))"/>`;
+  }
+  // 3. les tiges des annexes
+  const stem = (n, litStem, ghost) => {
+    const d = `M${n.stemX} ${midY} L${n.x} ${n.y}`;
+    if (ghost) return `<path d="${d}" fill="none" stroke="rgba(255,255,255,${n.o})" stroke-width="1.4" stroke-dasharray="2 9"/>`;
+    let out = `<path d="${d}" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.6" stroke-dasharray="3 7"/>`;
+    if (litStem) out += `<path d="${d}" fill="none" stroke="#00e5cc" stroke-width="2.2" stroke-linecap="round" style="filter:drop-shadow(0 0 5px rgba(0,229,204,0.7))"/>`;
+    return out;
+  };
+  nodes.forEach(n => { if (!n.onLine) edges += stem(n, n.state === 'lit' || n.state === 'pending', false); });
+  // Le prix du palier, écrit sur la ligne juste avant chaque élément à venir.
+  nodes.forEach((n, i) => {
+    if (n.state === 'lit' || n.burn == null) return;
+    const prev = nodes[i - 1] || { x: lead - 60 };
+    const mx = Math.round((prev.x + (n.onLine ? n.x : n.stemX)) / 2);
+    edges += `<text x="${mx}" y="${midY - 14}" text-anchor="middle"
+      font-family="Cinzel, serif" font-size="12" letter-spacing="1.5"
+      fill="${n.state === 'front' ? 'rgba(0,229,204,0.85)' : 'rgba(255,255,255,0.32)'}">+${_sphFmt(n.burn - n.prevB)} zkLTC</text>`;
+  });
+  ghosts.forEach(g => { if (!g.frag) edges += stem(g, false, true); });
+  const lit = nodes.filter(n => n.state === 'lit' || n.state === 'pending');
+  // Halos du masque : NOIR au centre, TRANSPARENT au bord. Avec un bord
+  // blanc opaque, chaque halo recouvrait le centre de son voisin et
+  // dessinait des « bulles » sombres là où ils se chevauchaient.
+  const holes = lit.map(n => `<circle cx="${n.x}" cy="${n.y}" r="${n.type === 'fragment' ? (mobile ? 220 : 330) : (mobile ? 150 : 230)}" fill="url(#sph-hole)"/>`).join('');
+  const ghostEls = ghosts.map(g => `<circle cx="${g.x}" cy="${g.y}" r="${g.frag ? 24 : 10}" fill="none" stroke="rgba(255,255,255,${g.o})" stroke-width="1.6"/>`).join('');
+
+  const nodeEls = nodes.map(n => {
+    const frag = n.type === 'fragment', r = frag ? 26 : 11;
+    const cls = 'sph-node k-' + n.type + ' is-' + (n.state === 'lit' ? 'lit' : n.state) + (_sph.sel === n.id && root.classList.contains('panel-open') ? ' is-sel' : '');
+    const label = _sphVisible(n) ? _sphF(n, 'title') : _sphT('sealed');
+    const sub = frag ? (_sphT('fragment') + ' ' + (n.num || '')) + (n.state !== 'lit' ? ' \u00b7 ' + _sphStatus(n) : '')
+                     : _sphT(n.type) + (n.state !== 'lit' ? ' \u00b7 ' + _sphStatus(n) : '');
+    let text;
+    if (frag) {
+      const up = n.labelUp;
+      const ly = up ? -(r + 34) : r + 30;
+      text = `<text class="lb" y="${ly}" text-anchor="middle">${_sphEsc(label)}</text><text class="sub" y="${ly + (up ? 18 : 18)}" text-anchor="middle">${_sphEsc(sub)}</text>`;
+    } else {
+      text = n.labelUp
+        ? `<text class="lb" y="${-(r + 30)}" text-anchor="middle">${_sphEsc(label)}</text><text class="sub" y="${-(r + 12)}" text-anchor="middle">${_sphEsc(sub)}</text>`
+        : `<text class="lb" y="${r + 26}" text-anchor="middle">${_sphEsc(label)}</text><text class="sub" y="${r + 44}" text-anchor="middle">${_sphEsc(sub)}</text>`;
+    }
+    // Fragments : grands cercles numérotés. Annexes : une forme par nature.
+    const shape = {
+      place:   `<path class="mk" d="M0 -14 L14 0 L0 14 L-14 0Z"/>`,
+      archive: `<rect class="mk" x="-11" y="-13" width="22" height="26" rx="2"/><path class="dot" d="M-6 -6 H6 M-6 -1 H6 M-6 4 H3" stroke-width="1.6" fill="none"/>`,
+      legend:  `<path class="mk" d="M0 -15 L4 -4 L15 -4 L6 3 L9 14 L0 7 L-9 14 L-6 3 L-15 -4 L-4 -4Z"/>`,
+      figure:  `<circle class="mk" r="12"/><circle class="dot" r="4.5"/>`,
+      relic:   `<path class="mk" d="M0 -14 L12 -7 L12 7 L0 14 L-12 7 L-12 -7Z"/>`,
+    };
+    // Un fragment porte sa couverture dans son cercle : la carte respire et
+    // l'on reconnaît chaque fragment d'un coup d'œil.
+    const art = (frag && n.cover)
+      ? `<clipPath id="cl-${_sphEsc(n.id)}"><circle r="${r - 1}"/></clipPath>
+         <image href="${_sphEsc(n.cover)}" x="${-r}" y="${-r}" width="${r * 2}" height="${r * 2}"
+                preserveAspectRatio="xMidYMid slice" clip-path="url(#cl-${_sphEsc(n.id)})" opacity="${n.state === 'lit' ? 0.85 : 0.3}"/>
+         <circle r="${r}" fill="rgba(4,8,23,${n.state === 'lit' ? 0.12 : 0.55})"/>`
+      : '';
+    const glyph = frag
+      ? `<circle r="${r + 7}" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1"/><circle class="mk" r="${r}"/>${art}`
+        + (n.cover ? '' : `<text class="nm">${_sphEsc(n.num || '')}</text>`)   // chiffre seulement à défaut d'illustration
+      : (shape[n.type] || shape.figure);
+    return `<g class="${cls}" data-id="${_sphEsc(n.id)}" transform="translate(${n.x} ${n.y})" tabindex="0" role="button" aria-label="${_sphEsc(sub + ' \u00b7 ' + label)}">
+      <circle r="${r + 30}" fill="transparent"/>
+      ${n.state === 'lit' || n.state === 'pending' ? `<circle r="${r * 3}" fill="url(#sph-glow)"/>` : ''}
+      <circle class="hl" r="${r + 10}"/>
+      ${n.isCurrent ? `<circle class="sph-pulse" r="${r + 4}"/>` : ''}
+      ${glyph}${text}
+    </g>`;
+  }).join('');
+
+  svg.innerHTML = `
+    <defs>
+      <radialGradient id="sph-soft"><stop offset="0" stop-color="#fff"/><stop offset="0.3" stop-color="#fff" stop-opacity="0.85"/><stop offset="0.65" stop-color="#fff" stop-opacity="0.3"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+      <radialGradient id="sph-glow"><stop offset="0" stop-color="#00e5cc" stop-opacity="0.32"/><stop offset="1" stop-color="#00e5cc" stop-opacity="0"/></radialGradient>
+      <linearGradient id="sph-shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#040817" stop-opacity="0.65"/><stop offset="0.35" stop-color="#040817" stop-opacity="0.05"/><stop offset="0.75" stop-color="#040817" stop-opacity="0.1"/><stop offset="1" stop-color="#040817" stop-opacity="0.85"/></linearGradient>
+      <linearGradient id="sph-void-grad" x1="0" y1="0" x2="0.4" y2="1">
+        <stop offset="0" stop-color="#0a1b3a"/><stop offset="0.45" stop-color="#0a1230"/><stop offset="1" stop-color="#05091c"/>
+      </linearGradient>
+      <filter id="sph-blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="${Math.round(H / 7)}"/></filter>
+      <radialGradient id="sph-hole"><stop offset="0" stop-color="#000" stop-opacity="0.72"/><stop offset="0.4" stop-color="#000" stop-opacity="0.5"/><stop offset="0.75" stop-color="#000" stop-opacity="0.15"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+      <mask id="sph-dark" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="#fff"/>${holes}</mask>
+    </defs>
+    ${SPHERIER_SEASON.bg ? '' : _sphVoidArt(W, H)}
+    <rect width="${W}" height="${H}" fill="#040817" opacity="${SPHERIER_SEASON.bg ? 0.95 : 0.88}" mask="url(#sph-dark)"/>
+    <rect width="${W}" height="${H}" fill="url(#sph-shade)"/>
+    ${edges}${ghostEls}${nodeEls}`;
+  svg.setAttribute('aria-label', _sphF(SPHERIER_SEASON, 'title'));
+
+  svg.querySelectorAll('.sph-node').forEach(el => {
+    el.addEventListener('click', e => { e.stopPropagation(); if (!_sph.dragMoved) spherierSelect(el.dataset.id); });
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); spherierSelect(el.dataset.id); } });
+  });
+
+  _sph.layout = nodes;
+  const front = nodes.find(n => n.state === 'front' || n.state === 'pending') || nodes[nodes.length - 1];
+  _sph.front = front ? front.id : null;
+  if (!_sph.didScroll && front && VW > 0) { scroll.scrollLeft = Math.max(0, front.x - VW * (mobile ? 0.45 : 0.55)); _sph.didScroll = true; }
+
+  const _k = _sphF(SPHERIER_SEASON, 'kicker');
+  const _kel = document.getElementById('sph-kicker');
+  _kel.textContent = _k; _kel.style.display = _k ? '' : 'none';
+  document.getElementById('sph-title').textContent = _sphF(SPHERIER_SEASON, 'title');
+  document.getElementById('sph-nav-front').textContent = _sphT('toFront');
+  // Un seul compteur pour tout le Chemin (voir _sphNextHTML) : la carte et
+  // le Sommaire affichent exactement le même.
+  document.getElementById('sph-next').innerHTML = _sphNextHTML(nodes, since, 'sph-gauge');
+
+  const demoEl = document.getElementById('sph-demo');
+  if (_sph.demo) {
+    demoEl.hidden = false;
+    demoEl.innerHTML = `<button type="button" onclick="spherierDemo(5,0)">${_sphT('demoB')}</button><button type="button" onclick="spherierDemo(null)">${_sphT('demoR')}</button>`;
+  }
+  if (root.classList.contains('panel-open')) _sphPanel();
+}
+
+function spherierSelect(id, noScroll) {
+  const root = document.getElementById('sph');
+  _sph.sel = id;
+  root.classList.add('panel-open');
+  document.getElementById('sph-panel').setAttribute('aria-hidden', 'false');
+  document.querySelectorAll('#sph .sph-node').forEach(el => el.classList.toggle('is-sel', el.dataset.id === id));
+  _sphPanel();
+  const n = (_sph.layout || []).find(m => m.id === id);
+  const sc = document.getElementById('sph-scroll');
+  if (n && !noScroll) {
+    const pw = _sphMobile() ? 0 : document.getElementById('sph-panel').offsetWidth;
+    const target = n.x - (sc.clientWidth - pw) * 0.5;
+    sc.scrollTo({ left: Math.max(0, target), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }
+}
+function spherierClosePanel() {
+  const root = document.getElementById('sph'); if (!root) return;
+  root.classList.remove('panel-open');
+  document.getElementById('sph-panel').setAttribute('aria-hidden', 'true');
+  document.querySelectorAll('#sph .sph-node').forEach(el => el.classList.remove('is-sel'));
+}
+function spherierFocusFront() { if (_sph.front) spherierSelect(_sph.front); }
+
+function _sphEmblem(n) {
+  const col = n.state === 'sealed' ? 'rgba(255,255,255,0.35)' : (n.state === 'lit' ? '#e9f4f2' : '#00e5cc');
+  const inner = n.type === 'fragment'
+    ? `<text x="29" y="30" text-anchor="middle" dominant-baseline="central" font-family="Cinzel,serif" font-size="17" font-weight="600" fill="${col}">${_sphEsc(n.num || '')}</text>`
+    : `<circle cx="29" cy="29" r="6" fill="${col}"/>`;
+  return `<svg class="sp-emblem" viewBox="0 0 58 58" aria-hidden="true"><path d="M29 2 L56 29 L29 56 L2 29Z" fill="#0a1024" stroke="${col}" stroke-width="1.5"/><path d="M29 9 L49 29 L29 49 L9 29Z" fill="none" stroke="${col}" stroke-opacity="0.35"/>${inner}</svg>`;
+}
+
+function _sphPanel() {
+  const P = document.getElementById('sph-panel-in');
+  const nodes = _sph.layout || [];
+  const idx = nodes.findIndex(m => m.id === _sph.sel);
+  const n = nodes[idx];
+  if (!n) { P.innerHTML = ''; return; }
+  const since = _sphSince();
+  const visible = _sphVisible(n);
+  const art = _sphArticle(n.slug);
+  const sep = '<div class="sp-sep"></div>';
+
+  let h = `<div class="sp-hero${n.state === 'sealed' ? ' is-sealed' : ''}" style="background-image:url('${_sphEsc(n.cover || n.img || SPHERIER_SEASON.heroBg || '')}')"></div>
+  <div class="sp-body">
+    <div class="sp-top">${_sphEmblem(n)}<div><div class="sp-title">${_sphEsc(visible ? _sphF(n, 'title') : _sphT('sealed'))}</div>
+      <div class="sp-kind">${_sphEsc(_sphT(n.type) + (n.type === 'fragment' && n.num ? ' ' + n.num : ''))}</div></div></div>
+    ${sep}<div class="sp-stats">
+      <div class="sp-stat"><span>${_sphEsc(_sphT('status'))} :</span><b>${_sphEsc(_sphStatus(n))}</b></div>
+      ${!n.past && n.burn != null ? `<div class="sp-stat"><span>${_sphEsc(_sphT('unlocksAt'))} :</span><b>${_sphFmt(n.burn)} zkLTC</b></div>` : ''}`;
+  if (!n.past && n.state !== 'lit' && n.burn != null && since) {
+    const span = Math.max(0.0001, n.burn - n.prevB);
+    const b = Math.max(0, Math.min(span, since.burned - n.prevB));
+    h += `<div class="sp-stat"><span>${_sphEsc(_sphT('burned'))} :</span><b>${_sphFmt(b)} / ${_sphFmt(span)}</b><div class="tr"><i style="width:${Math.round(b / span * 100)}%"></i></div></div>`;
+  }
+  if (n.date && n.state !== 'lit') {
+    const d = new Date(n.date + 'T12:00:00').toLocaleDateString(_sphLang() === 'fr' ? 'fr-CH' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    h += `<div class="sp-stat"><span>${_sphEsc(_sphT('deadline'))} :</span><b>${_sphEsc(d)}</b></div>`;
+  }
+  h += `</div>${sep}`;
+
+  if (n.state === 'lit') {
+    if (n.type === 'fragment') {
+      if (art) h += `<p class="sp-text">${_sphEsc(_sphF(art, 'excerpt'))}</p>`;
+      if (_sphPublished(n.slug)) h += `<button class="sp-cta" type="button" onclick="chroniclesReadBySlug('${_sphEsc(n.slug)}')">${_sphEsc(_sphT('read'))} &#8599;</button>`;
+    } else {
+      const t = _sphF(n, 'text');
+      if (t && n.long) {
+        // Texte long : le panneau montre l'ouverture, la lecture se fait dans
+        // une fenêtre dédiée, à la bonne largeur et à la bonne taille.
+        const first = t.split(/\n\s*\n/)[0];
+        const teaser = first.length > 280 ? first.slice(0, 270).replace(/\s+\S*$/, '') + '\u2026' : first;
+        h += `<p class="sp-text">${_sphEsc(teaser)}</p>
+              <button class="sp-cta" type="button" onclick="spherierRead('${_sphEsc(n.id)}')">${_sphEsc(_sphT('readFull'))} &#8599;</button>`;
+      } else if (t) {
+        h += `<p class="sp-text is-quote">${_sphEsc(t)}</p>`;
+      }
+    }
+  } else if (n.state === 'pending') {
+    h += `<p class="sp-text">${_sphEsc(_sphT('pending'))}</p>`;
+  } else {
+    h += `<p class="sp-text">${_sphEsc(n.state === 'front' ? _sphT('front') : _sphT('far'))}</p>`;
+    if (n.state === 'front' && since && since.burned >= n.burn && since.burners < n.burners) h += `<p class="sp-note">${_sphEsc(_sphT('whale', { n: n.burners - since.burners }))}</p>`;
+    if (n.date) h += `<p class="sp-note">${_sphEsc(_sphT('byDate', { d: new Date(n.date + 'T12:00:00').toLocaleDateString(_sphLang() === 'fr' ? 'fr-CH' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) }))}</p>`;
+  }
+
+  const around = [[nodes[idx - 1], 'prevL'], [nodes[idx + 1], 'nextL']].filter(p => p[0]);
+  if (around.length) {
+    h += `${sep}<div class="sp-h">${_sphEsc(_sphT('onPath'))}</div><div class="sp-links">` + around.map(([m, k]) => {
+      const vis = _sphVisible(m);
+      return `<button type="button" class="sp-link${m.state === 'sealed' ? ' is-sealed' : ''}" style="background-image:url('${_sphEsc(m.img || SPHERIER_SEASON.bg)}')" onclick="spherierSelect('${_sphEsc(m.id)}')"><div><b>${_sphEsc(vis ? _sphF(m, 'title') : _sphT('sealed'))}</b><small>${_sphEsc(_sphT(k) + ' \u00b7 ' + _sphT(m.type) + ' \u00b7 ' + _sphStatus(m))}</small></div></button>`;
+    }).join('') + `</div>`;
+  }
+  h += `</div>`;
+  P.innerHTML = h;
+  P.scrollTop = 0;
+}
+
+/// Le compteur du prochain déblocage, identique sur la carte et dans le
+/// Sommaire (il n'y a qu'un seul chemin, donc un seul compteur).
+function _sphNextHTML(nodes, since, gaugeClass) {
+  const next = nodes.find(n => n.state === 'front');
+  if (!next) return `<div class="sph-n-note">${_sphEsc(_sphT('pending'))}</div>`;
+  const span = Math.max(0.0001, next.burn - next.prevB);
+  const inStep = since ? Math.max(0, Math.min(span, since.burned - next.prevB)) : 0;
+  const t = next.type === 'fragment' ? _sphF(next, 'title') : _sphT(next.type);
+  // Gros chiffres : on doit comprendre d'un coup d'œil qu'il s'agit de zkLTC
+  // brûlés, et combien il en reste avant le prochain élément.
+  return `<div class="sph-n-lab">${_sphEsc(_sphT('nextLabel'))}</div>
+    <div class="sph-n-name">${_sphEsc(t)}</div>
+    <div class="sph-n-big"><b>${since ? _sphFmt(inStep) : '—'}</b><span> / ${_sphFmt(span)} zkLTC</span></div>
+    <div class="${gaugeClass}"><i style="width:${Math.round(inStep / span * 100)}%"></i></div>
+    <div class="sph-n-note${(!SPHERIER_SEASON.live && !_sph.demo) ? ' waiting' : ''}">${_sphEsc(
+      (!SPHERIER_SEASON.live && !_sph.demo) ? _sphT('mainnetNote') : (since ? _sphT('burnedNote') : _sphT('loading'))
+    )}</div>`;
+}
+
+// ═══ Sommaire ════════════════════════════════════════════════════════
+// Même matière que la carte, en liste : à gauche les fragments dans l'ordre,
+// en face leurs annexes. Remplace l'ancienne grille des Chroniques.
+function spherierShowIndex(on) {
+  const map = document.getElementById('sph');
+  const idx = document.getElementById('sph-index');
+  if (!map || !idx) return;
+  map.style.display = on ? 'none' : '';
+  idx.style.display = on ? 'block' : 'none';
+  const bm = document.getElementById('sph-view-map'), bi = document.getElementById('sph-view-index');
+  if (bm) bm.classList.toggle('on', !on);
+  if (bi) bi.classList.toggle('on', on);
+  if (on) spherierIndexRender(); else spherierRender();
+}
+
+function _sxIcon(type) {
+  const d = {
+    place:   'M13 3 L23 13 L13 23 L3 13Z',
+    archive: 'M5 3 H17 L21 7 V23 H5Z',
+    legend:  'M13 2 L16 10 L24 10 L17 15 L20 23 L13 18 L6 23 L9 15 L2 10 L10 10Z',
+    figure:  '',
+    relic:   'M13 3 L22 8 L22 18 L13 23 L4 18 L4 8Z',
+  }[type];
+  const inner = d ? `<path d="${d}" fill="none" stroke="var(--kc)" stroke-width="1.6"/>` 
+                  : `<circle cx="13" cy="13" r="9" fill="none" stroke="var(--kc)" stroke-width="1.6"/><circle cx="13" cy="13" r="3" fill="var(--kc)"/>`;
+  return `<svg class="sx-ico" viewBox="0 0 26 26" aria-hidden="true">${inner}</svg>`;
+}
+
+function spherierIndexRender() {
+  const rowsEl = document.getElementById('sx-rows');
+  if (!rowsEl) return;
+  const nodes = _sphBuild();
+  // La fenêtre de lecture s'appuie sur cette liste : elle a besoin des images.
+  nodes.forEach(n => { n.img = n.cover || SPHERIER_SEASON.heroBg || null; });
+  _sph.layout = nodes;
+
+  // Le compteur est dans la zone du titre, commun aux deux vues.
+  const since = _sphSince();
+  const nEl = document.getElementById('sph-next');
+  if (nEl) nEl.innerHTML = _sphNextHTML(nodes, since, 'sph-gauge');
+  const tEl = document.getElementById('sph-title');
+  if (tEl) tEl.textContent = _sphF(SPHERIER_SEASON, 'title');
+
+  // Un bloc par fragment, avec ses annexes en face.
+  let html = '', cur = null, buf = [];
+  const flush = () => {
+    if (!cur) return;
+    const fragLit = cur.state === 'lit';
+    const published = fragLit && _sphPublished(cur.slug);
+    html += `<div class="sx-row${fragLit ? '' : ' locked'}">
+      <div class="sx-frag">
+        <div class="sx-num">${_sphEsc(cur.num || '')}</div>
+        <div>
+          <div class="sx-title">${_sphEsc(fragLit ? _sphF(cur, 'title') : _sphF(cur, 'title'))}</div>
+          <div class="sx-meta">${_sphEsc(_sphT('fragment'))}${fragLit ? '' : ' \u00b7 ' + _sphEsc(_sphT('unlocksAt')) + ' ' + _sphFmt(cur.burn) + ' zkLTC'}</div>
+          ${published ? `<button class="sx-read" type="button" onclick="chroniclesReadBySlug('${_sphEsc(cur.slug)}')">${_sphEsc(_sphT('read'))}</button>` : ''}
+        </div>
+      </div>
+      <div class="sx-annexes">${buf.length ? buf.join('') : `<div class="sx-empty">\u2014</div>`}</div>
+    </div>`;
+    buf = [];
+  };
+  nodes.forEach(n => {
+    if (n.type === 'fragment') { flush(); cur = n; return; }
+    const lit = n.state === 'lit';
+    const label = lit || n.state === 'front' ? _sphF(n, 'title') : _sphT('sealed');
+    buf.push(`<${lit ? 'button' : 'div'} class="sx-annex k-${_sphEsc(n.type)} ${lit ? 'open' : 'sealed'}"
+        ${lit ? `onclick="spherierRead('${_sphEsc(n.id)}')"` : ''} type="button">
+        ${_sxIcon(n.type)}
+        <div><div class="sx-n">${_sphEsc(label)}</div>
+        <div class="sx-k">${_sphEsc(_sphT(n.type))}${lit ? '' : ' \u00b7 ' + _sphEsc(_sphT('unlocksAt')) + ' ' + _sphFmt(n.burn) + ' zkLTC'}</div></div>
+      </${lit ? 'button' : 'div'}>`);
+  });
+  flush();
+  rowsEl.innerHTML = html;
+}
+
+// ═══ Fenêtre de lecture des annexes ═══════════════════════════════════
+// Le Décret, la Légende et les descriptions de lieux se lisent ici, sur une
+// colonne étroite et aérée, et non dans le panneau latéral.
+function spherierRead(id) {
+  const n = (_sph.layout || []).find(m => m.id === id);
+  if (!n || n.state !== 'lit') return;
+  let ov = document.getElementById('sph-reader');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'sph-reader';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.addEventListener('click', e => { if (e.target === ov) spherierReadClose(); });
+    document.body.appendChild(ov);
+  }
+  const text = _sphF(n, 'text');
+  const paras = text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  const body = paras.map((p, i) => {
+    // Articles du Décret : « I. De l'or. Chaque pièce… » → intitulé mis en valeur.
+    const art = p.match(/^([IVX]+)\.\s+([^.]+\.)\s*([\s\S]*)$/);
+    if (n.type === 'archive' && art) {
+      return `<div class="rd-art"><span class="rd-num">${art[1]}</span><div><b>${_sphEsc(art[2])}</b> ${_sphEsc(art[3])}</div></div>`;
+    }
+    // Dernière ligne courte d'une légende ou d'un serment : la devise, centrée.
+    if (i === paras.length - 1 && p.length < 70 && (n.type === 'legend' || n.type === 'archive')) {
+      return `<p class="rd-motto">${_sphEsc(p)}</p>`;
+    }
+    return `<p>${_sphEsc(p)}</p>`;
+  }).join('');
+  ov.innerHTML = `
+    <article class="rd-sheet k-${_sphEsc(n.type)}">
+      <button type="button" class="rd-close" onclick="spherierReadClose()" aria-label="${_sphEsc(_sphT('close'))}">&times;</button>
+      ${(n.cover || n.img || SPHERIER_SEASON.heroBg) ? `<div class="rd-hero" style="background-image:url('${_sphEsc(n.cover || n.img || SPHERIER_SEASON.heroBg)}')"></div>` : ''}
+      <header class="rd-head">
+        <div class="rd-kind">${_sphEsc(_sphT(n.type))}</div>
+        <h2 class="rd-title">${_sphEsc(_sphF(n, 'title'))}</h2>
+      </header>
+      <div class="rd-body">${body}</div>
+    </article>`;
+  ov.classList.add('on');
+  document.body.style.overflow = 'hidden';
+  ov.querySelector('.rd-close').focus();
+}
+function spherierReadClose() {
+  const ov = document.getElementById('sph-reader');
+  if (ov) ov.classList.remove('on');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => {
+  const ov = document.getElementById('sph-reader');
+  if (e.key === 'Escape' && ov && ov.classList.contains('on')) { e.stopPropagation(); spherierReadClose(); }
+}, true);
+
+function spherierNudge(dir) {
+  const sc = document.getElementById('sph-scroll'); if (!sc) return;
+  sc.scrollBy({ left: dir * sc.clientWidth * 0.55, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+}
+
+function spherierDemo(db, ds) {
+  if (db === null) { _sph.burned = 0; _sph.burners = 0; }
+  else { _sph.burned = (_sph.burned || 0) + db; _sph.burners = (_sph.burners || 0) + ds; }
+  _sph.base = { burned: 0, burners: 0 };
+  spherierRender();
+}
+
+(function () {
+  const init = () => {
+    const sc = document.getElementById('sph-scroll'); if (!sc || sc._sphDrag) return;
+    sc._sphDrag = true;
+    let down = false, startX = 0, startL = 0;
+    sc.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'mouse') return;
+      down = true; _sph.dragMoved = false; startX = e.clientX; startL = sc.scrollLeft;
+    });
+    window.addEventListener('pointermove', e => {
+      if (!down) return;
+      const dx = e.clientX - startX;
+      if (Math.abs(dx) > 5) { _sph.dragMoved = true; sc.classList.add('is-drag'); }
+      sc.scrollLeft = startL - dx;
+    });
+    window.addEventListener('pointerup', () => { down = false; sc.classList.remove('is-drag'); setTimeout(() => { _sph.dragMoved = false; }, 0); });
+    sc.addEventListener('click', e => { if (!_sph.dragMoved && !e.target.closest('.sph-node')) spherierClosePanel(); });
+    sc.addEventListener('keydown', e => {
+      if (e.target !== sc) return;
+      if (e.key === 'ArrowRight') { sc.scrollLeft += 160; e.preventDefault(); }
+      if (e.key === 'ArrowLeft') { sc.scrollLeft -= 160; e.preventDefault(); }
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') spherierClosePanel(); });
+    let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { const p = document.getElementById('chronicles-page'); if (p && p.offsetWidth > 0) spherierRender(); }, 200); });
+    if (_sph.demo) { _sph.burned = 0; _sph.burners = 0; _sph.base = { burned: 0, burners: 0 }; }
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
 </script>
 
 <!-- FOOTER -->
@@ -6738,6 +7905,7 @@ async function loadChainData(){
 
     const fmt=parseFloat(ethers.formatEther(combinedBurned)).toLocaleString('en',{maximumFractionDigits:3});
     ['hero-total','hero-total-pc','void-n'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=fmt;});
+    if (typeof svSpherierUpdate === 'function') { try { svSpherierUpdate(combinedBurned, totalBurners); } catch (e) {} }
 
     // ── Ledger dashboard: split the total by where it was burned ──────────
     // The three contracts each report their own burns, so the breakdown is
@@ -8094,11 +9262,6 @@ async function duelistLeaderboardScan() {
   } catch (e) {}
 
   if (typeof profilesBatchPrefetch === 'function') await profilesBatchPrefetch(wallets);
-  // Son propre profil est relu sans le cache du CDN : un skin ou un avatar
-  // tout juste changé s'affichait encore à l'ancien dans le classement.
-  if (connectedAddress && typeof profilesBatchPrefetch === 'function') {
-    try { await profilesBatchPrefetch([connectedAddress.toLowerCase()]); } catch (e) {}
-  }
   // Par vagues de 8 : lancer 210 resolutions de front sature un RPC mobile,
   // qui repond alors par des 502 — et chaque echec coute une reprise.
   const rows = [];
@@ -13330,14 +14493,6 @@ async function codexOpen(addr){
     // Sidebar counters — the incomplete fractions are the whole point.
     const setN = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
     setN('cx-n-relics', ownedCount + '/' + totalCount);
-    // Les autres onglets (Paths, Ring Skins, Feats) ne calculaient leur
-    // compteur qu'au clic : après connexion, la barre latérale gardait
-    // « — » ou les valeurs de l'aperçu scellé. On les remplit tout de suite.
-    if (isSelf) {
-      try { Promise.resolve(codexRenderBadges(target)).catch(() => {}); } catch (e) {}
-      try { if (typeof codexSkinsRender === 'function') codexSkinsRender(); } catch (e) {}
-      try { if (typeof featsOpen === 'function') featsOpen(); } catch (e) {}
-    }
     // Publish for the profile panel, which shows the same fraction without
     // having to re-read the chain.
     if (isSelf) { window._codexOwnedCount = ownedCount; window._codexTotalCount = totalCount; }
@@ -14208,6 +15363,36 @@ function storeRenderRecentSales(rows) {
     </div>`).join('');
 }
 
+/// Décor dessiné du chemin : le Vide lui-même. Un dégradé profond, deux
+/// voiles de nébuleuse et une poussière d'étoiles, calculés une fois pour la
+/// largeur du chemin. Net à toutes les tailles, rien à télécharger.
+let _sphArtCache = '';
+function _sphVoidArt(W, H) {
+  if (_sphArtCache && _sphArtCache.startsWith(`<!--${W}x${H}-->`)) return _sphArtCache;
+  let seed = 7;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+  let stars = '';
+  const n = Math.round(W * H / 5200);
+  for (let i = 0; i < n; i++) {
+    const r = (rnd() * 1.3 + 0.25).toFixed(2);
+    stars += `<circle cx="${(rnd() * W).toFixed(0)}" cy="${(rnd() * H).toFixed(0)}" r="${r}" fill="#dfe8ff" opacity="${(rnd() * 0.65 + 0.12).toFixed(2)}"/>`;
+  }
+  let clouds = '';
+  for (let i = 0; i < Math.max(4, Math.round(W / 900)); i++) {
+    const cx = (rnd() * W).toFixed(0), cy = (H * (0.25 + rnd() * 0.5)).toFixed(0);
+    const rx = (H * (0.5 + rnd() * 0.7)).toFixed(0), ry = (H * (0.28 + rnd() * 0.35)).toFixed(0);
+    const col = ['#0e4f6b', '#123a72', '#2a1f63', '#0b5f5a'][i % 4];
+    clouds += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${col}" opacity="${(0.16 + rnd() * 0.14).toFixed(2)}"/>`;
+  }
+  _sphArtCache = `<!--${W}x${H}--><g>
+    <rect width="${W}" height="${H}" fill="#060b1e"/>
+    <rect width="${W}" height="${H}" fill="url(#sph-void-grad)"/>
+    <g filter="url(#sph-blur)">${clouds}</g>
+    ${stars}
+  </g>`;
+  return _sphArtCache;
+}
+
 /// Trois portraits portant un anneau, comme exemple de ce qu'on forge.
 /// Reprend exactement le rendu du Codex (SKIN_FX + avatar au centre), en
 /// mode « lite » : trois anneaux animés suffisent, inutile de charger le GPU.
@@ -14442,13 +15627,12 @@ function storeRelicCard(l, relic, alsoListed) {
     <div class="vb-art" style="padding:0;overflow:hidden;">
       ${img}
       <span class="vb-rar" style="--rc:${color};">${relic.rarity}</span>
-      ${alsoListed > 1 ? `<span title="${alsoListed} listings of this relic — the cheapest is shown" style="position:absolute;top:0.5rem;right:0.5rem;z-index:2;padding:0.18rem 0.55rem;border-radius:999px;background:rgba(5,10,32,0.85);border:1px solid rgba(255,193,64,0.6);color:#ffc140;font-family:'Cinzel',serif;font-size:0.72rem;font-weight:600;letter-spacing:0.04em;box-shadow:0 0 10px rgba(255,193,64,0.25);">×${alsoListed}</span>` : ''}
     </div>
     <div class="vb-body">
       <div class="vb-name">${relic.name}</div>
       ${relic.external ? `<div style="font-size:0.58rem;letter-spacing:0.08em;text-transform:uppercase;font-family:'Cinzel',serif;color:#ffc140;margin:0.1rem 0 0.2rem;" title="Unverified collection — ${l.nftContract}">${relic.collection || 'External'} · unverified</div>` : ''}
       <div class="vb-desc" style="min-height:0;">${sellerBlock}</div>
-      ${alsoListed > 1 ? `<div style="font-size:0.66rem;color:rgba(255,193,64,0.75);margin-top:0.15rem;">${alsoListed} for sale · from ${priceStr} zkLTC</div>` : ''}
+      ${alsoListed > 1 ? `<div style="font-size:0.62rem;color:rgba(255,255,255,0.35);margin-top:0.15rem;">${alsoListed} listings · from ${priceStr} zkLTC</div>` : ''}
       <div class="vb-foot">
         <div class="vb-price"><span class="vb-zk">${priceStr}</span><span class="vb-usd">zkLTC</span></div>
         ${cta}
@@ -16059,10 +17243,7 @@ function SKIN_FX(id, size, lite) {
       + (lite ? '' : '<span class="fgl" style="inset:-2px;background:conic-gradient(transparent,rgba(60,20,110,0.5) 50%,transparent);animation:fgspinr 6s linear infinite;filter:blur(3px);"></span>')
       + '<span class="fgp" style="top:0;left:30%;width:3px;height:3px;background:#c9a2ff;box-shadow:0 0 5px #a86bff;animation:fgfall 2.2s ease-in infinite;"></span>'
       + '<span class="fgp" style="top:0;left:55%;width:3px;height:3px;background:#fff;box-shadow:0 0 4px #c9a2ff;animation:fgfall 1.7s ease-in 0.8s infinite;"></span>';
-    // Un identifiant inconnu (skin retiré du catalogue, valeur ancienne)
-    // renvoyait une chaîne vide : l'anneau disparaissait complètement et
-    // l'avatar s'affichait « cassé ». On retombe sur l'anneau par défaut.
-    default: return '<span class="fgl" style="background:conic-gradient(rgba(0,229,204,0.55) 0 100%);opacity:0.75;"></span>';
+    default: return '';
   }
 }
 
@@ -16116,7 +17297,6 @@ async function mySkinLoad() {
     _myOwned = Array.isArray(d.owned) ? d.owned : [];
     skinApplyMine();
     skinGrantRelics();
-    try { if (typeof codexSkinsRender === 'function' && document.getElementById('cx-n-skins')) codexSkinsRender(); } catch (e) {}
   } catch(e) { console.warn('skin load failed:', e); }
 }
 async function skinEquip(id) {
@@ -17970,21 +19150,6 @@ body.sv-rail-on #hero{
   box-shadow:0 24px 60px rgba(0,0,0,0.5), 0 0 30px rgba(255,106,61,0.06) !important;
 }
 .burn-card .b-badge{ color:#ffb08d !important }
-/* Page du Rituel : le feu est la couleur de la page. Les accents turquoise,
-   verts et bleus hérités (zkLTC, rang, NFT Claimed, liens) passent à la
-   teinte braise, pour une page cohérente. */
-#ritual{ --ember:#ffae7a; --ember-soft:rgba(255,174,122,0.35); }
-#ritual .live-status,
-#ritual .vt-unit,
-#ritual .burn-inp-unit,
-#ritual #xp-rank-label,
-#ritual #rcc-nft,
-#ritual .bpreset.on,
-#ritual .bpreset.on .bpr-hint{ color:var(--ember) !important; }
-#ritual .bpreset.on{ border-color:var(--ember-soft) !important; background:rgba(255,174,122,0.08) !important; }
-#ritual .xp-fill{ background:linear-gradient(90deg,#ff7a45,#ffc08a) !important; box-shadow:0 0 10px rgba(255,140,80,0.45) !important; }
-#ritual #nft-claim-btn{ color:var(--ember) !important; border-color:var(--ember-soft) !important; background:rgba(255,140,80,0.10) !important; }
-#ritual .ritual-rank-col [onclick*="svRailGo('arena')"]{ color:var(--ember) !important; border-color:var(--ember-soft) !important; }
 
 /* ═══ Site background — "Depth" ═══
    Was a near-flat radial from #071033 to #03061a: dark enough that panels and
@@ -18276,12 +19441,10 @@ body.sv-rail-on section#chronicles-page > div[aria-hidden]{ display:none !import
 .rit-badge.r2{ --rc:#5a9fff }
 .rit-badge.r3{ --rc:#9d7fee }
 .rit-badge.r4{ --rc:#e8c26a }
-/* La lueur passe par drop-shadow, qui épouse la forme dessinée (le losange),
-   et non par box-shadow, qui dessinait un carré autour sur certains rendus. */
-.rit-badge.r4{ filter:drop-shadow(0 0 4px rgba(232,194,106,0.55)) }
+.rit-badge.r4::before{ box-shadow:0 0 8px rgba(232,194,106,0.55), 0 0 16px rgba(232,194,106,0.25) }
 @media (prefers-reduced-motion:no-preference){
-  .rit-badge.r4{ animation:ritGlow 2.8s ease-in-out infinite }
-  @keyframes ritGlow{ 50%{ filter:drop-shadow(0 0 7px rgba(232,194,106,0.85)) } }
+  .rit-badge.r4::before{ animation:ritGlow 2.8s ease-in-out infinite }
+  @keyframes ritGlow{ 50%{ box-shadow:0 0 12px rgba(232,194,106,0.8), 0 0 22px rgba(232,194,106,0.35) } }
 }
 .sv-badge{
   width:54px; height:60px; position:relative; display:inline-flex;
