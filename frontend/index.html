@@ -3567,9 +3567,10 @@ function svIntroParticles() {
     </div>
     <div class="vh-row r-chron" onclick="if(typeof svRailGo==='function')svRailGo('story')">
       <div class="gl">§</div>
-      <div class="name"><h3>The Chronicles</h3><p>Fragments written and read</p></div>
+      <div class="name"><h3>The Chronicles</h3><p>Published fragments · the next ones open with the community's burns</p></div>
       <div class="vals">
-        <div><b id="vh-mod-entries">—</b><span>Fragments</span></div>
+        <div><b id="vh-mod-entries">—</b><span>Published</span></div>
+        <div><b>VII</b><span>Next · mainnet</span></div>
       </div>
     </div>
   </div>
@@ -4303,6 +4304,7 @@ function svIntroParticles() {
           <div class="sph-title" id="sph-title"></div>
           <div class="sph-next" id="sph-next"></div>
           <div class="sph-demo" id="sph-demo" hidden></div>
+          <button type="button" id="sph-start" class="sph-start" onclick="spherierStart()"></button>
         </div>
         <div id="chron-intent" style="max-width:720px;margin:0 auto 2.2rem;padding:1.4rem 1.6rem;border:1px solid rgba(0,229,204,0.22);border-left:3px solid var(--teal);border-radius:6px;background:rgba(0,229,204,0.045);text-align:left;font-family:'Cormorant Garamond',Georgia,serif;font-size:1.16rem;line-height:1.7;color:rgba(255,255,255,0.82);"></div>
       </div>
@@ -4331,7 +4333,7 @@ function svIntroParticles() {
     </div>
 
 
-    <div class="sph-nav">
+    <div class="sph-nav" hidden>
       <button type="button" onclick="spherierNudge(-1)" aria-label="Back">&#8249;</button>
       <button type="button" onclick="spherierFocusFront()" class="sph-nav-front" id="sph-nav-front"></button>
       <button type="button" onclick="spherierNudge(1)" aria-label="Forward">&#8250;</button>
@@ -4406,6 +4408,11 @@ function svIntroParticles() {
     #sph-top .sph-head .sph-title{display:none;}
     #sph-top .sph-head .sph-gauge{height:5px;max-width:320px;margin-top:0.7rem;background:rgba(255,255,255,0.14);border-radius:2px;overflow:hidden;}
     #sph-top .sph-head .sph-gauge i{display:block;height:100%;background:var(--teal);box-shadow:0 0 10px rgba(0,229,204,0.6);}
+    #sph-top .sph-start{margin-top:1rem;display:inline-block;cursor:pointer;
+      font-family:'Cinzel',serif;font-size:0.66rem;letter-spacing:0.16em;text-transform:uppercase;
+      padding:0.78rem 1.6rem;border-radius:4px;color:#04121a;background:var(--teal);border:0;
+      box-shadow:0 0 22px rgba(0,229,204,0.35);}
+    #sph-top .sph-start:hover{box-shadow:0 0 30px rgba(0,229,204,0.55);}
     #sph-top .sph-demo{margin-top:0.9rem;display:flex;gap:0.45rem;flex-wrap:wrap;}
     #sph-top .sph-demo button{font-family:'Cinzel',serif;font-size:0.56rem;letter-spacing:0.1em;text-transform:uppercase;
       padding:0.42rem 0.85rem;border-radius:999px;background:rgba(4,8,23,0.7);border:1px dashed rgba(255,255,255,0.35);
@@ -6778,22 +6785,22 @@ Le Scriptorium est placé sous la garde d'un archiviste, Edric. Certains volumes
 const SPH_I18N = {
   en: { fragment: 'Fragment', place: 'Place', archive: 'Archive', legend: 'Legend', figure: 'Figure', relic: 'Relic',
         sealed: 'Sealed', lit: 'Revealed', front: 'The light is moving toward this seal.', far: 'Light the path that leads here first.',
-        readFull: 'Read', close: 'Close', unlocked: 'unlocked', burned: 'zkLTC toward this unlock', unlocksAt: 'Unlocks at', burners: 'New Sacrifiants', read: 'Read the fragment',
+        readFull: 'Read', close: 'Close', unlocked: 'unlocked', communityTotal: 'burned by everyone', startHere: 'Start at', burned: 'zkLTC toward this unlock', unlocksAt: 'Unlocks at', burners: 'New Sacrifiants', read: 'Read the fragment',
         pending: 'The seal is broken. The fragment is being prepared for publication.',
         byDate: 'Opens on {d} at the latest, even if the seal holds. Offerings only hasten the story.',
         whale: 'The amount is reached, but the seal resists: {n} more Sacrifiant(s) are needed. No single wallet can open it.',
-        next: 'Next unlock: <b>{t}</b>', nextLabel: 'Next unlock', burnedNote: 'burned by the community since the last unlock',
-        mainnetNote: 'The count begins on mainnet, with real burns. Nothing is counted on testnet.', nextMeta: '{b} / {B} zkLTC to the next unlock',
+        next: 'Next unlock: <b>{t}</b>', nextLabel: 'Next unlock', burnedNote: 'total burned by the whole community since the last unlock \u2014 not your own burns',
+        mainnetNote: 'Community total, counted on mainnet only. Nothing is counted on testnet.', nextMeta: '{b} / {B} zkLTC to the next unlock',
         loading: 'Reading the chain\u2026', end: 'Beyond this point, the path is still in darkness.',
         published: 'Published', status: 'State', season: 'Season', stLit: 'Revealed', stFront: 'In progress', stPending: 'Seal broken', stSealed: 'Sealed', stPub: 'Published', deadline: 'Opens at the latest', onPath: 'Along this path', toFront: 'Current seal', prevL: 'Before', nextL: 'After', demoB: '+5 zkLTC (demo)', demoS: '+1 Sacrifiant (demo)', demoR: 'Reset' },
   fr: { fragment: 'Fragment', place: 'Lieu', archive: 'Archive', legend: 'L\u00e9gende', figure: 'Figure', relic: 'Relique',
         sealed: 'Scell\u00e9', lit: 'R\u00e9v\u00e9l\u00e9', front: 'La lumi\u00e8re avance vers ce sceau.', far: '\u00c9clairez d\u2019abord le chemin qui y m\u00e8ne.',
-        readFull: 'Lire', close: 'Fermer', unlocked: 'd\u00e9bloqu\u00e9s', burned: 'zkLTC vers ce d\u00e9blocage', unlocksAt: 'Se d\u00e9bloque \u00e0', burners: 'Nouveaux Sacrifiants', read: 'Lire le fragment',
+        readFull: 'Lire', close: 'Fermer', unlocked: 'd\u00e9bloqu\u00e9s', communityTotal: 'br\u00fbl\u00e9s par tous', startHere: 'Commencer par', burned: 'zkLTC vers ce d\u00e9blocage', unlocksAt: 'Se d\u00e9bloque \u00e0', burners: 'Nouveaux Sacrifiants', read: 'Lire le fragment',
         pending: 'Le sceau est bris\u00e9. Le fragment est en cours de pr\u00e9paration.',
         byDate: 'S\u2019ouvre au plus tard le {d}, m\u00eame si le sceau r\u00e9siste. Les offrandes ne font qu\u2019acc\u00e9l\u00e9rer l\u2019histoire.',
         whale: 'Le montant est atteint, mais le sceau r\u00e9siste : il manque {n} Sacrifiant(s). Un seul portefeuille ne peut pas l\u2019ouvrir.',
-        next: 'Prochain d\u00e9blocage : <b>{t}</b>', nextLabel: 'Prochain d\u00e9blocage', burnedNote: 'br\u00fbl\u00e9s par la communaut\u00e9 depuis le dernier d\u00e9blocage',
-        mainnetNote: 'Le d\u00e9compte commencera au mainnet, avec de vrais burns. Rien n\u2019est compt\u00e9 sur le testnet.', nextMeta: '{b} / {B} zkLTC avant le prochain d\u00e9blocage',
+        next: 'Prochain d\u00e9blocage : <b>{t}</b>', nextLabel: 'Prochain d\u00e9blocage', burnedNote: 'total br\u00fbl\u00e9 par toute la communaut\u00e9 depuis le dernier d\u00e9blocage \u2014 pas vos propres burns',
+        mainnetNote: 'Total de la communaut\u00e9, compt\u00e9 au mainnet uniquement. Rien n\u2019est compt\u00e9 sur le testnet.', nextMeta: '{b} / {B} zkLTC avant le prochain d\u00e9blocage',
         loading: 'Lecture de la cha\u00eene\u2026', end: 'Au-del\u00e0, le chemin est encore dans l\u2019ombre.',
         published: 'Publi\u00e9', status: '\u00c9tat', season: 'Saison', stLit: 'R\u00e9v\u00e9l\u00e9', stFront: 'En cours', stPending: 'Sceau bris\u00e9', stSealed: 'Scell\u00e9', stPub: 'Publi\u00e9', deadline: 'Ouverture au plus tard', onPath: 'Sur ce chemin', toFront: 'Sceau en cours', prevL: 'Avant', nextL: 'Apr\u00e8s', demoB: '+5 zkLTC (d\u00e9mo)', demoS: '+1 Sacrifiant (d\u00e9mo)', demoR: 'R\u00e9initialiser' }
 };
@@ -7115,6 +7122,7 @@ function spherierRender() {
   // Un seul compteur pour tout le Chemin (voir _sphNextHTML) : la carte et
   // le Sommaire affichent exactement le même.
   document.getElementById('sph-next').innerHTML = _sphNextHTML(nodes, since, 'sph-gauge');
+  _sphStartLabel(nodes);
 
   const demoEl = document.getElementById('sph-demo');
   if (_sph.demo) {
@@ -7221,6 +7229,21 @@ function _sphPanel() {
   P.scrollTop = 0;
 }
 
+/// Un seul bouton d'entrée : on ouvre le premier fragment publié. Sur X,
+/// personne ne doit se demander par où commencer.
+function spherierStart() {
+  const first = (_sph.layout || []).find(n => n.type === 'fragment' && n.state === 'lit' && _sphPublished(n.slug));
+  if (first && typeof chroniclesReadBySlug === 'function') chroniclesReadBySlug(first.slug);
+}
+function _sphStartLabel(nodes) {
+  const first = nodes.find(n => n.type === 'fragment' && n.state === 'lit' && _sphPublished(n.slug));
+  const btn = document.getElementById('sph-start');
+  if (!btn) return;
+  if (!first) { btn.hidden = true; return; }
+  btn.hidden = false;
+  btn.textContent = `${_sphT('startHere')} ${_sphF(first, 'title')} \u2192`;
+}
+
 /// Le compteur du prochain déblocage, identique sur la carte et dans le
 /// Sommaire (il n'y a qu'un seul chemin, donc un seul compteur).
 function _sphNextHTML(nodes, since, gaugeClass) {
@@ -7233,7 +7256,7 @@ function _sphNextHTML(nodes, since, gaugeClass) {
   // brûlés, et combien il en reste avant le prochain élément.
   return `<div class="sph-n-lab">${_sphEsc(_sphT('nextLabel'))}</div>
     <div class="sph-n-name">${_sphEsc(t)}</div>
-    <div class="sph-n-big"><b>${since ? _sphFmt(inStep) : '—'}</b><span> / ${_sphFmt(span)} zkLTC</span></div>
+    <div class="sph-n-big"><b>${since ? _sphFmt(inStep) : '—'}</b><span> / ${_sphFmt(span)} zkLTC ${_sphEsc(_sphT('communityTotal'))}</span></div>
     <div class="${gaugeClass}"><i style="width:${Math.round(inStep / span * 100)}%"></i></div>
     <div class="sph-n-note${(!SPHERIER_SEASON.live && !_sph.demo) ? ' waiting' : ''}">${_sphEsc(
       (!SPHERIER_SEASON.live && !_sph.demo) ? _sphT('mainnetNote') : (since ? _sphT('burnedNote') : _sphT('loading'))
@@ -7280,6 +7303,7 @@ function spherierIndexRender() {
   const since = _sphSince();
   const nEl = document.getElementById('sph-next');
   if (nEl) nEl.innerHTML = _sphNextHTML(nodes, since, 'sph-gauge');
+  _sphStartLabel(nodes);
   const tEl = document.getElementById('sph-title');
   if (tEl) tEl.textContent = _sphF(SPHERIER_SEASON, 'title');
 
