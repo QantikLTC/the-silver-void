@@ -4018,14 +4018,33 @@ function svIntroParticles() {
 
 
 <!-- DUEL CHAMBER -->
-<section id="duel" data-rail="arena" style="padding:5rem 0 3rem;position:relative;overflow:hidden;">
+<section id="duel" data-rail="arena" style="padding:0 0 3rem;position:relative;overflow:hidden;">
+  <!-- Bandeau d'en-tête, même principe que la Cité Basse : image pleine
+       largeur, voile à gauche, titre en haut à gauche. -->
+  <div id="arena-hero">
+    <div class="ah-bg" style="background-image:url('https://arweave.net/GCf13cwQE2VZuGB51U4XWReiME8p0TDMedWEJ1ewzKo');"></div>
+    <div class="ah-img" style="background-image:url('https://arweave.net/GCf13cwQE2VZuGB51U4XWReiME8p0TDMedWEJ1ewzKo');"></div>
+    <div class="ah-veil"></div>
+    <div class="ah-in">
+      <div class="ah-title">The Arena</div>
+      <div class="ah-sub">Rock · Paper · Scissors</div>
+      <p class="ah-lede">Stake your zkLTC. Seal your move. The chain decides, and a fifth of every pot is burned forever.</p>
+      <div class="ah-stats">
+        <div><b id="arena-hero-duels">—</b>duels played</div>
+        <div><b id="arena-hero-duelists">—</b>duelists</div>
+        <div><b id="arena-hero-open">—</b>open duels</div>
+        <div><b>75 / 20 / 5</b>winner · burned · creator</div>
+      </div>
+    </div>
+  </div>
   <!-- Fond illustré : image entière cadrée à droite (visage visible), fondu latéral comme les cartes du hub -->
   <div aria-hidden="true" style="position:absolute;inset:0;background-image:url('https://arweave.net/frcKpgHNTArGTEEHeXIjCDrVWAWyvXpSdJTuSETIcZo');background-size:contain;background-position:right center;background-repeat:no-repeat;opacity:0.34;pointer-events:none;z-index:0;-webkit-mask-image:linear-gradient(to right, transparent 22%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,1) 80%),linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 18%, rgba(0,0,0,1) 82%, transparent 100%);-webkit-mask-composite:source-in;mask-image:linear-gradient(to right, transparent 22%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,1) 80%),linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 18%, rgba(0,0,0,1) 82%, transparent 100%);mask-composite:intersect;"></div>
   <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;z-index:0;background:linear-gradient(to right, rgba(3,6,26,0.72) 0%, rgba(4,8,30,0.62) 40%, rgba(6,10,35,0.40) 70%, rgba(8,13,40,0.18) 100%);-webkit-mask-image:linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,1) 88%, transparent 100%);mask-image:linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,1) 88%, transparent 100%);"></div>
 
   <div style="position:relative;z-index:1;max-width:920px;margin:0 auto;padding:0 1.5rem;">
 
-    <div style="text-align:center;margin-bottom:3rem;">
+    <!-- Le titre vit désormais dans le bandeau, en haut de la section. -->
+    <div style="text-align:center;margin-bottom:3rem;display:none;">
       <div class="eyebrow" style="justify-content:center;">⚔ The Duel Chamber</div>
       <h2 class="section-h2" style="font-family:'Cinzel',serif;text-align:center;">Rock · Paper · Scissors</h2>
       <p style="font-family:'Cormorant Garamond',serif;font-size:1rem;font-style:italic;color:rgba(255,255,255,0.4);margin-top:0.4rem;">Stake 0.1 zkLTC. Choose your weapon. The chain decides.</p>
@@ -4274,9 +4293,7 @@ function svIntroParticles() {
      THE CHRONICLES — blog (hidden page, opens like the store)
      ═══════════════════════════════════════════════════════════════ -->
 <section id="chronicles-page" data-rail="story" style="display:none;position:relative;overflow:hidden;padding:7rem 1.5rem 5rem;">
-  <!-- Fond illustré : image à droite, fondu latéral + vertical -->
-  <div aria-hidden="true" style="position:absolute;inset:0;background-image:url('https://arweave.net/FFoxnpQMAPTGHXuO9jM2KFkrUkJhe-Dg35eix2eV5DI');background-size:cover;background-position:right center;background-repeat:no-repeat;opacity:0.30;pointer-events:none;z-index:0;-webkit-mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%),linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 15%, rgba(0,0,0,1) 85%, transparent 100%);-webkit-mask-composite:source-in;mask-image:linear-gradient(to right, transparent 30%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,1) 100%),linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 15%, rgba(0,0,0,1) 85%, transparent 100%);mask-composite:intersect;"></div>
-  <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;z-index:0;background:linear-gradient(to right, rgba(3,6,26,0.72) 0%, rgba(4,8,30,0.62) 40%, rgba(6,10,35,0.40) 70%, rgba(8,13,40,0.18) 100%);-webkit-mask-image:linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,1) 88%, transparent 100%);mask-image:linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 12%, rgba(0,0,0,1) 88%, transparent 100%);"></div>
+  <!-- Bandeau illustré retiré : le Chemin apporte sa propre mise en scène. -->
 
   <!-- ═══════════════════════════════════════════════════════════════
        LE SPHÉRIER — plein écran, aperçu à droite au clic.
@@ -4363,7 +4380,7 @@ function svIntroParticles() {
     #sph-top .st-img{position:absolute;inset:0;background-size:cover;background-position:center 40%;}
     #sph-top .st-veil{position:absolute;inset:0;background:
       linear-gradient(180deg,rgba(5,10,32,0.25) 0%,rgba(5,10,32,0.15) 50%,#040817 100%),
-      linear-gradient(90deg,rgba(5,10,32,0.94) 0%,rgba(5,10,32,0.8) 30%,rgba(5,10,32,0.3) 58%,rgba(5,10,32,0) 80%);}
+      linear-gradient(90deg,rgba(5,10,32,0.97) 0%,rgba(5,10,32,0.88) 32%,rgba(5,10,32,0.42) 60%,rgba(5,10,32,0) 82%);}
     #sph-top .sph-hero-row{display:flex;gap:2rem;align-items:flex-start;flex-wrap:wrap;}
     #sph-top .sph-hero-row > .sph-head{flex:0 0 auto;}
     #sph-top #chron-intent{flex:1 1 300px;max-width:440px !important;margin:1.6rem 0 0 !important;padding:0.9rem 1.1rem !important;
@@ -12280,6 +12297,11 @@ async function duelLoadStats() {
     s('vh-duels', (td + tt).toLocaleString('en-US'));
     s('duel-stat-ties',   tt.toString());
     s('duel-stat-burned', parseFloat(ethers.formatEther(tb)).toFixed(3));
+    // Mêmes chiffres dans le bandeau d'en-tête.
+    s('arena-hero-duels', Number(td + tt).toLocaleString('en-US'));
+    s('arena-hero-open', (document.getElementById('duel-stat-open') || {}).textContent || '—');
+    const _dl = document.getElementById('vh-row-duelists') || document.getElementById('vh-duelists');
+    s('arena-hero-duelists', _dl ? _dl.textContent : '—');
 
     // Le Hub affichait « Played » à partir du scan du classement, rafraîchi
     // seulement toutes les 10 minutes : la carte de l'Arène semblait figée
@@ -13068,8 +13090,39 @@ async function featsOpen() {
     width:min(1040px,96vw); max-height:92vh; overflow-y:auto; position:relative;
     background:linear-gradient(160deg,#0a0a1a 0%,#0d0d22 100%);
     border:1px solid rgba(120,140,200,0.18); border-radius:10px; padding:1.6rem 1.3rem 2rem;
+    overflow-x:hidden;   /* le bandeau va d'un bord à l'autre */
   }
   #codex-modal{--common:#8ab0c8;--rare:#00e5cc;--epic:#b075ff;--legendary:#ffd27a;}
+
+  /* ── Bandeau du Codex ── */
+  /* Bord à bord, comme les bandeaux de l'Arène, du Store et des Chroniques :
+     il annule le rembourrage du panneau et colle au haut. */
+  #codex-hero{position:relative;overflow:hidden;min-height:clamp(200px,32vh,340px);display:flex;align-items:flex-start;
+    background:#07071a;border-radius:0;margin:-1.6rem -1.3rem 1.6rem;}
+  /* En page (mode intégré), le bandeau sort de la colonne pour aller d'un
+     bord à l'autre, comme ceux de l'Arène, du Store et des Chroniques. */
+  /* En page, le bandeau sort de la colonne : sa largeur exacte est calculée
+     par codexHeroFit(), car la zone de contenu dépend du rail. */
+  #codex-modal.cx-inline #codex-hero{margin:0 0 1.8rem;}
+  body.sv-rail-on #codex-section[data-rail]{padding-top:0 !important;}
+  #codex-hero .ch-bg{position:absolute;inset:-30px;background-size:cover;background-position:center 70%;
+    filter:blur(26px) brightness(0.45);transform:scale(1.08);}
+  #codex-hero .ch-img{position:absolute;top:0;bottom:0;left:50%;width:100%;max-width:1700px;transform:translateX(-50%);
+    background-size:cover;background-position:center 70%;   /* cadré sur le livre */
+    -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 12%,#000 88%,transparent 100%);
+            mask-image:linear-gradient(90deg,transparent 0,#000 12%,#000 88%,transparent 100%);}
+  @media(max-width:1900px){ #codex-hero .ch-img{-webkit-mask-image:none;mask-image:none;} }
+  #codex-hero .ch-veil{position:absolute;inset:0;background:
+    linear-gradient(180deg,rgba(7,7,26,0.3) 0%,rgba(7,7,26,0.25) 45%,#0a0a1a 100%),
+    linear-gradient(90deg,rgba(7,7,26,0.97) 0%,rgba(7,7,26,0.87) 34%,rgba(7,7,26,0.42) 62%,rgba(7,7,26,0) 84%);}
+  #codex-hero .ch-in{position:relative;max-width:620px;padding:clamp(1.6rem,4vh,2.6rem) clamp(1.4rem,4vw,3rem) 2rem;}
+  #codex-hero .ch-title{font-family:'Cinzel',serif;font-weight:600;font-size:clamp(1.5rem,4vw,2.4rem);letter-spacing:0.08em;
+    color:#fff;text-shadow:0 2px 18px rgba(0,0,0,0.9);}
+  #codex-hero .ch-sub{font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.3em;text-transform:uppercase;
+    color:var(--rare);margin-top:0.45rem;}
+  #codex-hero .ch-lede{margin:0.9rem 0 0;max-width:52ch;font-family:'Cormorant Garamond',Georgia,serif;font-size:1.08rem;
+    line-height:1.5;color:rgba(255,255,255,0.78);text-shadow:0 1px 10px rgba(0,0,0,0.9);}
+  @media(max-width:700px){ #codex-hero{min-height:150px;} #codex-hero .ch-lede{display:none;} }
   #codex-modal .cx-card{
     border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:0 0 0.85rem;
     text-align:center; background:rgba(255,255,255,0.02); transition:all 0.25s;
@@ -13338,6 +13391,17 @@ async function featsOpen() {
 <div id="codex-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,1,12,0.9);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1.2rem;" onclick="if(event.target===this&&!this.classList.contains('cx-inline'))this.style.display='none'">
   <div class="cx-panel">
     <button id="cx-close" onclick="document.getElementById('codex-modal').style.display='none'" style="position:absolute;top:1rem;right:1rem;width:28px;height:28px;border-radius:50%;background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;z-index:5;">&times;</button>
+    <!-- Bandeau d'en-tête, même principe que l'Arène et la Cité Basse. -->
+    <div id="codex-hero">
+      <div class="ch-bg" style="background-image:url('https://arweave.net/1FyAsnH-5O7qjU87rJInAUGz4i5leihwMpSeNNS81K4');"></div>
+      <div class="ch-img" style="background-image:url('https://arweave.net/1FyAsnH-5O7qjU87rJInAUGz4i5leihwMpSeNNS81K4');"></div>
+      <div class="ch-veil"></div>
+      <div class="ch-in">
+        <div class="ch-title">The Codex</div>
+        <div class="ch-sub">What the chain remembers of you</div>
+        <p class="ch-lede">Your rank, your relics, your ring skins and your deeds — gathered in one place, read straight from the chain.</p>
+      </div>
+    </div>
     <div id="codex-header"></div>
     <div class="cx-armory">
       <aside class="cx-side">
@@ -14259,6 +14323,9 @@ async function codexOpen(addr){
     document.body.appendChild(modal);
   }
   modal.style.display = modal.classList.contains('cx-inline') ? 'block' : 'flex';
+  // Le bandeau doit aller d'un bord à l'autre dès l'affichage, y compris pour
+  // un visiteur non connecté (aperçu scellé), qui ne passe pas par l'en-tête.
+  requestAnimationFrame(() => { try { codexHeroFit(); } catch (e) {} });
   codexTab('relics');
   // Inspecting someone else: Forge and Feats are personal, so hide those tabs.
   //
@@ -14518,6 +14585,7 @@ async function codexOpen(addr){
     `;
     const hdrEl = document.getElementById('codex-header');
     if (hdrEl) hdrEl.innerHTML = headerHTML;
+    try { codexHeroFit(); } catch (e) {}
     codexSetBar('relics', ownedCount, totalCount);
     // Sidebar counters — the incomplete fractions are the whole point.
     const setN = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
@@ -14660,7 +14728,7 @@ async function sagaMint(sagaId) {
         <!-- Deux voiles : l'un vertical pour fondre le bas dans la page,
              l'autre horizontal pour asseoir le titre sur la gauche. -->
         <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,10,32,0.30) 0%,rgba(5,10,32,0.20) 45%,rgba(5,10,32,0.97) 100%);"></div>
-        <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,10,32,0.92) 0%,rgba(5,10,32,0.75) 28%,rgba(5,10,32,0.25) 55%,rgba(5,10,32,0) 78%);"></div>
+        <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,10,32,0.96) 0%,rgba(5,10,32,0.85) 30%,rgba(5,10,32,0.38) 58%,rgba(5,10,32,0) 80%);"></div>
         <!-- Le titre s'aligne sur le bord gauche du bandeau, pas sur la
              colonne centrale : c'est le nom du lieu, posé sur l'image. -->
         <div class="sh-in" style="position:relative;width:100%;max-width:880px;margin:0;padding:clamp(1.6rem,4vh,2.6rem) clamp(1.4rem,4vw,4rem) 2rem;">
@@ -15428,6 +15496,33 @@ function _sphVoidArt(W, H) {
     ${stars}
   </g>`;
   return _sphArtCache;
+}
+
+/// Le bandeau du Codex va d'un bord à l'autre de la zone de contenu, comme
+/// ceux de l'Arène, du Store et des Chroniques. La largeur utile dépend du
+/// rail, donc on la mesure plutôt que de la deviner en CSS.
+function codexHeroFit() {
+  const hero = document.getElementById('codex-hero');
+  const modal = document.getElementById('codex-modal');
+  if (!hero || !modal) return;
+  if (!modal.classList.contains('cx-inline')) { hero.style.marginLeft = ''; hero.style.width = ''; return; }
+  // La zone de contenu va du bord du rail au bord droit de la fenêtre. La
+  // section elle-même est limitée en largeur (1240 px sous le rail) : on ne
+  // la prend donc pas comme référence, sinon le bandeau s'arrête en route.
+  const rail = document.getElementById('sv-rail');
+  const railVisible = rail && getComputedStyle(rail).display !== 'none' && document.body.classList.contains('sv-rail-on');
+  const left = railVisible ? rail.getBoundingClientRect().right : 0;
+  const right = document.documentElement.clientWidth;
+  const p = hero.parentElement.getBoundingClientRect();
+  hero.style.marginLeft = (left - p.left) + 'px';
+  hero.style.width = Math.max(0, right - left) + 'px';
+}
+window.addEventListener('resize', () => { try { codexHeroFit(); } catch (e) {} });
+if (typeof ResizeObserver === 'function') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const host = document.getElementById('codex-section');
+    if (host) new ResizeObserver(() => { try { codexHeroFit(); } catch (e) {} }).observe(host);
+  });
 }
 
 /// Trois portraits portant un anneau, comme exemple de ce qu'on forge.
@@ -18537,6 +18632,7 @@ function svRailGo(key, push) {
       if (m.parentElement !== host) host.appendChild(m);
       m.style.display = 'block';
       if (typeof codexOpen === 'function') codexOpen();   // no address = your own
+      requestAnimationFrame(() => { try { codexHeroFit(); } catch (e) {} });
     }
   }
   if (key === 'store'   && typeof storeOpen === 'function')                 { try { storeOpen(); } catch(e) {} }
@@ -19196,6 +19292,32 @@ body.sv-rail-on #hero{
    verts et bleus hérités (zkLTC, rang, NFT Claimed, liens) passent à la
    teinte braise, pour une page cohérente. */
 #ritual{ --ember:#ffae7a; --ember-soft:rgba(255,174,122,0.35); }
+
+/* ── Bandeau de l'Arène ── */
+#arena-hero{position:relative;z-index:1;overflow:hidden;min-height:clamp(240px,40vh,420px);
+  display:flex;align-items:flex-start;background:#050a20;margin-bottom:2.4rem;}
+#arena-hero .ah-bg{position:absolute;inset:-30px;background-size:cover;background-position:center 30%;
+  filter:blur(28px) brightness(0.45) saturate(1.05);transform:scale(1.08);}
+#arena-hero .ah-img{position:absolute;top:0;bottom:0;left:50%;width:100%;max-width:1700px;transform:translateX(-50%);
+  background-size:cover;background-position:center 28%;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 12%,#000 88%,transparent 100%);
+          mask-image:linear-gradient(90deg,transparent 0,#000 12%,#000 88%,transparent 100%);}
+@media(max-width:1700px){ #arena-hero .ah-img{-webkit-mask-image:none;mask-image:none;} }
+#arena-hero .ah-veil{position:absolute;inset:0;background:
+  linear-gradient(180deg,rgba(5,10,32,0.35) 0%,rgba(5,10,32,0.25) 45%,#050a20 100%),
+  linear-gradient(90deg,rgba(5,10,32,0.97) 0%,rgba(5,10,32,0.87) 32%,rgba(5,10,32,0.42) 60%,rgba(5,10,32,0) 82%);}
+#arena-hero .ah-in{position:relative;max-width:640px;padding:clamp(1.6rem,4vh,2.6rem) clamp(1.4rem,4vw,4rem) 2rem;}
+#arena-hero .ah-title{font-family:'Cinzel',serif;font-weight:600;font-size:clamp(1.5rem,4vw,2.4rem);letter-spacing:0.08em;
+  color:#fff;text-shadow:0 2px 20px rgba(0,0,0,0.9);}
+#arena-hero .ah-sub{font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--teal);margin-top:0.5rem;}
+#arena-hero .ah-lede{margin:0.9rem 0 0;max-width:52ch;font-family:'Cormorant Garamond',Georgia,serif;font-size:1.08rem;
+  line-height:1.5;color:rgba(255,255,255,0.8);text-shadow:0 1px 10px rgba(0,0,0,0.9);}
+#arena-hero .ah-stats{display:flex;flex-wrap:wrap;gap:1.4rem;margin-top:1.2rem;
+  font-family:'Cinzel',serif;font-size:0.52rem;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.5);}
+#arena-hero .ah-stats b{display:block;font-size:1.2rem;letter-spacing:0.02em;color:#fff;margin-bottom:0.1rem;}
+body.sv-rail-on #duel.sv-active, body.sv-rail-on section#duel[data-rail]{max-width:none !important;padding:0 0 3rem !important;}
+body.sv-rail-on #duel > div[style*="max-width:920px"]{padding:0 1.6rem !important;}
+@media(max-width:700px){ #arena-hero{min-height:clamp(190px,32vh,300px);} }
 #ritual .live-status,
 #ritual .vt-unit,
 #ritual .burn-inp-unit,
