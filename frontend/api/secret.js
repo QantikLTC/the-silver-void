@@ -6,7 +6,8 @@
 //   KV_REST_API_URL
 //   KV_REST_API_TOKEN
 //
-// Key scheme: "duelsecret:<walletAddress>:<duelId>"
+// Key scheme: "duelsecret2:<walletAddress>:<duelId>"  (Arène v2 : ses numéros de duel
+//   repartent de 1, un préfixe distinct évite toute collision avec l'ancienne Arène)
 //   - walletAddress is lowercased before use.
 //   - Each key auto-expires after 7 days.
 //
@@ -31,7 +32,7 @@
 const TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
 function buildKey(wallet, duelId) {
-  return `duelsecret:${String(wallet).toLowerCase()}:${String(duelId)}`;
+  return `duelsecret2:${String(wallet).toLowerCase()}:${String(duelId)}`;
 }
 
 async function redisCmd(cmd) {
