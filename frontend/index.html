@@ -4033,7 +4033,7 @@ function svIntroParticles() {
         <div><b id="arena-hero-duels">—</b>duels played</div>
         <div><b id="arena-hero-duelists">—</b>duelists</div>
         <div><b id="arena-hero-open">—</b>open duels</div>
-        <div><b>75 / 20 / 5</b>winner · burned · creator</div>
+        <div><b>80 / 16 / 4</b>winner · burned · creator</div>
       </div>
     </div>
   </div>
@@ -4167,10 +4167,16 @@ function svIntroParticles() {
 
         <div style="font-size:0.6rem;letter-spacing:0.15em;color:rgba(255,255,255,0.3);font-family:'Cinzel',serif;text-transform:uppercase;margin:0.8rem 0 0.5rem;">⚡ &nbsp; Choose Stake</div>
         <div class="burn-presets-row" style="margin-bottom:0.8rem;">
-          <button id="duel-stake-01" data-duel-stake="0.1" class="bpreset on">0.1<span class="bpr-hint">zkLTC</span></button>
-          <button id="duel-stake-05" data-duel-stake="0.5" class="bpreset">0.5<span class="bpr-hint">zkLTC</span></button>
-          <button id="duel-stake-1"  data-duel-stake="1"   class="bpreset">1<span class="bpr-hint">zkLTC</span></button>
-          <button id="duel-stake-5"  data-duel-stake="5"   class="bpreset">5<span class="bpr-hint">zkLTC</span></button>
+          <button id="duel-stake-001" data-duel-stake="0.01" class="bpreset">0.01<span class="bpr-hint">zkLTC</span></button>
+          <button id="duel-stake-01"  data-duel-stake="0.1"  class="bpreset on">0.1<span class="bpr-hint">zkLTC</span></button>
+          <button id="duel-stake-05"  data-duel-stake="0.5"  class="bpreset">0.5<span class="bpr-hint">zkLTC</span></button>
+          <button id="duel-stake-1"   data-duel-stake="1"    class="bpreset">1<span class="bpr-hint">zkLTC</span></button>
+        </div>
+        <!-- Montant libre, entre la mise minimale et le plafond de ton rang. -->
+        <div style="display:flex;gap:0.5rem;align-items:center;margin:-0.3rem 0 0.8rem;">
+          <input id="duel-stake-custom" inputmode="decimal" placeholder="Custom stake" aria-label="Custom stake in zkLTC"
+            style="flex:1;min-width:0;padding:0.5rem 0.7rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:4px;color:#fff;font-family:'Cinzel',serif;font-size:0.8rem;">
+          <span id="duel-stake-limit" style="font-size:0.7rem;color:rgba(255,255,255,0.45);white-space:nowrap;"></span>
         </div>
         <div style="background:rgba(0,229,204,0.06);border:1px solid rgba(0,229,204,0.2);border-radius:3px;padding:1rem;margin-bottom:0.8rem;">
           <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.3rem;">
@@ -7944,66 +7950,55 @@ function disconnectWallet(){
 // ═══ LOAD CHAIN DATA ═══
 async function loadChainData(){
   try{
-    // Les trois contrats sont indépendants : on lit en parallèle.
-    const [_main, _duelBurned, _storeStats] = await Promise.all([
+    // Contrats v2 : l'Arène, le Store, la forge et les skins brûlent VIA le
+    // Rituel (burnFor). Le total du Rituel est donc déjà le total du projet :
+    // l'additionner aux compteurs des autres contrats compterait chaque burn
+    // deux fois. Ces compteurs servent seulement à la répartition.
+    const _rp = window.svReadProvider || readContract.runner;
+    const _rd = (addr, abi) => new ethers.Contract(addr, abi, _rp);
+    const _safe = (p) => p.then(v => BigInt(v)).catch(() => 0n);
+    const [_main, _arenaB, _storeS, _forgeB, _skinB] = await Promise.all([
       readContract.getStats(),
-      // Sum every duel contract the arena has run on: totalBurned is an
-      // internal counter that resets to zero on each redeploy, so reading the
-      // live one alone reported ~1 zkLTC against 800+ duels played.
-      (async () => {
-        if (typeof duelReadContract === 'undefined' || !duelReadContract) return null;
-        const srcs = [duelReadContract,
-          ...(typeof duelLegacyContracts === 'function' ? duelLegacyContracts() : [])];
-        let sum = 0n;
-        for (const c of srcs) {
-          try { sum += BigInt(await c.totalBurned()); } catch(e) {}
-        }
-        return sum;
-      })(),
-      (typeof storeReadContract !== 'undefined' && storeReadContract)
-        ? storeReadContract.getStats().catch(()=>null) : Promise.resolve(null)
+      _safe(_rd(SV_CONTRACTS.arena,  ['function totalBurned() view returns (uint256)']).totalBurned()),
+      _rd(SV_CONTRACTS.store,  ['function getStats() view returns (uint256,uint256,uint256,uint256)']).getStats().catch(() => null),
+      _safe(_rd(SV_CONTRACTS.relics, ['function totalBurnedWei() view returns (uint256)']).totalBurnedWei()),
+      _safe(_rd(SV_CONTRACTS.skins,  ['function totalBurned() view returns (uint256)']).totalBurned()),
     ]);
     const [totalBurned,totalBurners,totalBurns] = _main;
-
-    // On additionne les compteurs INTERNES des trois contrats du projet
-    // (rituel + duels + store). On ne lit PAS le solde de l'adresse dead :
-    // c'est une adresse publique universelle, où n'importe qui sur la chaîne
-    // peut envoyer des fonds sans rapport avec The Silver Void — ce qui
-    // gonflerait artificiellement le total affiché.
-    let combinedBurned = totalBurned;   // 1) le rituel
-
-    // 2) les duels  3) le store  (déjà lus en parallèle ci-dessus)
-    if (_duelBurned != null) combinedBurned += _duelBurned;
-    if (_storeStats && _storeStats._totalBurned) combinedBurned += _storeStats._totalBurned;
+    const combinedBurned = totalBurned;   // le Rituel compte tout, une seule fois
 
     const fmt=parseFloat(ethers.formatEther(combinedBurned)).toLocaleString('en',{maximumFractionDigits:3});
     ['hero-total','hero-total-pc','void-n'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=fmt;});
     if (typeof svSpherierUpdate === 'function') { try { svSpherierUpdate(combinedBurned, totalBurners); } catch (e) {} }
 
-    // ── Ledger dashboard: split the total by where it was burned ──────────
-    // The three contracts each report their own burns, so the breakdown is
-    // free — no extra call. A single opaque total teaches a returning visitor
-    // nothing; seeing that duels now outpace rituals does.
     try {
       const vhSet = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
       const num = (wei) => parseFloat(ethers.formatEther(wei || 0n));
-      const rit = num(totalBurned);
-      const dul = num(_duelBurned || 0n);
-      const sto = num((_storeStats && _storeStats._totalBurned) || 0n);
-      const all = rit + dul + sto;
+      const all = num(totalBurned);
+      const dul = num(_arenaB);
+      const sto = num(_storeS ? _storeS[2] : 0n);
+      const frg = num(_forgeB);
+      const skn = num(_skinB);
+      // Offrandes directes (et skins, qui sont aussi des offrandes au Rituel).
+      // Les très petits burns envoyés directement à l'adresse morte (sous le
+      // minimum du Rituel) ne sont pas dans son total : on borne à zéro.
+      const rit = Math.max(0, all - dul - sto - frg);
       const short = (n) => n >= 1000 ? Math.round(n).toLocaleString('en') : n.toFixed(n < 10 ? 2 : 1);
 
       vhSet('vh-total', fmt);
       vhSet('vh-b-ritual', short(rit));
-      vhSet('vh-row-burned', short(rit));   // same figure, second place on the page
+      vhSet('vh-row-burned', short(all));
       vhSet('vh-b-duel',   short(dul));
       vhSet('vh-b-store',  short(sto));
+      vhSet('vh-b-forge',  frg > 0 ? frg.toFixed(3) : '0');
 
       const pct = (n) => all > 0 ? Math.max(2, Math.round(n / all * 100)) + '%' : '0%';
       const bar = (id, v) => { const e = document.getElementById(id); if (e) e.style.width = pct(v); };
       bar('vh-bar-ritual', rit);
       bar('vh-bar-duel',   dul);
       bar('vh-bar-store',  sto);
+      bar('vh-bar-forge',  frg);
+      void skn;
     } catch(e) { console.warn('ledger breakdown failed:', e); }
     const hb=document.getElementById('hero-burners'); if(hb)hb.textContent=totalBurners.toString();
     const hbpc=document.getElementById('hero-burners-pc'); if(hbpc)hbpc.textContent=totalBurners.toString();
@@ -8046,6 +8041,7 @@ async function loadUserData(){
     // Map burned amount to rank index (0=Simple Holder, 1=Apprentice, 2=Devoted, 3=Silver Maximalist)
     // rankIdx=-1 means no rank yet (< 0.5 zkLTC burned)
     let rankIdx=svRankIdxFor(burnedEth);
+    window._lastBurnedEth = burnedEth;   // pour les messages de plafond de l'Arène
     // thresholds[rankIdx] = current rank floor, thresholds[rankIdx+1] = next rank floor
     // rankIdx 0=Simple Holder(0.5), 1=Apprentice(5), 2=Devoted(20), 3=Silver Max(100)
     const rankFloors=[...SV_RANK_FLOORS,Infinity];
@@ -9146,6 +9142,7 @@ function obToggle(head){
 /// Called on connect and on disconnect, so nothing keeps showing the state of
 /// a session that has ended — or stays empty after one has begun.
 function svRefreshWalletViews(){
+  try { if (typeof duelShowStakeLimit === 'function') duelShowStakeLimit(); } catch(e) {}
   try { if (typeof featsEvaluate === 'function') featsEvaluate(); } catch(e) {}
   try { if (typeof rkRefreshLadders === 'function') rkRefreshLadders(); } catch(e) {}
   try { if (typeof profilePanelRender === 'function') profilePanelRender(); } catch(e) {}
@@ -10397,7 +10394,11 @@ document.addEventListener('DOMContentLoaded', function() {
 // DUEL CHAMBER — Rock Paper Scissors
 // ══════════════════════════════════════
 
-const DUEL_CONTRACT = '0xEA3ac301Fef474c8799924EC58c48f2c4114684B';
+const DUEL_CONTRACT = SV_CONTRACTS.arena;
+/// Répartition d'un duel décidé (Arène v2) : 80 % gagnant, 16 % brûlés, 4 % créateur.
+const DUEL_WIN_SHARE = 0.80, DUEL_BURN_SHARE = 0.16, DUEL_FEE_SHARE = 0.04;
+/// Égalité : chaque joueur récupère 95,5 % de sa mise (3 % brûlés, 1,5 % créateur).
+const DUEL_TIE_KEEP = 0.955, DUEL_TIE_BURN = 0.03;
 
 // Retired duel contracts, kept read-only so history survives redeploys.
 // The leaderboard scan tallies these alongside the live contract, which is
@@ -10416,9 +10417,8 @@ function duelLegacyContracts(){
   return _duelLegacyCache;
 }
 
-const LEGACY_DUEL_CONTRACTS = [
-  '0x25fC7C0cC6B57Af003cd873A37B764F07c4A1187',  // retired 2026-08-23 — REVEAL_DELAY 6h; read-only, keeps history
-];
+// Nouveau monde : l'Arène v2 démarre sans historique, comme au mainnet.
+const LEGACY_DUEL_CONTRACTS = [];
 
 // ── Order badge contract — soulbound proofs of what you've burned ──
 // Rank was only ever computed live by the site from the burn contract:
@@ -10798,28 +10798,45 @@ async function initStoreContract() {
 }
 
 const DUEL_ABI = [
-  'function createDuel(bytes32 commitA) external payable',
+  'function createDuel(bytes32 commitA) external payable returns (uint256)',
   'function joinDuel(uint256 duelId, uint8 choiceB) external payable',
   'function reveal(uint256 duelId, uint8 choiceA, bytes32 secretA) external',
-  'function cancelDuel(uint256 duelId) external',
+  // Annulation en deux temps : la demande, puis le remboursement 10 min plus tard.
+  'function requestCancel(uint256 duelId) external',
+  'function finalizeCancel(uint256 duelId) external',
   'function claimRevealTimeout(uint256 duelId) external',
   'function getOpenDuels() external view returns (uint256[])',
-  'function getDuel(uint256 id) external view returns (tuple(uint256 id, address playerA, address playerB, bytes32 commitA, uint8 choiceA, uint8 choiceB, address winner, uint256 stake, uint256 createdAt, uint256 joinedAt, uint8 status))',
+  'function getDuel(uint256 id) external view returns (tuple(uint256 id, address playerA, address playerB, bytes32 commitA, uint8 choiceA, uint8 choiceB, address winner, uint256 stake, uint64 createdAt, uint64 joinedAt, uint64 cancelRequestedAt, uint8 status))',
+  'function isJoinable(uint256 duelId) external view returns (bool)',
   'function openDuelCount() external view returns (uint256)',
   'function totalBurned() external view returns (uint256)',
   'function totalDuels() external view returns (uint256)',
   'function totalTies() external view returns (uint256)',
-  // ── New in the mainnet-revision contract ──
   'function lastDuelId() external view returns (uint256)',
-  'function getDuelsBatch(uint256 fromId, uint256 count) external view returns (tuple(uint256 id, address playerA, address playerB, bytes32 commitA, uint8 choiceA, uint8 choiceB, address winner, uint256 stake, uint256 createdAt, uint256 joinedAt, uint8 status)[])',
+  'function getDuelsBatch(uint256 fromId, uint256 count) external view returns (tuple(uint256 id, address playerA, address playerB, bytes32 commitA, uint8 choiceA, uint8 choiceB, address winner, uint256 stake, uint64 createdAt, uint64 joinedAt, uint64 cancelRequestedAt, uint8 status)[])',
   'function duelCountOf(address player) external view returns (uint256)',
+  'function duelsCreatedOrJoined(address player) external view returns (uint256)',
   'function getDuelIdsOf(address player, uint256 cursor, uint256 count) external view returns (uint256[] ids, uint256 nextCursor)',
   'function pendingWithdrawals(address) external view returns (uint256)',
   'function withdraw() external',
+  'function maxStakeOf(address player) external view returns (uint256)',
+  'function capForRank(uint8 rank) external view returns (uint256)',
+  'function MIN_STAKE() external view returns (uint256)',
+  'function DRAW_MIN_STAKE() external view returns (uint256)',
+  'function CANCEL_DELAY() external view returns (uint256)',
+  'function REVEAL_DELAY() external view returns (uint256)',
   'event DuelCreated(uint256 indexed duelId, address indexed playerA, uint256 stake)',
   'event DuelJoined(uint256 indexed duelId, address indexed playerB, uint8 choiceB)',
   'event DuelRevealed(uint256 indexed duelId, uint8 choiceA, uint8 choiceB, address winner)',
   'event DuelTied(uint256 indexed duelId, uint8 choice)',
+  'event CancelRequested(uint256 indexed duelId, uint256 effectiveAt)',
+  'event DuelCancelled(uint256 indexed duelId, address indexed player)',
+  'event BClaimedTimeout(uint256 indexed duelId, address indexed playerB)',
+  // Erreurs du contrat, pour afficher un message clair à la place d'un code.
+  'error StakeOutOfRange(uint256 stake, uint256 min, uint256 max)', 'error InvalidCommit()', 'error InvalidChoice()',
+  'error WrongStatus()', 'error NotPlayerA()', 'error NotPlayerB()', 'error CannotDuelYourself()', 'error WrongStake()',
+  'error NoLongerJoinable()', 'error CancelAlreadyRequested()', 'error CancelNotRequested()', 'error CancelNotReady()',
+  'error CommitMismatch()', 'error RevealWindowClosed()', 'error TooEarly()', 'error NothingToWithdraw()',
 ];
 
 const DUEL_EMOJIS = ['','🪨','📄','✂️'];
@@ -11028,9 +11045,12 @@ function duelMakeSecret() {
   return Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
-function duelMakeCommit(choiceNum, secret) {
+// Arène v2 : l'engagement inclut l'adresse du créateur, pour qu'on ne puisse
+// pas réutiliser celui de quelqu'un d'autre. Doit rester identique à
+// commitOf() dans le contrat.
+function duelMakeCommit(choiceNum, secret, player) {
   const secretBytes = ethers.zeroPadBytes(ethers.toUtf8Bytes(secret), 32);
-  return ethers.solidityPackedKeccak256(['uint8','bytes32'], [choiceNum, secretBytes]);
+  return ethers.solidityPackedKeccak256(['uint8','bytes32','address'], [choiceNum, secretBytes, player || connectedAddress]);
 }
 
 function duelSecretToBytes32(secret) {
@@ -11039,18 +11059,14 @@ function duelSecretToBytes32(secret) {
 
 // CREATE
 function duelSelectStake(amount) {
+  amount = String(amount).replace(',', '.').trim();
   duelSelectedStake = amount;
-  // Use bpreset .on class like Initiate a Burn
-  ['01','05','1','5'].forEach(k => {
-    const el = document.getElementById('duel-stake-'+k);
-    if (!el) return;
-    const val = k==='01'?'0.1':k==='05'?'0.5':k;
-    if (val === amount) {
-      el.classList.add('on');
-    } else {
-      el.classList.remove('on');
-    }
+  // Bouton allumé si le montant correspond à un raccourci, sinon aucun.
+  document.querySelectorAll('[data-duel-stake]').forEach(el => {
+    el.classList.toggle('on', parseFloat(el.dataset.duelStake) === parseFloat(amount));
   });
+  const _custom = document.getElementById('duel-stake-custom');
+  if (_custom && document.activeElement !== _custom && [...document.querySelectorAll('[data-duel-stake]')].some(el => parseFloat(el.dataset.duelStake) === parseFloat(amount))) _custom.value = '';
   // Etat du palier choisi, affiche AVANT le clic : le joueur voit qu'il est
   // plein au moment ou il choisit, pas quand on le refuse.
   duelUpdateStakeSlots();
@@ -11060,8 +11076,9 @@ function duelSelectStake(amount) {
   const winEl = document.getElementById('duel-if-win');
   const burnEl = document.getElementById('duel-burn-amount');
   const total = parseFloat(amount)*2;
-  if(winEl) winEl.textContent = '+'+(total*0.75).toFixed(3)+' zkLTC';
-  if(burnEl) burnEl.textContent = (total*0.20).toFixed(3)+' zkLTC ∞';
+  if(winEl) winEl.textContent = '+'+(total*DUEL_WIN_SHARE - parseFloat(amount)).toFixed(3)+' zkLTC net';
+  if(burnEl) burnEl.textContent = (total*DUEL_BURN_SHARE).toFixed(3)+' zkLTC ∞';
+  duelShowStakeLimit();
 }
 
 /// Affiche combien de places restent au palier choisi, et desactive le bouton
@@ -11235,6 +11252,42 @@ function duelCreateProceed() {
 /// on-chain au prochain deploiement.
 const MAX_OPEN_PER_STAKE = 3;
 
+/// Mise minimale et plafond du rang, lus sur le contrat. Retourne false (et
+/// affiche pourquoi) si la mise n'est pas jouable par ce wallet.
+async function duelCheckStake(stakeEth, who) {
+  try {
+    const c = duelReadContract || duelContract;
+    const wallet = who || connectedAddress;
+    let wei; try { wei = ethers.parseEther(String(stakeEth)); } catch (_) { showToast('✖ Enter a valid stake', true); return false; }
+    const [min, max] = await Promise.all([c.MIN_STAKE(), c.maxStakeOf(wallet)]);
+    if (wei < min) { showToast(`✖ The minimum stake is ${duelFmt(min)} zkLTC`, true); return false; }
+    if (wei > max) {
+      const rk = svRankIdxFor(window._lastBurnedEth || 0);
+      const nm = ['Simple Holder','Apprentice Litecoiner','Devoted Litecoiner','Silver Maximalist'][rk] || 'an unranked player';
+      showToast(`✖ As ${nm}, you can stake up to ${duelFmt(max)} zkLTC. Burn more at the Ritual to raise your limit.`, true);
+      return false;
+    }
+    const bal = await (window.svReadProvider || duelReadContract.runner.provider).getBalance(wallet);
+    if (bal < wei) { showToast(`✖ Not enough zkLTC: ${duelFmt(bal)} in your wallet`, true); return false; }
+    return true;
+  } catch (e) {
+    console.warn('duelCheckStake:', e.message);
+    return true;   // en cas de doute, le contrat tranchera (et le message sera clair)
+  }
+}
+
+/// Affiche le plafond du joueur connecté sous les montants.
+async function duelShowStakeLimit() {
+  const el = document.getElementById('duel-stake-limit');
+  if (!el) return;
+  try {
+    if (!connectedAddress || !(duelReadContract || duelContract)) { el.textContent = ''; return; }
+    const c = duelReadContract || duelContract;
+    const [min, max] = await Promise.all([c.MIN_STAKE(), c.maxStakeOf(connectedAddress)]);
+    el.textContent = `${duelFmt(min)} – ${duelFmt(max)} zkLTC for your rank`;
+  } catch (_) { el.textContent = ''; }
+}
+
 async function duelCountOpenAtStake(stakeEth) {
   try {
     const c = duelReadContract || duelContract;
@@ -11257,6 +11310,10 @@ async function duelCreate() {
   if (!duelContract) await initDuelContract();
   if (!duelContract) { showToast('Contract not ready'); return; }
 
+  // Limites de l'Arène v2, vérifiées avant MetaMask : un refus clair plutôt
+  // qu'une transaction qui échoue.
+  if (!(await duelCheckStake(duelSelectedStake))) return;
+
   // Verifie AVANT la signature : refuser apres coup ferait payer du gas pour
   // une transaction qu'on savait inutile.
   const openHere = await duelCountOpenAtStake(duelSelectedStake);
@@ -11277,7 +11334,7 @@ async function duelCreate() {
     // choix stocke sur Papier : le contrat rejetait ensuite la revelation
     // avec "commit mismatch", et le duel devenait irrevelable.
     const _choice = duelChoice;
-    const commit = duelMakeCommit(_choice, duelMySecret);
+    const commit = duelMakeCommit(_choice, duelMySecret, connectedAddress);
     showToast('Confirm in MetaMask...');
     const tx = await duelContract.createDuel(commit, await svGasOverrides({ value: ethers.parseEther(duelSelectedStake) }));
     const receipt = await tx.wait();
@@ -11341,7 +11398,39 @@ async function duelCreate() {
 }
 
 // Shared friendly error mapper (same style as Ritual Matrix)
+// Les refus de l'Arène v2, en phrases de joueur.
+const DUEL_PLAIN = {
+  StakeOutOfRange: (a) => `This stake is outside your limits: ${duelFmt(a[1])} to ${duelFmt(a[2])} zkLTC for your rank. Burn more at the Ritual to raise your limit.`,
+  WrongStatus: () => 'This duel is no longer in the right state for this action.',
+  NotPlayerA: () => 'Only the creator of this duel can do this.',
+  NotPlayerB: () => 'Only the player who joined this duel can do this.',
+  CannotDuelYourself: () => 'You cannot join your own duel.',
+  WrongStake: () => 'You must stake exactly the same amount as the creator.',
+  NoLongerJoinable: () => 'This duel is being cancelled by its creator and can no longer be joined.',
+  CancelAlreadyRequested: () => 'You already asked to cancel this duel.',
+  CancelNotRequested: () => 'Ask to cancel first; the refund opens 10 minutes later.',
+  CancelNotReady: () => 'The 10-minute cancel delay is not over yet.',
+  CommitMismatch: () => 'Your sealed move could not be verified. Reveal from the browser that created the duel.',
+  RevealWindowClosed: () => 'The 24-hour reveal window is closed. Your opponent can now claim the duel.',
+  TooEarly: () => 'The creator still has time to reveal. The forfeit opens after 24 hours.',
+  NothingToWithdraw: () => 'Nothing is waiting for you to withdraw.',
+};
+function duelFmt(w) { try { return Number(ethers.formatEther(w)).toLocaleString('en-US', { maximumFractionDigits: 4 }); } catch (_) { return String(w); } }
+function duelDecodeError(e) {
+  const iface = new ethers.Interface(DUEL_ABI), seen = new Set(), datas = [];
+  (function walk(o, d) {
+    if (!o || d > 8 || seen.has(o)) return;
+    if (typeof o === 'string') { if (/^0x[0-9a-fA-F]{8,}$/.test(o)) datas.push(o); return; }
+    if (typeof o !== 'object') return; seen.add(o);
+    for (const k of Object.keys(o)) walk(o[k], d + 1);
+  })(e, 0);
+  for (const d of datas) { try { const p = iface.parseError(d); if (p && DUEL_PLAIN[p.name]) return '✖ ' + DUEL_PLAIN[p.name](p.args); } catch (_) {} }
+  return null;
+}
+
 function duelFriendlyError(e) {
+  const _plain = duelDecodeError(e);
+  if (_plain) return _plain;
   const msg = e?.reason || e?.message || '';
   if (msg.includes('insufficient funds') || msg.includes('insufficient') || msg.includes('missing revert data') || msg.includes('data=null'))
     return '✖ Your zkLTC balance is too low';
@@ -11357,8 +11446,9 @@ function duelFriendlyError(e) {
     return '✖ Stake amount mismatch';
   if (msg.includes('network') || msg.includes('disconnected'))
     return '✖ Network error — check your connection';
+  // Jamais de message technique brut : une phrase utilisable.
   if (msg.length > 0)
-    return '✖ ' + msg.slice(0, 60);
+    return '✖ The transaction could not go through. Check your balance and your rank limit, then try again.';
   return '✖ Transaction failed';
 }
 
@@ -11368,8 +11458,11 @@ async function duelJoin(duelId, choiceNum) {
   if (!duelContract) await initDuelContract();
   if (!duelContract) { showToast('Contract not ready'); return; }
   try {
-    showToast('Confirm in MetaMask...');
     const _duelInfo = await duelReadContract.getDuel(duelId);
+    if (_duelInfo.playerA.toLowerCase() === connectedAddress.toLowerCase()) { showToast('✖ ' + DUEL_PLAIN.CannotDuelYourself(), true); return; }
+    if (!(await duelReadContract.isJoinable(duelId))) { showToast('✖ ' + DUEL_PLAIN.NoLongerJoinable(), true); return; }
+    if (!(await duelCheckStake(ethers.formatEther(_duelInfo.stake)))) return;
+    showToast('Confirm in MetaMask...');
     const tx = await duelContract.joinDuel(duelId, choiceNum, await svGasOverrides({ value: _duelInfo.stake }));
     await tx.wait();
 
@@ -11598,17 +11691,43 @@ async function duelReveal() {
   }
 }
 
-// CANCEL
+// CANCEL — en deux temps sur l'Arène v2. Le premier clic demande l'annulation :
+// le duel reste ouvert 10 minutes (on ne peut plus fuir un adversaire au
+// dernier moment). Le clic suivant, une fois le délai passé, rembourse.
+/// Retourne 'requested', 'refunded', 'waiting' ou null en cas d'échec.
+async function duelCancelFlow(id) {
+  const d = await duelReadContract.getDuel(id);
+  if (Number(d.status) !== 0) { showToast('✖ ' + DUEL_PLAIN.WrongStatus(), true); return null; }
+  const req = Number(d.cancelRequestedAt);
+  const delay = Number(await duelReadContract.CANCEL_DELAY());
+  const now = Math.floor(Date.now() / 1000);
+  if (!req) {
+    showToast('Confirm in MetaMask...');
+    const tx = await duelContract.requestCancel(id, await svGasOverrides());
+    await tx.wait();
+    showToast(`✦ Cancel requested. Your duel stays open ${Math.round(delay / 60)} min — anyone can still join. Then click again to get your stake back.`);
+    return 'requested';
+  }
+  if (now < req + delay) {
+    const left = Math.ceil((req + delay - now) / 60);
+    showToast(`⏳ Cancel requested — refund available in ${left} min. Someone may still join until then.`);
+    return 'waiting';
+  }
+  showToast('Confirm in MetaMask...');
+  const tx = await duelContract.finalizeCancel(id, await svGasOverrides());
+  await tx.wait();
+  showToast('✦ Cancelled — stake refunded');
+  return 'refunded';
+}
+
 async function duelCancel() {
   if (!duelContract || !duelMyId) return;
   try {
-    showToast('Confirm in MetaMask...');
-    const tx = await duelContract.cancelDuel(duelMyId, await svGasOverrides());
-    await tx.wait();
+    const r = await duelCancelFlow(duelMyId);
+    if (r !== 'refunded') { await duelLoadOpen(); return; }
     duelMyId=null; duelMyStatus=null;
     document.getElementById('duel-my-none').style.display = 'block';
     document.getElementById('duel-my-open').style.display = 'none';
-    showToast('✦ Cancelled — refunded');
     await duelLoadStats(); await duelLoadOpen();
   } catch(e) {
     console.error('duelCancel error:', e);
@@ -12363,15 +12482,15 @@ function duelShowResult(isWin, isTie, choiceA, choiceB, stakeEth) {
   // avait mise la moitie du pot — son gain NET est donc 0.75*2*s - s = 0.5*s.
   const s = parseFloat(stakeEth || duelSelectedStake || '0.1');
   const pot = s * 2;
-  const gross = pot * 0.75;          // ce que le contrat verse au gagnant
+  const gross = pot * DUEL_WIN_SHARE; // ce que le contrat verse au gagnant (80 %)
   const net = gross - s;             // gain reel, mise deduite
-  const burned = pot * 0.20;         // 20% du pot brule
+  const burned = pot * DUEL_BURN_SHARE; // 16 % du pot brûlé, crédité à moitié à chaque joueur
   const fmt = (x) => (Math.round(x * 1000) / 1000).toString();
 
   if (isTie) {
     document.getElementById('duel-res-emoji').textContent = '🤝';
     title.textContent = 'TIE!'; title.style.color = '#c8a84a';
-    sub.textContent = 'Both players fully refunded.';
+    sub.textContent = `Each player gets ${fmt(s * DUEL_TIE_KEEP)} zkLTC back — ${fmt(s * DUEL_TIE_BURN)} burned for your rank.`;
   } else if (isWin) {
     document.getElementById('duel-res-emoji').textContent = '🏆';
     title.textContent = 'YOU WIN!'; title.style.color = 'var(--teal)';
@@ -12481,7 +12600,7 @@ function duelRenderHistory(page) {
     const stake = parseFloat(h.stake) || 0.1;
     const date = h.ts ? new Date(h.ts).toLocaleDateString() : '';
     const total = stake * 2;
-    const pnl = h.isTie ? '+0.000' : h.isWin ? '+' + (total * 0.75).toFixed(3) : '-' + stake.toFixed(3);
+    const pnl = h.isTie ? '-' + (stake * (1 - DUEL_TIE_KEEP)).toFixed(3) : h.isWin ? '+' + (total * DUEL_WIN_SHARE - stake).toFixed(3) : '-' + stake.toFixed(3);
     const pnlColor = h.isTie ? '#c8a84a' : h.isWin ? 'var(--teal)' : '#ff4466';
     return `
     <div style="padding:0.7rem 0.5rem;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:0.8rem;">
@@ -12527,6 +12646,8 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('[data-duel-stake]').forEach(function(el) {
     el.addEventListener('click', function() { duelSelectStake(this.dataset.duelStake); });
   });
+  var _cs = document.getElementById('duel-stake-custom');
+  if (_cs) _cs.addEventListener('input', function() { if (parseFloat(this.value.replace(',', '.')) > 0) duelSelectStake(this.value); });
   document.querySelectorAll('[data-duel-action]').forEach(function(el) {
     el.addEventListener('click', function() {
       var a = this.dataset.duelAction;
@@ -12583,7 +12704,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       <div style="margin-bottom:1.2rem;">
         <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:#7a9fcc;text-transform:uppercase;margin-bottom:0.4rem;">① Create or Join</div>
-        Pick Rock 🪨, Paper 📄, or Scissors ✂️ and a stake (0.1 / 0.5 / 1 / 5 zkLTC). Your choice is cryptographically hidden — no one can see it, not even your opponent.
+        Pick Rock 🪨, Paper 📄, or Scissors ✂️ and a stake: any amount from 0.01 zkLTC up to the limit of your rank. Your choice is cryptographically hidden — no one can see it, not even your opponent.
       </div>
 
       <div style="margin-bottom:1.2rem;">
@@ -12598,9 +12719,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
       <div style="background:rgba(0,229,204,0.05);border:1px solid rgba(0,229,204,0.15);border-radius:4px;padding:1rem;margin-bottom:1rem;">
         <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:var(--teal);text-transform:uppercase;margin-bottom:0.6rem;">💰 Prize Split</div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;"><span>🏆 Winner</span><span style="color:var(--teal);">75% of pot</span></div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;"><span>🔥 Burned forever</span><span style="color:#c8a84a;">20% of pot</span></div>
-        <div style="display:flex;justify-content:space-between;"><span>⚙ Protocol fee</span><span style="color:rgba(255,255,255,0.4);">5% of pot</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;"><span>🏆 Winner</span><span style="color:var(--teal);">80% of pot</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;"><span>🔥 Burned forever</span><span style="color:#c8a84a;">16% of pot · half credited to each player's rank</span></div>
+        <div style="display:flex;justify-content:space-between;"><span>⚙ Protocol fee</span><span style="color:rgba(255,255,255,0.4);">4% of pot</span></div>
       </div>
 
       <div style="font-size:0.78rem;color:rgba(255,255,255,0.4);line-height:1.5;">
@@ -15903,8 +16024,9 @@ let _forgeStats = null;
 
 async function forgeLoadStats() {
   try {
-    const c = await initAscentContract();
-    if (!c) return;
+    const c = new ethers.Contract(SV_CONTRACTS.relics,
+      ['function totalForged() view returns (uint256)', 'function totalBurnedWei() view returns (uint256)'],
+      window.svReadProvider || readContract.runner);
     const [forged, burned] = await Promise.all([
       c.totalForged().then(Number).catch(() => 0),
       c.totalBurnedWei().then(v => v).catch(() => 0n),
@@ -15974,6 +16096,25 @@ async function storeRefreshListings() {
       cursor = Number(res.nextCursor);
       if (cursor === 0) break;
     }
+    // Annonces fantômes : le Store ne garde pas les NFT en dépôt. Si le
+    // vendeur a forgé, transféré ou brûlé son objet après l'avoir listé,
+    // l'annonce reste « active » sur le contrat mais ne peut plus être
+    // achetée (« no token »). On vérifie le propriétaire de chaque objet et
+    // on n'affiche que les annonces réellement achetables.
+    const _rpc = storeReadContract.runner;
+    const _owns = await Promise.all(active.map(async l => {
+      try {
+        const nft = new ethers.Contract(l.nftContract, ['function ownerOf(uint256) view returns (address)'], _rpc);
+        const owner = await (typeof svTimeout === 'function' ? svTimeout(nft.ownerOf(l.tokenId), 6000, 'ownerOf') : nft.ownerOf(l.tokenId));
+        return owner.toLowerCase() === String(l.seller).toLowerCase();
+      } catch (e) {
+        // Délai dépassé : on garde l'annonce plutôt que de la masquer à tort.
+        return /timeout/i.test(String(e && e.message)) ? true : false;
+      }
+    }));
+    const _stale = active.filter((_, i) => !_owns[i]).length;
+    if (_stale) console.info(`Store : ${_stale} annonce(s) masquée(s), l'objet n'est plus chez le vendeur.`);
+    active.splice(0, active.length, ...active.filter((_, i) => _owns[i]));
     _storeListingsCache = active;
 
     if (active.length === 0) {
@@ -16493,6 +16634,19 @@ async function storeBuy(listingId) {
   if (!storeContract) { showToast('Store contract not ready'); return; }
   try {
     const listing = await storeReadContract.getListing(listingId);
+    // L'objet est-il toujours chez le vendeur ? Sinon, message clair plutôt
+    // qu'un échec MetaMask incompréhensible.
+    try {
+      const nft = new ethers.Contract(listing.nftContract, ['function ownerOf(uint256) view returns (address)'], storeReadContract.runner);
+      const owner = await nft.ownerOf(listing.tokenId);
+      if (owner.toLowerCase() !== String(listing.seller).toLowerCase()) {
+        showToast('This relic is no longer with its seller — the offer is void.', true);
+        storeRefreshListings(); return;
+      }
+    } catch (e) {
+      showToast('This relic no longer exists (forged or burned) — the offer is void.', true);
+      storeRefreshListings(); return;
+    }
     showToast('Confirm in MetaMask...');
     // svGasOverrides comme partout ailleurs : sur LiteForge, l'estimation
     // automatique de MetaMask echoue reguliaerement, ce qui obligeait
@@ -18097,10 +18251,7 @@ async function myDuelsCancel(id) {
   if (!duelContract) await initDuelContract();
   if (!duelContract) { showToast('Contract not ready'); return; }
   try {
-    showToast('Confirm in MetaMask...');
-    const tx = await duelContract.cancelDuel(id, await svGasOverrides());
-    await tx.wait();
-    showToast('✦ Duel cancelled — stake refunded');
+    await duelCancelFlow(id);
     myDuelsScan();
     if (typeof duelLoadOpen === 'function') await duelLoadOpen();
   } catch(e) {
