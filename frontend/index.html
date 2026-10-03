@@ -7610,7 +7610,7 @@ const ABI = [
 // ══ RANK DATA ══
 const RANKS_DATA = [
   {
-    tag:'RANK 1 · INITIATE', name:'Simple Holder', req:'Requires 0 zkLTC',
+    tag:'RANK 1 · INITIATE', name:'Simple Holder', req:'Requires ≥ 0.5 zkLTC burned',
     lore:"You hold Litecoin. The original silver to Bitcoin's gold. Your journey into the Void begins here.",
     color:'#8ab0c8', icon:'○', stars:1, xpMax:'1,000', xpPct:0,
     artUrl:'https://arweave.net/EHnPIGelwmnj2Tkue5b3QmLTqv8jSgpi0U1CiCsdK1o',
@@ -8711,7 +8711,7 @@ async function loadLeaderboard(){
 
 // ═══ RANK CARDS ═══
 const rankDataM=[
-  {name:'Simple Holder',tag:'RANK 1 · INITIATE',req:'Requires 0 zkLTC',lore:'You hold Litecoin. The original silver to Bitcoin\'s gold. Your journey into the Void begins here.',xp:0,xpMax:1000,color:'#8ab0c8'},
+  {name:'Simple Holder',tag:'RANK 1 · INITIATE',req:'Requires ≥ 0.5 zkLTC burned',lore:'You hold Litecoin. The original silver to Bitcoin\'s gold. Your journey into the Void begins here.',xp:0,xpMax:1000,color:'#8ab0c8'},
   {name:'Apprentice Litecoiner',tag:'RANK 2 · NOVICE',req:'Requires ≥ 5 zkLTC burned',lore:'Litecoin has survived every bear market, every obituary. You burn to prove your conviction runs deeper than price.',xp:1000,xpMax:5000,color:'#00e5cc'},
   {name:'Devoted Litecoiner',tag:'RANK 3 · ADEPT',req:'Requires ≥ 20 zkLTC burned',lore:'MimbleWimble. Lightning Network. Decades of relentless development. You are the infrastructure behind the revolution.',xp:5000,xpMax:20000,color:'#5a9fff'},
   {name:'Silver Maximalist',tag:'RANK 4 · ELITE',req:'Requires ≥ 100 zkLTC burned',lore:'84 million coins. The fastest settlement layer. The most battle-tested chain after Bitcoin. You are its eternal guardian.',xp:20000,xpMax:100000,color:'#7755cc'},
@@ -9430,7 +9430,7 @@ function svRankBadge(tier, size, label){
 // RITUEL (zkLTC brûlés) : deux progressions distinctes, deux formes
 // distinctes, pour qu'on ne confonde jamais un IV d'Arène et un IV du Rituel.
 const RITUAL_TIERS = [
-  { at: 1e-9, n: 'I', name: 'Simple Holder' },   // « Requires 0 zkLTC » : toute offrande suffit
+  { at: 0.5, n: 'I', name: 'Simple Holder' },    // seuil du contrat du Rituel : RANK_1 = 0.5 zkLTC
   { at: 5,   n: 'II',  name: 'Apprentice Litecoiner' },
   { at: 20,  n: 'III', name: 'Devoted Litecoiner' },
   { at: 100, n: 'IV',  name: 'Silver Maximalist' },
@@ -15950,6 +15950,25 @@ async function storeRefreshListings() {
       cursor = Number(res.nextCursor);
       if (cursor === 0) break;
     }
+    // Annonces fantômes : le Store ne garde pas les NFT en dépôt. Si le
+    // vendeur a forgé, transféré ou brûlé son objet après l'avoir listé,
+    // l'annonce reste « active » sur le contrat mais ne peut plus être
+    // achetée (« no token »). On vérifie le propriétaire de chaque objet et
+    // on n'affiche que les annonces réellement achetables.
+    const _rpc = storeReadContract.runner;
+    const _owns = await Promise.all(active.map(async l => {
+      try {
+        const nft = new ethers.Contract(l.nftContract, ['function ownerOf(uint256) view returns (address)'], _rpc);
+        const owner = await (typeof svTimeout === 'function' ? svTimeout(nft.ownerOf(l.tokenId), 6000, 'ownerOf') : nft.ownerOf(l.tokenId));
+        return owner.toLowerCase() === String(l.seller).toLowerCase();
+      } catch (e) {
+        // Délai dépassé : on garde l'annonce plutôt que de la masquer à tort.
+        return /timeout/i.test(String(e && e.message)) ? true : false;
+      }
+    }));
+    const _stale = active.filter((_, i) => !_owns[i]).length;
+    if (_stale) console.info(`Store : ${_stale} annonce(s) masquée(s), l'objet n'est plus chez le vendeur.`);
+    active.splice(0, active.length, ...active.filter((_, i) => _owns[i]));
     _storeListingsCache = active;
 
     if (active.length === 0) {
@@ -16469,6 +16488,19 @@ async function storeBuy(listingId) {
   if (!storeContract) { showToast('Store contract not ready'); return; }
   try {
     const listing = await storeReadContract.getListing(listingId);
+    // L'objet est-il toujours chez le vendeur ? Sinon, message clair plutôt
+    // qu'un échec MetaMask incompréhensible.
+    try {
+      const nft = new ethers.Contract(listing.nftContract, ['function ownerOf(uint256) view returns (address)'], storeReadContract.runner);
+      const owner = await nft.ownerOf(listing.tokenId);
+      if (owner.toLowerCase() !== String(listing.seller).toLowerCase()) {
+        showToast('This relic is no longer with its seller — the offer is void.', true);
+        storeRefreshListings(); return;
+      }
+    } catch (e) {
+      showToast('This relic no longer exists (forged or burned) — the offer is void.', true);
+      storeRefreshListings(); return;
+    }
     showToast('Confirm in MetaMask...');
     // svGasOverrides comme partout ailleurs : sur LiteForge, l'estimation
     // automatique de MetaMask echoue reguliaerement, ce qui obligeait
