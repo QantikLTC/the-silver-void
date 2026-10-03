@@ -10481,13 +10481,12 @@ async function initOrderContract() {
 // propriete de leurs detenteurs, mais appartiennent a CE contrat-la — d'ou
 // la liste legacy ci-dessous, que le Codex et le Store consultent pour ne
 // pas faire disparaitre une collection du jour au lendemain.
-const ASCENT_CONTRACT_ADDRESS = '0xAe23A9c55aA48Dd59E88E5080F15175067a71801';
+const ASCENT_CONTRACT_ADDRESS = SV_CONTRACTS.relics;
 
 /// Anciennes adresses du contrat Ascent, de la plus recente a la plus
 /// ancienne. Lecture seule : on n'y mint plus rien.
-const LEGACY_ASCENT_CONTRACTS = [
-  '0x8FF2fbfE17Af4746DB4b3d500D34AebB3bF1Fcd8',
-];
+// Nouveau monde : les reliques v2 démarrent sans historique, comme au mainnet.
+const LEGACY_ASCENT_CONTRACTS = [];
 
 /// Les seuls contrats dont une relique a le droit d'apparaitre au Store.
 ///
@@ -10513,7 +10512,7 @@ function svIsAllowedNft(addr) {
 // joueur qui compte ses duels et n'obtient rien au moment annonce ouvre un
 // ticket. La verite appartient au contrat (drawsEarned) : svAscentCadence()
 // la deduit et recale l'affichage, cette constante n'etant que le defaut.
-const ASCENT_DUELS_PER_DRAW = 4;
+const ASCENT_DUELS_PER_DRAW = 3;   // DUELS_PER_DRAW du contrat v2
 
 // ══ TAUX DE DROP ══════════════════════════════════════════════════════
 // Reproduit exactement _roll() du contrat AscentRelics.
@@ -10527,13 +10526,16 @@ const RARITY_BP   = [7500, 1800, 500, 150, 50];
 const RARITY_NAME = ['Common','Uncommon','Rare','Epic','Legendary'];
 const RARITY_COLOR= ['#9aa8b8','#5ec8a0','#5a9fff','#b075ff','#ffc140'];
 
-// itemRank / itemRarity du contrat, item par item (1..12).
-const ITEM_RANK   = [1,1,1, 2,2,2, 3,3,3, 4,4,4];
-const ITEM_RARITY = [0,0,1, 0,1,2, 0,2,3, 0,3,4];
+// itemRank / itemRarity du contrat, item par item. Valeurs de départ
+// (Série I + Série II), recalées sur la chaîne par svLoadRelicCatalogue().
+const ITEM_RANK   = [1,1,1, 2,2,2, 3,3,3, 4,4,4, 2,3,3,4];
+const ITEM_RARITY = [0,0,1, 0,1,2, 0,2,3, 0,3,4, 2,3,3,4];
+/// Nombre de reliques au catalogue (16 aujourd'hui, peut grandir).
+function svRelicCount() { return ITEM_RANK.length; }
 
 function arenaOddsFor(burnRank) {
   const present = [false,false,false,false,false];
-  for (let i = 0; i < 12; i++) if (ITEM_RANK[i] <= burnRank) present[ITEM_RARITY[i]] = true;
+  for (let i = 0; i < svRelicCount(); i++) if (ITEM_RANK[i] <= burnRank) present[ITEM_RARITY[i]] = true;
   let total = 0;
   for (let r = 0; r < 5; r++) if (present[r]) total += RARITY_BP[r];
   if (total === 0) return null;
@@ -10688,28 +10690,32 @@ const ASCENT_ABI = [
   'function drawsUsed(address) external view returns (uint256)',
   'function duelsOf(address player) external view returns (uint256)',
   'function burnRankOf(address player) external view returns (uint8)',
-  'function poolOf(address player) external view returns (uint8[])',
-  'function inventoryOf(address player) external view returns (uint256[12])',
-  // Ces deux-la existaient dans le contrat mais pas dans cet ABI : sans elles
-  // le Store etait oblige de sonder les tokenId un par un.
+  'function poolOf(address player) external view returns (uint16[])',
+  // Le catalogue est lu sur la chaîne : il peut grandir (Série II et suivantes).
+  'function itemCount() external view returns (uint16)',
+  'function relicInfo(uint16 id) external view returns (string relicName, string image, uint8 rarity, uint8 rank)',
+  'function inventoryOf(address player) external view returns (uint256[])',
   'function tokensOfOwner(address player, uint256 cursor, uint256 count) external view returns (uint256[] ids, uint256 nextCursor)',
-  // ── Forge (v2) ──────────────────────────────────────────────────────
   'function forge(uint256[] tokenIds) external payable returns (uint256)',
-  'function forgeableOf(address player) external view returns (uint8[4])',
+  'function forgeableOf(address player) external view returns (uint256[4])',
+  'function forgeFeeFor(uint8 targetRarity) external view returns (uint256)',
   'function FORGE_INPUT() external view returns (uint8)',
-  'function FORGE_COST() external view returns (uint256)',
-  'function burnedPerItem(uint8) external view returns (uint256)',
+  'function burnedPerItem(uint16) external view returns (uint256)',
   'function totalForged() external view returns (uint256)',
   'function totalBurnedWei() external view returns (uint256)',
-  'function circulatingOf(uint8 id) external view returns (uint256)',
-  'event RelicsForged(address indexed player, uint8 fromRarity, uint8 toRarity, uint256[] burned, uint256 tokenId)',
-  'function tokenItem(uint256 tokenId) external view returns (uint8)',
-  'function mintedPerItem(uint8) external view returns (uint256)',
+  'function circulatingOf(uint16 id) external view returns (uint256)',
+  'function tokenItem(uint256 tokenId) external view returns (uint16)',
+  'function mintedPerItem(uint16) external view returns (uint256)',
   'function totalPulls() external view returns (uint256)',
-  'function itemRarity(uint8 id) external pure returns (uint8)',
-  'function itemRank(uint8 id) external pure returns (uint8)',
+  'function itemRarity(uint16 id) external view returns (uint8)',
+  'function itemRank(uint16 id) external view returns (uint8)',
+  'event RelicsForged(address indexed player, uint8 fromRarity, uint8 toRarity, uint256[] burned, uint256 tokenId, uint256 fee)',
   'event DrawCommitted(address indexed player, uint256 seedBlock, uint256 expiresAt)',
-  'event RelicPulled(address indexed player, uint8 itemType, uint8 rarity, uint256 tokenId)',
+  'event RelicPulled(address indexed player, uint16 itemType, uint8 rarity, uint256 tokenId)',
+  'event RelicAdded(uint16 indexed itemId, string name, uint8 rarity, uint8 rank, string image)',
+  'error NoRank()', 'error NoDraws()', 'error RevealFirst()', 'error NoDraw()', 'error TooEarly()', 'error WindowClosed()',
+  'error NoSeed()', 'error NothingPending()', 'error StillOpen()', 'error BadFee(uint256 sent, uint256 expected)',
+  'error TopTier()', 'error NotYours()', 'error DuplicateId()', 'error MixedTiers()', 'error EmptyTier()',
 ];
 
 // Old single-tx pull contract, kept for reference during the cutover.
@@ -12216,6 +12222,34 @@ async function initAscentContract() {
 }
 
 /// Step 1: spend a draw and lock the seed block.
+// Refus du contrat des reliques v2, en phrases de joueur.
+const RELIC_PLAIN = {
+  NoRank: 'You need a rank to draw. Burn at least ' + svFloor(0) + ' zkLTC at the Ritual first.',
+  NoDraws: 'No draw available yet. Every 3 decided duels earn one.',
+  RevealFirst: 'Reveal your pending draw first.',
+  NoDraw: 'There is no sealed draw to reveal.',
+  TooEarly: 'The draw is not ready yet. Wait a couple of seconds.',
+  WindowClosed: 'The reveal window closed. This draw is lost — clear it to draw again.',
+  NoSeed: 'This draw can no longer be read. Clear it to draw again.',
+  StillOpen: 'The reveal window is still open: reveal instead.',
+  BadFee: 'The forge fee does not match. Refresh and try again.',
+  TopTier: 'Legendary is the highest rarity: it cannot be forged further.',
+  NotYours: 'You can only forge relics you own.',
+  DuplicateId: 'The same relic was picked twice.',
+  MixedTiers: 'The three relics must share the same rarity.',
+};
+function relicPlainError(e) {
+  const iface = new ethers.Interface(ASCENT_ABI), seen = new Set(), datas = [];
+  (function walk(o, d) {
+    if (!o || d > 8 || seen.has(o)) return;
+    if (typeof o === 'string') { if (/^0x[0-9a-fA-F]{8,}$/.test(o)) datas.push(o); return; }
+    if (typeof o !== 'object') return; seen.add(o);
+    for (const k of Object.keys(o)) walk(o[k], d + 1);
+  })(e, 0);
+  for (const d of datas) { try { const p = iface.parseError(d); if (p && RELIC_PLAIN[p.name]) return RELIC_PLAIN[p.name]; } catch (_) {} }
+  return null;
+}
+
 async function ascentCommit() {
   const btn = document.getElementById('arena-pull-btn');
   try {
@@ -12229,7 +12263,9 @@ async function ascentCommit() {
   } catch (e) {
     console.error('ascentCommit:', e);
     const m = (e && e.message) || '';
-    if (m.includes('no draws')) showToast('No draws available yet');
+    const _plain = relicPlainError(e);
+    if (_plain) showToast(_plain, true);
+    else if (m.includes('no draws')) showToast('No draws available yet');
     else if (m.includes('reveal your pending')) showToast('Reveal your pending draw first');
     else if (e && e.code === 4001) showToast('Cancelled');
     else showToast('Draw failed \u2014 see console');
@@ -12269,7 +12305,9 @@ async function ascentReveal() {
   } catch (e) {
     console.error('ascentReveal:', e);
     const m = (e && e.message) || '';
-    if (m.includes('window closed')) showToast('Reveal window closed \u2014 draw lost');
+    const _plain = relicPlainError(e);
+    if (_plain) showToast(_plain, true);
+    else if (m.includes('window closed')) showToast('Reveal window closed \u2014 draw lost');
     else if (m.includes('not mined')) showToast('Seed block not ready \u2014 wait a moment');
     else if (e && e.code === 4001) showToast('Cancelled');
     else showToast('Reveal failed \u2014 see console');
@@ -12358,7 +12396,55 @@ const ASCENT_ITEMS = [
   { name:'Sanctuary Glimpse',       rarity:'common',    img:'https://arweave.net/7gxV59_DIo4KTCmhK0TTXzKIY6ocvii6kBkri4f_xDc' },
   { name:'Lightning Adept',         rarity:'epic',      img:'https://arweave.net/GCf13cwQE2VZuGB51U4XWReiME8p0TDMedWEJ1ewzKo' },
   { name:'The Silver Throne',       rarity:'legendary', img:'https://arweave.net/ESM4uD3tUCR9om88PU93gx4SRRCQZ7dAoLwcHXgjDVU' },
+  // Série II
+  { name:'The Pages of the Nights', rarity:'rare',      img:'https://arweave.net/sa56kCq1dsZxGdNNYsLJLoCpxTBMEJascybFrpKzz6U' },
+  { name:'The Standard Decree',     rarity:'epic',      img:'https://arweave.net/gaLk5DTXoVor-gkTqM0_oGtNrh0kLR_CrktJ8gIeMe0' },
+  { name:'The Endless Scriptorium', rarity:'epic',      img:'https://arweave.net/af2aZhmBKeg8lhEV0DCcjAVvO-1euQbNasHUYhPNN0s' },
+  { name:'The Book of Shadow',      rarity:'legendary', img:'https://arweave.net/i2uUSYVfXGXl766fx8X747_zkr8Aw1G3sTNcqDzHhd4' },
 ];
+
+/// Les reliques groupées par rang requis, pour le Codex : chaque entrée
+/// garde son numéro d'objet (itemId), quelle que soit la taille du groupe.
+function svRelicPools() {
+  const pools = [[], [], [], []];
+  for (let i = 0; i < svRelicCount(); i++) {
+    const it = ASCENT_ITEMS[i]; if (!it) continue;
+    const r = Math.min(Math.max((ITEM_RANK[i] || 1) - 1, 0), 3);
+    pools[r].push({ itemId: i + 1, rarity: it.rarity, name: it.name, artUrl: it.img, icon: '' });
+  }
+  return pools;
+}
+
+/// Recale le catalogue sur le contrat (nom, image, rareté, rang de chaque
+/// relique). Une relique ajoutée par le conservateur apparaît ainsi partout
+/// sans toucher au site. Mémorisé localement pour un affichage immédiat.
+const SV_RELIC_CACHE = 'sv_relic_catalogue_' + SV_CONTRACTS.relics.toLowerCase().slice(2, 10);
+function svApplyCatalogue(list) {
+  if (!Array.isArray(list) || !list.length) return;
+  const names = ['common','uncommon','rare','epic','legendary'];
+  ASCENT_ITEMS.splice(0, ASCENT_ITEMS.length, ...list.map(r => ({ name: r.name, rarity: names[r.rarity] || 'common', img: r.image })));
+  ITEM_RANK.splice(0, ITEM_RANK.length, ...list.map(r => r.rank));
+  ITEM_RARITY.splice(0, ITEM_RARITY.length, ...list.map(r => r.rarity));
+}
+try { svApplyCatalogue(JSON.parse(localStorage.getItem(SV_RELIC_CACHE) || 'null')); } catch (e) {}
+async function svLoadRelicCatalogue() {
+  try {
+    const c = new ethers.Contract(SV_CONTRACTS.relics, ASCENT_ABI, window.svReadProvider);
+    const count = Number(await c.itemCount());
+    if (!count) return;
+    const rows = await Promise.all(Array.from({ length: count }, (_, k) => c.relicInfo(k + 1)));
+    const list = rows.map(r => ({ name: r[0], image: r[1], rarity: Number(r[2]), rank: Number(r[3]) }));
+    const before = JSON.stringify(ITEM_RANK) + ASCENT_ITEMS.map(x => x.name + x.img).join();
+    svApplyCatalogue(list);
+    try { localStorage.setItem(SV_RELIC_CACHE, JSON.stringify(list)); } catch (e) {}
+    const after = JSON.stringify(ITEM_RANK) + ASCENT_ITEMS.map(x => x.name + x.img).join();
+    if (before !== after) {
+      const m = document.getElementById('codex-modal');
+      if (m && m.offsetParent !== null && typeof codexOpen === 'function') codexOpen();
+    }
+  } catch (e) { console.warn('relic catalogue:', e.message); }
+}
+setTimeout(() => { if (window.svReadProvider) svLoadRelicCatalogue(); }, 2500);
 
 // NOTE — Le tirage en une transaction (ancien contrat Arena, fonction pull()
 // + event CardPulled) a ete RETIRE. Il etait devenu du code mort dangereux :
@@ -12850,8 +12936,8 @@ const FEATS = [
   // ── Codex (relics) ──
   { id:'C01', cat:'Codex', name:'First Relic',    metric:'uniqueRelics', goal:1,                     desc:'Own your first Ascent relic.' },
   { id:'C02', cat:'Codex', name:'Set Started',    metric:'maxTierOwned', goal:2,                     desc:'Own 2 relics from the same rank.' },
-  { id:'C03', cat:'Codex', name:'Quarter Ascent', metric:'uniqueRelics', goal:3,                     desc:'Own 3 of the 12 Ascent relics.' },
-  { id:'C04', cat:'Codex', name:'Half Ascent',    metric:'uniqueRelics', goal:6,  honor:'Archivist', desc:'Own 6 of the 12 Ascent relics.' },
+  { id:'C03', cat:'Codex', name:'Quarter Ascent', metric:'uniqueRelics', goal:3,                     desc:'Own 3 different Ascent relics.' },
+  { id:'C04', cat:'Codex', name:'Half Ascent',    metric:'uniqueRelics', goal:6,  honor:'Archivist', desc:'Own 6 different Ascent relics.' },
   { id:'C05', cat:'Codex', name:'Full Rank Set',  metric:'fullTier',     goal:1,                     desc:'Own all 3 relics of one rank.' },
 ];
 
@@ -12947,9 +13033,10 @@ function featsEvaluate() {
   let uniqueRelics = 0, maxTierOwned = 0, fullTier = 0;
   try {
     const inv = (typeof _ascentInventory !== 'undefined' && _ascentInventory) ? _ascentInventory : null;
-    if (inv && inv.length === 12) {
+    if (inv && inv.length >= 12) {
       uniqueRelics = inv.filter(n => n > 0).length;
       for (let t = 0; t < 4; t++) {
+        // « Série complète » : les trois reliques de Série I de ce rang.
         const owned = [inv[t*3], inv[t*3+1], inv[t*3+2]].filter(n => n > 0).length;
         if (owned > maxTierOwned) maxTierOwned = owned;   // for Set Started's 0/2 bar
         if (owned === 3) fullTier = 1;
@@ -13063,22 +13150,10 @@ let _sagaMintedCache = {};
 async function codexPrefetchInventory(){
   if (typeof connectedAddress === 'undefined' || !connectedAddress) return;
   try {
-    await initNFTContract();
-    const nftRead = (typeof nftReadContract !== 'undefined' && nftReadContract) ? nftReadContract : nftContract;
-    if (!nftRead) return;
-    const target = connectedAddress.toLowerCase();
-    const checks = [];
-    POOL_DATA.forEach((pool, rIdx) => {
-      pool.forEach((_, nIdx) => {
-        checks.push(nftRead.hasClaimed(target, rIdx + 1, nIdx)
-          .then(ok => ({ i: rIdx * 3 + nIdx, ok: !!ok }))
-          .catch(() => ({ i: rIdx * 3 + nIdx, ok: false })));
-      });
-    });
-    const res = await Promise.all(checks);
-    const inv = new Array(12).fill(0);
-    res.forEach(r => { if (r.i < 12 && r.ok) inv[r.i] = 1; });
-    window._ascentInventory = inv;
+    // Contrat v2 : l'inventaire réel, en un appel.
+    const c = new ethers.Contract(SV_CONTRACTS.relics, ASCENT_ABI, window.svReadProvider);
+    const counts = await c.inventoryOf(connectedAddress);
+    window._ascentInventory = Array.from(counts, Number);
   } catch(e) { console.warn('inventory prefetch failed:', e); }
 }
 
@@ -13600,7 +13675,7 @@ async function featsOpen() {
                 what you collected. Buy three Rares on the Store and you've paid for your Epic.</li>
             <li><b>It is irreversible.</b> The three relics are destroyed for good — including a last
                 copy, if that's what you choose. Nothing is refunded.</li>
-            <li><b>It costs 0.002 zkLTC</b>, burned like every other offering.</li>
+            <li><b>It has a fee that grows with the rarity you aim for</b> (0.01 to Uncommon, 0.03 to Rare, 0.05 to Epic, 0.075 to Legendary). 95% is burned and counts for your rank.</li>
             <li><b>Relics minted before the Forge shipped cannot go in.</b> The Forge lives
                 in a new contract, and a contract can only destroy its own tokens. Your older
                 relics stay yours and stay in your Codex — they just can't be forged.</li>
@@ -13993,13 +14068,22 @@ let _fgBusy = false;
 
 const FG_TIERS = ['Common','Uncommon','Rare','Epic','Legendary'];
 
+/// Frais de forge affichés : lus une fois sur le contrat, puis mémorisés.
+const _svForgeFees = {};
+function svForgeFeeText(target) {
+  if (_svForgeFees[target] != null) return _svForgeFees[target] + ' zkLTC';
+  try {
+    new ethers.Contract(SV_CONTRACTS.relics, ASCENT_ABI, window.svReadProvider).forgeFeeFor(target)
+      .then(v => { _svForgeFees[target] = Number(ethers.formatEther(v)); if (typeof fgRender === 'function') try { fgRender(); } catch (e) {} })
+      .catch(() => {});
+  } catch (e) {}
+  return '…';
+}
+
 /// Rarete d'un item (1..12) — meme table que le contrat.
 function fgRarityOf(id) {
-  if (id === 3 || id === 5) return 1;
-  if (id === 6 || id === 8) return 2;
-  if (id === 9 || id === 11) return 3;
-  if (id === 12) return 4;
-  return 0;
+  const r = ITEM_RARITY[id - 1];
+  return (r === undefined) ? 0 : r;
 }
 
 /// Met a jour le pastille et la lueur de l'onglet Forge, sans avoir a
@@ -14022,7 +14106,7 @@ function svUpdateForgeTab() {
 
   // Exemplaires par palier, puis nombre de forges (3 par forge).
   const byTier = [0,0,0,0,0];
-  for (let id = 1; id <= 12; id++) byTier[fgRarityOf(id)] += (inv[id - 1] || 0);
+  for (let id = 1; id <= svRelicCount(); id++) byTier[fgRarityOf(id)] += (inv[id - 1] || 0);
   const possible = byTier.slice(0, 4).reduce((a, n) => a + Math.floor(n / 3), 0);
 
   if (badge) badge.textContent = '';
@@ -14112,7 +14196,7 @@ function fgRender() {
 
   // Les douze objets de la rarete choisie.
   const items = [];
-  for (let id = 1; id <= 12; id++) if (fgRarityOf(id) === _fgTier) items.push(id);
+  for (let id = 1; id <= svRelicCount(); id++) if (fgRarityOf(id) === _fgTier) items.push(id);
 
   // Aucune relique de ce palier : on le dit, plutot que d'afficher douze
   // cartes grisees qui laissent croire a une panne.
@@ -14212,7 +14296,7 @@ function fgBench() {
     <div class="fg-say">
       <div class="t">One ${FG_TIERS[_fgTier + 1]}</div>
       <div class="s">${ready
-        ? 'Three relics destroyed for good · 0.002 zkLTC burned'
+        ? `Three relics destroyed for good · ${svForgeFeeText(_fgTier + 1)} — 95% burned for your rank`
         : `Pick ${missing} more · any ${FG_TIERS[_fgTier]} will do`}</div>
     </div>
     <button id="fg-go" onclick="fgConfirm()" ${ready ? '' : 'disabled'}
@@ -14275,7 +14359,9 @@ async function fgConfirm() {
     if (!c) { throw new Error('Connect your wallet first'); }
     if (go) { go.disabled = true; go.textContent = '✦ Forging…'; }
 
-    const cost = await c.FORGE_COST();
+    // Frais selon la rareté visée (0,01 / 0,03 / 0,05 / 0,075 sur le contrat v2),
+    // brûlés à 95 % pour ton rang.
+    const cost = await c.forgeFeeFor(_fgTier + 1);
     const tx = await c.forge(_fgPicked.slice(0, 3), {
       value: cost,
       ...(typeof svGasOverrides === 'function' ? await svGasOverrides() : {})
@@ -14308,7 +14394,11 @@ async function fgConfirm() {
   } catch (e) {
     console.error('forge:', e);
     if (err) {
-      err.textContent = e?.reason || e?.shortMessage || e?.message || 'Transaction failed';
+      // Une phrase claire, jamais le message technique brut.
+      err.textContent = relicPlainError(e)
+        || ((e && (e.code === 4001 || /user rejected|denied/i.test(e.message || ''))) ? 'You cancelled the transaction.'
+        : /insufficient funds/i.test((e && e.message) || '') ? 'Not enough zkLTC for the forge fee plus network costs.'
+        : 'The forge could not go through. Wait a few seconds and try again.');
       err.style.display = 'block';
     }
     if (go) { go.disabled = false; go.textContent = 'Forge'; }
@@ -14414,7 +14504,7 @@ function codexRenderSealedPreview(){
   let html = '';
 
   html += `<div class="cx-chap"><span>The Ascent</span><span style="font-size:0.6rem;">rank opens the pool</span></div>`;
-  POOL_DATA.forEach((pool, rIdx) => {
+  svRelicPools().forEach((pool, rIdx) => {
     const rd = (typeof RANKS_DATA !== 'undefined' && RANKS_DATA[rIdx]) ? RANKS_DATA[rIdx] : null;
     html += `<div style="margin:1.4rem 0 0.7rem;">
       <div style="font-size:0.68rem;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.28);">Rank ${rIdx+1} \u00b7 ${rd ? rd.name : ''}</div>
@@ -14431,7 +14521,7 @@ function codexRenderSealedPreview(){
 
   body.innerHTML = html;
   const setN = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-  const tot = POOL_DATA.reduce((n,p) => n + p.length, 0);
+  const tot = svRelicCount();
   setN('cx-n-relics', '0/' + tot);
   codexSetBar('relics', 0, tot);
 
@@ -14533,7 +14623,7 @@ async function codexOpen(addr){
     // On lit maintenant inventoryOf() sur le contrat courant ET sur les
     // anciens, puis on additionne : une collection ne doit pas disparaitre
     // parce qu'on a redeploye.
-    const inv12 = new Array(12).fill(0);
+    const inv12 = new Array(svRelicCount()).fill(0);
     const _ascentAddrs = [ASCENT_CONTRACT_ADDRESS].concat(
       (typeof LEGACY_ASCENT_CONTRACTS !== 'undefined') ? LEGACY_ASCENT_CONTRACTS : []
     );
@@ -14541,7 +14631,7 @@ async function codexOpen(addr){
       try {
         const ac = new ethers.Contract(addr, ASCENT_ABI, window.svReadProvider);
         const counts = await ac.inventoryOf(target);
-        for (let i = 0; i < 12; i++) inv12[i] += Number(counts[i]);
+        for (let i = 0; i < Math.min(counts.length, inv12.length); i++) inv12[i] += Number(counts[i]);
       } catch (e) {
         console.warn('codex: inventoryOf failed on', addr.slice(0, 10), e.message);
       }
@@ -14550,19 +14640,19 @@ async function codexOpen(addr){
     // Exemplaires reellement en circulation, par objet. mintedPerItem seul
     // cesse d'etre juste des que la forge consomme des doublons — et c'est
     // precisement le chiffre que le Codex presente comme preuve de rarete.
-    const circ = new Array(12).fill(null);
+    const circ = new Array(svRelicCount()).fill(null);
     try {
       const ac = new ethers.Contract(ASCENT_CONTRACT_ADDRESS, ASCENT_ABI, window.svReadProvider);
       const vals = await Promise.all(
-        Array.from({ length: 12 }, (_, k) => ac.circulatingOf(k + 1).then(Number).catch(() => null))
+        Array.from({ length: svRelicCount() }, (_, k) => ac.circulatingOf(k + 1).then(Number).catch(() => null))
       );
       vals.forEach((v, k) => { circ[k] = v; });
     } catch (e) { /* silencieux : la rarete est un bonus, pas un pre-requis */ }
 
     const rankChecks = [];
-    POOL_DATA.forEach((pool, rIdx) => {
+    svRelicPools().forEach((pool, rIdx) => {
       pool.forEach((nft, nIdx) => {
-        const idx = rIdx * 3 + nIdx;          // item 1..12 dans l'ordre du contrat
+        const idx = nft.itemId - 1;           // numéro d'objet du contrat
         const copies = inv12[idx] || 0;
         rankChecks.push(Promise.resolve({
           kind:'rank', rIdx, nIdx, nft, owned: copies > 0, copies
@@ -14756,7 +14846,7 @@ async function codexOpen(addr){
     // grid as two unrelated systems.
     html += `<div style="font-size:0.76rem;color:rgba(255,255,255,0.45);font-style:italic;margin:0.2rem 0 1rem;">Your rank decides which relics can drop. Duels decide when they drop.</div>`;
     html += `<div class="cx-chap"><span>The Ascent</span><span style="font-size:0.6rem;">${ranks.filter(r=>r.owned).length}/${ranks.length}</span></div>`;
-    POOL_DATA.forEach((pool, rIdx) => {
+    svRelicPools().forEach((pool, rIdx) => {
       const rd = (typeof RANKS_DATA !== 'undefined' && RANKS_DATA[rIdx]) ? RANKS_DATA[rIdx] : null;
       const label = rd ? rd.name : 'Rank ' + (rIdx+1);
       const reached = rankIdx >= rIdx;
@@ -14775,7 +14865,7 @@ async function codexOpen(addr){
         // grille ne lisait qu'un booleen.
         // L'id d'item du contrat (1..12) se deduit de la position : POOL_DATA
         // est range dans le meme ordre que itemRank()/itemRarity().
-        const _id = rIdx * 3 + nIdx + 1;
+        const _id = nft.itemId;
         const _n = circ[_id - 1];
         // La rarete globale ne s'affiche plus en clair sur la carte (doublon
         // avec le badge de possession) : elle reste accessible au survol.
@@ -15230,7 +15320,7 @@ async function storeResolveRelic(nftContractAddr, tokenId) {
       // Le jeton peut etre sur l'ancien contrat : on lit sur SON adresse,
       // pas via initAscentContract() qui pointe sur le contrat courant.
       const c = new ethers.Contract(nftContractAddr,
-        ['function tokenItem(uint256) view returns (uint8)'], window.svReadProvider);
+        ['function tokenItem(uint256) view returns (uint16)'], window.svReadProvider);
       const itemId = Number(await c.tokenItem(tokenId));
       const meta = ASCENT_ITEMS[itemId - 1];
       if (meta) return { name: meta.name, rarity: meta.rarity, artUrl: meta.img, family: 'Ascent' };
