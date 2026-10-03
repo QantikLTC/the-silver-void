@@ -987,6 +987,10 @@ body.sv-rail-on section#store-page[data-rail]{max-width:none !important;padding:
 
 /* Bouton de forge sur les cartes du Codex. Discret au repos — il ne doit pas
    concurrencer l'illustration — et net au survol de la carte. */
+/* Série II : des promesses, pas des verrous — un peu moins éteintes, une étoile à la place du cadenas. */
+#codex-modal .cx-series2 .cx-tc.sealed .art{ filter:saturate(0.7) brightness(0.62) !important; }
+#codex-modal .cx-series2 .cx-tc.sealed .lock i{ font-size:0 !important; }
+#codex-modal .cx-series2 .cx-tc.sealed .lock i::after{ content:'\2726'; font-size:1.1rem; font-style:normal; color:rgba(255,255,255,0.85); }
 #codex-modal .cx-tc .cx-forge{
   position:absolute; left:50%; bottom:8px; transform:translateX(-50%) translateY(4px);
   padding:0.3rem 0.7rem; border-radius:5px; cursor:pointer;
@@ -14252,6 +14256,26 @@ function cardHTML(item, owned, sealedHint, scarcity, copies, itemId) {
 
 
 /// Renders every relic as sealed, for visitors with no wallet connected.
+// ═══ SÉRIE II — vitrine « arrive avec le mainnet » ═══
+// Visibles, mais scellées : elles n'existent pas sur le contrat de ce testnet.
+// Elles ne comptent ni dans la collection (x/12), ni dans les tirages, ni
+// dans la forge.
+const SERIES_II = [
+  { name:'The Pages of the Nights', rarity:'rare',      artUrl:'https://arweave.net/sa56kCq1dsZxGdNNYsLJLoCpxTBMEJascybFrpKzz6U' },
+  { name:'The Standard Decree',     rarity:'epic',      artUrl:'https://arweave.net/gaLk5DTXoVor-gkTqM0_oGtNrh0kLR_CrktJ8gIeMe0' },
+  { name:'The Endless Scriptorium', rarity:'epic',      artUrl:'https://arweave.net/af2aZhmBKeg8lhEV0DCcjAVvO-1euQbNasHUYhPNN0s' },
+  { name:'The Book of Shadow',      rarity:'legendary', artUrl:'https://arweave.net/i2uUSYVfXGXl766fx8X747_zkr8Aw1G3sTNcqDzHhd4' },
+];
+function codexSeriesIIHTML() {
+  let h = `<div class="cx-chap" style="margin-top:2.4rem;"><span>Series II</span><span style="font-size:0.6rem;">arrives with mainnet</span></div>`;
+  h += `<div style="font-size:0.76rem;color:rgba(255,255,255,0.42);font-style:italic;line-height:1.5;margin:0.6rem 0 0.9rem;max-width:62ch;">
+    Four new relics drawn from the Chronicles — and a second Legendary. Not on this testnet: they enter the game with the mainnet.</div>`;
+  h += '<div class="cx-cards cx-series2">';
+  SERIES_II.forEach(item => { h += cardHTML(item, false, 'Arrives with mainnet'); });
+  h += '</div>';
+  return h;
+}
+
 function codexRenderSealedPreview(){
   const body = document.getElementById('codex-body');
   const hdr  = document.getElementById('codex-header');
@@ -14283,6 +14307,7 @@ function codexRenderSealedPreview(){
     html += '</div>';
   });
 
+  html += codexSeriesIIHTML();
   body.innerHTML = html;
   const setN = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
   const tot = POOL_DATA.reduce((n,p) => n + p.length, 0);
@@ -14641,6 +14666,7 @@ async function codexOpen(addr){
       html += '</div>';
     });
 
+    html += codexSeriesIIHTML();
     body.innerHTML = html;
 
   } catch (e) {
