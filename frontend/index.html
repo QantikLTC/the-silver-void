@@ -6406,12 +6406,18 @@ function chroniclesOpenLatest() {
   // La bannière du hero mène à la page des Chroniques (résumé + fragments),
   // et non directement dans l'article : le lecteur choisit lui-même d'entrer.
   // L'ossature du site étant anglophone, on présente la section en anglais.
+  // Avec le rail de navigation, la page des Chroniques s'ouvre par son entrée
+  // du rail : chroniclesOpen() seul ne l'affichait plus, d'où le bouton mort.
+  if (typeof svRailGo === 'function' && document.body.classList.contains('sv-rail-on')) { svRailGo('story'); window.scrollTo(0, 0); return; }
   if (typeof chroniclesOpen === 'function') chroniclesOpen(true);
 }
 
 function chroniclesHeroBanner() {
   const el = document.getElementById('hero-chronicle');
   if (!el) return;
+  // Bannière retirée : la page d'accueil propose déjà ses propres entrées
+  // juste en dessous, dont les Chroniques.
+  el.style.display = 'none'; el.innerHTML = ''; return;
   const a = chroniclesEntry();
   if (!a) { el.style.display = 'none'; return; }
   // Le hero est la vitrine (anglophone) du site : la bannière reste toujours en anglais,
