@@ -3661,9 +3661,9 @@ function svIntroParticles() {
         <!-- PRESETS -->
         <div class="burn-presets-row">
           <button class="bpreset on" onclick="pick(this,0.5)">0.5<span class="bpr-hint">Initiate</span></button>
-          <button class="bpreset" onclick="pick(this,5)">5<span class="bpr-hint">Apprent.</span></button>
-          <button class="bpreset" onclick="pick(this,20)">20<span class="bpr-hint">Devoted</span></button>
-          <button class="bpreset" onclick="pick(this,100)">100<span class="bpr-hint">Silver M.</span></button>
+          <button class="bpreset" onclick="pick(this,2.5)">2.5<span class="bpr-hint">Apprent.</span></button>
+          <button class="bpreset" onclick="pick(this,10)">10<span class="bpr-hint">Devoted</span></button>
+          <button class="bpreset" onclick="pick(this,30)">30<span class="bpr-hint">Silver M.</span></button>
         </div>
         <!-- INPUT -->
         <div class="burn-input-row">
@@ -3772,7 +3772,7 @@ function svIntroParticles() {
         <div class="lor-card-body">
           <div class="lor-rank-label">Rank 1 &middot; Initiate</div>
           <div class="lor-card-name">Simple Holder</div>
-          <div class="lor-card-req">&#x2B21; &ge; 0.5 zkLTC</div>
+          <div class="lor-card-req">&#x2B21; &ge; <span data-rank-floor="0">0.5</span> zkLTC</div>
           <div class="lor-card-lore">You hold Litecoin. The original silver to Bitcoin's gold. Your journey into the Void begins here.</div>
           <div class="lor-card-footer">
             <div class="lor-reward-line"><span>&#128273;</span><span>The Litecoin Revelation · My First Coin · The Voyage Begins</span><span class="lor-nft-tag">NFT</span></div>
@@ -3790,7 +3790,7 @@ function svIntroParticles() {
         <div class="lor-card-body">
           <div class="lor-rank-label">Rank 2 &middot; Novice</div>
           <div class="lor-card-name">Apprentice Litecoiner</div>
-          <div class="lor-card-req">&#x2B21; &ge; 5 zkLTC</div>
+          <div class="lor-card-req">&#x2B21; &ge; <span data-rank-floor="1">5</span> zkLTC</div>
           <div class="lor-card-lore">Litecoin has survived every bear market, every obituary. You burn to prove your conviction runs deeper than price.</div>
           <div class="lor-card-footer">
             <div class="lor-reward-line"><span>&#129514;</span><span>Spreading the Word · Don't be afraid of FUD · Strengthening the Chain</span><span class="lor-nft-tag">NFT</span></div>
@@ -3807,7 +3807,7 @@ function svIntroParticles() {
         <div class="lor-card-body">
           <div class="lor-rank-label">Rank 3 &middot; Adept</div>
           <div class="lor-card-name">Devoted Litecoiner</div>
-          <div class="lor-card-req">&#x2B21; &ge; 20 zkLTC</div>
+          <div class="lor-card-req">&#x2B21; &ge; <span data-rank-floor="2">20</span> zkLTC</div>
           <div class="lor-card-lore">MimbleWimble. Lightning Network. Decades of relentless development. You are the infrastructure behind the revolution.</div>
           <div class="lor-card-footer">
             <div class="lor-reward-line"><span>&#128737;</span><span>Kill the FUD! · MimbleWimble User</span><span class="lor-nft-tag">NFT</span></div>
@@ -3824,7 +3824,7 @@ function svIntroParticles() {
         <div class="lor-card-body">
           <div class="lor-rank-label">Rank 4 &middot; Elite</div>
           <div class="lor-card-name">Silver Maximalist</div>
-          <div class="lor-card-req">&#x2B21; &ge; 100 zkLTC</div>
+          <div class="lor-card-req">&#x2B21; &ge; <span data-rank-floor="3">100</span> zkLTC</div>
           <div class="lor-card-lore">84 million coins. The fastest settlement layer. The most battle-tested chain after Bitcoin. You are its eternal guardian.</div>
           <div class="lor-card-footer">
             <div class="lor-reward-line"><span>&#128302;</span><span>The Silver Throne</span><span class="lor-nft-tag">NFT</span></div>
@@ -7560,12 +7560,41 @@ function spherierDemo(db, ds) {
 
 <script>
 // ═══ CONTRACT CONFIG ═══
-const CONTRACT_ADDRESS = '0x0AD3f776C45FF457d2d8e211A3174A4Db201b656';
+// Toutes les adresses au même endroit : pour passer au mainnet, on ne change
+// que ce bloc (et les seuils, qui doivent refléter ceux du Rituel déployé).
+const SV_CONTRACTS = {
+  ritual: '0x8A64B46634B26D5E4fcfcD8167379546A353Aaf6',
+  arena:  '0x16A90e860598469bB8D13490c99Db80A3795D43C',
+  relics: '0x6669ABe3684C0c1495CabE33cd110309B70B5F36',
+  store:  '0x2A09FC79439ec55C23514A45028Bffa324C8D090',
+  order:  '0xea9Fb06A98Bac16E74ca21390c780ae400bBC30C',
+  skins:  '0x32399249d097cBd2f3842AfA3b47737eB592F255',
+};
+/// Seuils des rangs I à IV, en zkLTC. Vérifiés au chargement contre
+/// rankThresholds() du Rituel : un écart est signalé dans la console.
+const SV_RANK_FLOORS = [0.5, 2.5, 10, 30];
+const svFloor = (i) => SV_RANK_FLOORS[i].toLocaleString('en-US');
+const svRankIdxFor = (eth) => { let r = -1; for (let i = 0; i < 4; i++) if (eth >= SV_RANK_FLOORS[i]) r = i; return r; };
+const CONTRACT_ADDRESS = SV_CONTRACTS.ritual;
 const LITEFORGE_CHAIN_ID = 4441;
 const RPC = 'https://liteforge.rpc.caldera.xyz/http';
 
 // Standalone "Add Network" button handler — same params used inside
 // connectWallet(), but usable on its own before the player even connects.
+function svApplyRankFloors() {
+  document.querySelectorAll('[data-rank-floor]').forEach(el => { el.textContent = svFloor(Number(el.dataset.rankFloor)); });
+}
+document.addEventListener('DOMContentLoaded', svApplyRankFloors);
+// Contrôle de cohérence : les seuils affichés doivent être ceux du Rituel.
+setTimeout(async () => {
+  try {
+    const p = new ethers.JsonRpcProvider(RPC, LITEFORGE_CHAIN_ID, { staticNetwork: true });
+    const c = new ethers.Contract(SV_CONTRACTS.ritual, ['function rankThresholds() view returns (uint256[4])'], p);
+    const t = (await c.rankThresholds()).map(x => Number(ethers.formatEther(x)));
+    if (t.some((v, i) => v !== SV_RANK_FLOORS[i])) console.warn('SV_RANK_FLOORS ne correspond pas au Rituel :', t, '≠', SV_RANK_FLOORS);
+  } catch (e) { /* lecture facultative */ }
+}, 4000);
+
 async function addNetworkToWallet() {
   if (!window.ethereum) { showToast('Please install MetaMask first', true); return; }
   try {
@@ -7598,6 +7627,9 @@ async function addNetworkToWallet() {
 
 const ABI = [
   {"inputs":[],"name":"burn","outputs":[],"stateMutability":"payable","type":"function"},
+  {"inputs":[{"internalType":"address","name":"beneficiary","type":"address"},{"internalType":"uint8","name":"source","type":"uint8"}],"name":"burnFor","outputs":[],"stateMutability":"payable","type":"function"},
+  {"inputs":[],"name":"MIN_BURN","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+  {"inputs":[],"name":"rankThresholds","outputs":[{"internalType":"uint256[4]","name":"","type":"uint256[4]"}],"stateMutability":"view","type":"function"},
   {"inputs":[],"name":"getStats","outputs":[{"internalType":"uint256","name":"_totalBurned","type":"uint256"},{"internalType":"uint256","name":"_totalBurners","type":"uint256"},{"internalType":"uint256","name":"_totalBurns","type":"uint256"}],"stateMutability":"view","type":"function"},
   {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getBurnerInfo","outputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"uint8","name":"rank","type":"uint8"},{"internalType":"string","name":"name","type":"string"}],"stateMutability":"view","type":"function"},
   {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getRank","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},
@@ -7610,28 +7642,28 @@ const ABI = [
 // ══ RANK DATA ══
 const RANKS_DATA = [
   {
-    tag:'RANK 1 · INITIATE', name:'Simple Holder', req:'Requires 0 zkLTC',
+    tag:'RANK 1 · INITIATE', name:'Simple Holder', req:'Requires ≥ '+svFloor(0)+' zkLTC burned',
     lore:"You hold Litecoin. The original silver to Bitcoin's gold. Your journey into the Void begins here.",
     color:'#8ab0c8', icon:'○', stars:1, xpMax:'1,000', xpPct:0,
     artUrl:'https://arweave.net/EHnPIGelwmnj2Tkue5b3QmLTqv8jSgpi0U1CiCsdK1o',
     nftName:'The Cryptographic Key', nftIcon:'🔑', nftDesc:'The first key to the Silver Void.'
   },
   {
-    tag:'RANK 2 · NOVICE', name:'Apprentice Litecoiner', req:'Requires ≥ 5 zkLTC burned',
+    tag:'RANK 2 · NOVICE', name:'Apprentice Litecoiner', req:'Requires ≥ '+svFloor(1)+' zkLTC burned',
     lore:'Litecoin has survived every bear market, every obituary. You burn to prove your conviction runs deeper than price.',
     color:'#00e5cc', icon:'⚡', stars:2, xpMax:'5,000', xpPct:25,
     artUrl:'https://arweave.net/UiWkV9G0thjQcPv_5WAZec3VteaLvVPAbTZppQWL6V8',
     nftName:'The Alchemical Crucible', nftIcon:'⚗', nftDesc:'The crucible of transmutation.'
   },
   {
-    tag:'RANK 3 · ADEPT', name:'Devoted Litecoiner', req:'Requires ≥ 20 zkLTC burned',
+    tag:'RANK 3 · ADEPT', name:'Devoted Litecoiner', req:'Requires ≥ '+svFloor(2)+' zkLTC burned',
     lore:'MimbleWimble. Lightning Network. Decades of relentless development. You are the infrastructure behind the revolution.',
     color:'#5a9fff', icon:'◈', stars:3, xpMax:'20,000', xpPct:55,
     artUrl:'https://arweave.net/NAhGa6acRRxbhC09zgtMQ_5s8HpM-HOoAFzfsSJVTk4',
     nftName:'The Node Shield', nftIcon:'🛡', nftDesc:'An impenetrable fortress of the chain.'
   },
   {
-    tag:'RANK 4 · ELITE', name:'Silver Maximalist', req:'Requires ≥ 100 zkLTC burned',
+    tag:'RANK 4 · ELITE', name:'Silver Maximalist', req:'Requires ≥ '+svFloor(3)+' zkLTC burned',
     lore:'84 million coins. The fastest settlement layer. The most battle-tested chain after Bitcoin. You are its eternal guardian.',
     color:'#7755cc', icon:'◆', stars:4, xpMax:'∞', xpPct:100,
     artUrl:'https://arweave.net/6Hj22YuEde4dNm8LxOQg9yaOSKYU_U98LbBUMEiSQyg',
@@ -8013,16 +8045,12 @@ async function loadUserData(){
     const burnedEth=parseFloat(ethers.formatEther(amount));
     // Map burned amount to rank index (0=Simple Holder, 1=Apprentice, 2=Devoted, 3=Silver Maximalist)
     // rankIdx=-1 means no rank yet (< 0.5 zkLTC burned)
-    let rankIdx=-1;
-    if(burnedEth>=100) rankIdx=3;
-    else if(burnedEth>=20) rankIdx=2;
-    else if(burnedEth>=5) rankIdx=1;
-    else if(burnedEth>=0.5) rankIdx=0;
+    let rankIdx=svRankIdxFor(burnedEth);
     // thresholds[rankIdx] = current rank floor, thresholds[rankIdx+1] = next rank floor
     // rankIdx 0=Simple Holder(0.5), 1=Apprentice(5), 2=Devoted(20), 3=Silver Max(100)
-    const rankFloors=[0.5,5,20,100,Infinity];
+    const rankFloors=[...SV_RANK_FLOORS,Infinity];
     const currT = rankIdx>=0 ? rankFloors[rankIdx] : 0;
-    const nextT = rankIdx>=0 ? (rankFloors[rankIdx+1]||Infinity) : 0.5;
+    const nextT = rankIdx>=0 ? (rankFloors[rankIdx+1]||Infinity) : SV_RANK_FLOORS[0];
     // La barre porte QUATRE paliers sur toute sa largeur (Initiate, Apprent.,
     // Devoted, Silver M.), mais son remplissage ne mesurait que la progression
     // A L'INTERIEUR du palier courant. Un joueur a 27.965 zkLTC — rang 3 sur 4
@@ -8190,7 +8218,7 @@ function pick(btn,v){
 }
 function updateRankProj(v){
   v=parseFloat(v)||0;
-  const thresholds=[[0.5,'Simple Holder','#8ab0c8','★'],[5,'Apprentice Litecoiner','#00e5cc','★★'],[20,'Devoted Litecoiner','#5a9fff','★★★'],[100,'Silver Maximalist','#7755cc','★★★★']];
+  const thresholds=[[SV_RANK_FLOORS[0],'Simple Holder','#8ab0c8','★'],[SV_RANK_FLOORS[1],'Apprentice Litecoiner','#00e5cc','★★'],[SV_RANK_FLOORS[2],'Devoted Litecoiner','#5a9fff','★★★'],[SV_RANK_FLOORS[3],'Silver Maximalist','#7755cc','★★★★']];
   let rank='Simple Holder',color='#8ab0c8',stars=' ★';
   for(const [t,n,c,s] of thresholds){ if(v>=t){rank=n;color=c;stars=' '+s;} }
   const el=document.getElementById('brp-rank');
@@ -8200,12 +8228,12 @@ function updateXP(v){
   v=parseFloat(v)||0;
   const xp=Math.round(v*1000);
   let r='The Void';   // meme nom que le classement (etait 'Hollow')
-  if(v>=100)r='Silver Maximalist ★★★★';else if(v>=20)r='Devoted Litecoiner ★★★';else if(v>=5)r='Apprentice Litecoiner ★★';else if(v>=0.5)r='Simple Holder ★';
+  { const _i=svRankIdxFor(v); r=['Simple Holder ★','Apprentice Litecoiner ★★','Devoted Litecoiner ★★★','Silver Maximalist ★★★★'][_i]||r; }
   const _xpvEl=document.getElementById('xpv')||document.getElementById('live-xp'); if(_xpvEl) _xpvEl.textContent='+'+xp.toLocaleString()+' XP';
   // Segmented scale: each rank gets 25% of the bar
   // 0-0.5=0-25%, 0.5-5=25-50%, 5-20=50-75%, 20-100=75-100%
   let _pct=0;
-  const _segs=[[0,0.5],[0.5,5],[5,20],[20,100]];
+  const _F=SV_RANK_FLOORS, _segs=[[0,_F[0]],[_F[0],_F[1]],[_F[1],_F[2]],[_F[2],_F[3]]];
   for(let _i=0;_i<_segs.length;_i++){
     const [_lo,_hi]=_segs[_i];
     if(v<=_lo){ _pct=_i*25; break; }
@@ -8495,7 +8523,7 @@ function filtNew(el){
   document.querySelectorAll('.lb-filter-btn').forEach(b=>b.classList.remove('on'));
   el.classList.add('on');
   const l=el.dataset.l;
-  const ranges={v:[100,Infinity],vw:[20,100],kw:[5,20],w:[0.5,5],void:[0,0.5]};
+  const _F=SV_RANK_FLOORS, ranges={v:[_F[3],Infinity],vw:[_F[2],_F[3]],kw:[_F[1],_F[2]],w:[_F[0],_F[1]],void:[0,_F[0]]};
   if(l==='all') renderLB(allBurners);
   else {
     const [mn,mx]=ranges[l]||[0,Infinity];
@@ -8646,11 +8674,7 @@ async function loadLeaderboard(){
     // contrat d'origine), pour ne pas refaire un appel on-chain par ligne.
     // Seuils en zkLTC : 0.5 / 5 / 20 / 100.
     function rankNameFor(burnedEth){
-      if(burnedEth >= 100) return 'Silver Maximalist';
-      if(burnedEth >= 20)  return 'Devoted Litecoiner';
-      if(burnedEth >= 5)   return 'Apprentice Litecoiner';
-      if(burnedEth >= 0.5) return 'Simple Holder';
-      return 'The Void';
+      return ['Simple Holder','Apprentice Litecoiner','Devoted Litecoiner','Silver Maximalist'][svRankIdxFor(burnedEth)] || 'The Void';
     }
 
     const addresses = apiList.map(e => e.address);
@@ -8711,10 +8735,10 @@ async function loadLeaderboard(){
 
 // ═══ RANK CARDS ═══
 const rankDataM=[
-  {name:'Simple Holder',tag:'RANK 1 · INITIATE',req:'Requires 0 zkLTC',lore:'You hold Litecoin. The original silver to Bitcoin\'s gold. Your journey into the Void begins here.',xp:0,xpMax:1000,color:'#8ab0c8'},
-  {name:'Apprentice Litecoiner',tag:'RANK 2 · NOVICE',req:'Requires ≥ 5 zkLTC burned',lore:'Litecoin has survived every bear market, every obituary. You burn to prove your conviction runs deeper than price.',xp:1000,xpMax:5000,color:'#00e5cc'},
-  {name:'Devoted Litecoiner',tag:'RANK 3 · ADEPT',req:'Requires ≥ 20 zkLTC burned',lore:'MimbleWimble. Lightning Network. Decades of relentless development. You are the infrastructure behind the revolution.',xp:5000,xpMax:20000,color:'#5a9fff'},
-  {name:'Silver Maximalist',tag:'RANK 4 · ELITE',req:'Requires ≥ 100 zkLTC burned',lore:'84 million coins. The fastest settlement layer. The most battle-tested chain after Bitcoin. You are its eternal guardian.',xp:20000,xpMax:100000,color:'#7755cc'},
+  {name:'Simple Holder',tag:'RANK 1 · INITIATE',req:'Requires ≥ '+svFloor(0)+' zkLTC burned',lore:'You hold Litecoin. The original silver to Bitcoin\'s gold. Your journey into the Void begins here.',xp:0,xpMax:1000,color:'#8ab0c8'},
+  {name:'Apprentice Litecoiner',tag:'RANK 2 · NOVICE',req:'Requires ≥ '+svFloor(1)+' zkLTC burned',lore:'Litecoin has survived every bear market, every obituary. You burn to prove your conviction runs deeper than price.',xp:1000,xpMax:5000,color:'#00e5cc'},
+  {name:'Devoted Litecoiner',tag:'RANK 3 · ADEPT',req:'Requires ≥ '+svFloor(2)+' zkLTC burned',lore:'MimbleWimble. Lightning Network. Decades of relentless development. You are the infrastructure behind the revolution.',xp:5000,xpMax:20000,color:'#5a9fff'},
+  {name:'Silver Maximalist',tag:'RANK 4 · ELITE',req:'Requires ≥ '+svFloor(3)+' zkLTC burned',lore:'84 million coins. The fastest settlement layer. The most battle-tested chain after Bitcoin. You are its eternal guardian.',xp:20000,xpMax:100000,color:'#7755cc'},
 ];
 function selectRankM(i) {
 
@@ -9430,10 +9454,10 @@ function svRankBadge(tier, size, label){
 // RITUEL (zkLTC brûlés) : deux progressions distinctes, deux formes
 // distinctes, pour qu'on ne confonde jamais un IV d'Arène et un IV du Rituel.
 const RITUAL_TIERS = [
-  { at: 1e-9, n: 'I', name: 'Simple Holder' },   // « Requires 0 zkLTC » : toute offrande suffit
-  { at: 5,   n: 'II',  name: 'Apprentice Litecoiner' },
-  { at: 20,  n: 'III', name: 'Devoted Litecoiner' },
-  { at: 100, n: 'IV',  name: 'Silver Maximalist' },
+  { at: SV_RANK_FLOORS[0], n: 'I',   name: 'Simple Holder' },
+  { at: SV_RANK_FLOORS[1], n: 'II',  name: 'Apprentice Litecoiner' },
+  { at: SV_RANK_FLOORS[2], n: 'III', name: 'Devoted Litecoiner' },
+  { at: SV_RANK_FLOORS[3], n: 'IV',  name: 'Silver Maximalist' },
 ];
 function svRitualTier(zk) {
   let t = 0;
@@ -9987,7 +10011,7 @@ async function claimNFT(rankIdx, nftId, color) {
 
   const currentRank = window._currentRankIdx !== undefined ? window._currentRankIdx : -1;
   if(currentRank < rankIdx) {
-    const thresholds = ['0.5','5','20','100'];
+    const thresholds = SV_RANK_FLOORS.map(String);
     showToast('✖ Burn ≥ ' + thresholds[rankIdx] + ' zkLTC to unlock this rank');
     return;
   }
@@ -10161,7 +10185,7 @@ function toggleNFTPool(e, rankIdx, color) {
 // ══ RANK UP DATA ══
 const RU_RANKS = [
   { name:'Simple Holder',         sub:'Rank I &middot; Initiate',       icon:'○', color:'#8ab0c8', prev:'— The Void —',         stars:1, lore:'You hold Litecoin. The original silver to Bitcoin\'s gold. Your journey into the Void begins here.',                                          next:'Apprentice Litecoiner' },
-  { name:'Apprentice Litecoiner', sub:'Rank II &middot; Novice · ≥5 zkLTC',        icon:'⚡', color:'#00e5cc', prev:'Simple Holder',         stars:2, lore:'Litecoin has survived every bear market, every obituary. You burn to prove your conviction runs deeper than price.',                                     next:'Devoted Litecoiner' },
+  { name:'Apprentice Litecoiner', sub:'Rank II &middot; Novice · ≥'+svFloor(1)+' zkLTC',        icon:'⚡', color:'#00e5cc', prev:'Simple Holder',         stars:2, lore:'Litecoin has survived every bear market, every obituary. You burn to prove your conviction runs deeper than price.',                                     next:'Devoted Litecoiner' },
   { name:'Devoted Litecoiner',    sub:'Rank III &middot; Adept',        icon:'◈', color:'#5a9fff', prev:'Apprentice Litecoiner', stars:3, lore:'MimbleWimble. Lightning Network. Decades of relentless development. You are the infrastructure behind the revolution.',                              next:'Silver Maximalist' },
   { name:'Silver Maximalist',     sub:'Rank IV &middot; Elite',         icon:'◆', color:'#7755cc', prev:'Devoted Litecoiner',    stars:4, lore:'84 million coins. The fastest settlement layer. The most battle-tested chain after Bitcoin. You are its eternal guardian.',                         next:null },
 ];
@@ -10418,10 +10442,10 @@ const ORDER_ABI = [
 ];
 
 const ORDER_BADGES = [
-  { rank:1, name:'Simple Holder',     stars:1, threshold:'0.5', art:'https://arweave.net/a9rZ7PaIJl3zOMifTHUnSiPwITncvsdAH72L9Evc4Ck' },
-  { rank:2, name:'Apprentice',        stars:2, threshold:'5',   art:'https://arweave.net/mZLhFfgk1Nyyr2ivWOWJWBkcexcNtLvjPg3G50hu34o' },
-  { rank:3, name:'Devoted',           stars:3, threshold:'20',  art:'https://arweave.net/qxCCzciXnnjaOeUHDHFOF-HnwuKttUhFhwlxma4OTng' },
-  { rank:4, name:'Silver Maximalist', stars:4, threshold:'100', art:'https://arweave.net/YDW62naXHXTLCNTc67Gnu1ao06zIzvltr3yqSCt6MSQ' },
+  { rank:1, name:'Simple Holder',     stars:1, threshold:svFloor(0), art:'https://arweave.net/a9rZ7PaIJl3zOMifTHUnSiPwITncvsdAH72L9Evc4Ck' },
+  { rank:2, name:'Apprentice',        stars:2, threshold:svFloor(1), art:'https://arweave.net/mZLhFfgk1Nyyr2ivWOWJWBkcexcNtLvjPg3G50hu34o' },
+  { rank:3, name:'Devoted',           stars:3, threshold:svFloor(2), art:'https://arweave.net/qxCCzciXnnjaOeUHDHFOF-HnwuKttUhFhwlxma4OTng' },
+  { rank:4, name:'Silver Maximalist', stars:4, threshold:svFloor(3), art:'https://arweave.net/YDW62naXHXTLCNTc67Gnu1ao06zIzvltr3yqSCt6MSQ' },
 ];
 
 let orderContract = null, orderReadContract = null;
@@ -10519,10 +10543,10 @@ function arenaOddsFor(burnRank) {
 /// Un rang 3 ne tire pas "dans le pool 3" mais dans les pools 1, 2 et 3
 /// reunis — c'est ce que la formulation seule ne faisait pas passer.
 const ARENA_POOL_TIERS = [
-  { rank:1, at:'0.5',  label:'Simple Holder',         adds:'Commons · Uncommons' },
-  { rank:2, at:'5',    label:'Apprentice Litecoiner', adds:'+ Rares' },
-  { rank:3, at:'20',   label:'Devoted Litecoiner',    adds:'+ Epics' },
-  { rank:4, at:'100',  label:'Silver Maximalist',     adds:'+ Legendary' },
+  { rank:1, at:svFloor(0),  label:'Simple Holder',         adds:'Commons · Uncommons' },
+  { rank:2, at:svFloor(1),  label:'Apprentice Litecoiner', adds:'+ Rares' },
+  { rank:3, at:svFloor(2),  label:'Devoted Litecoiner',    adds:'+ Epics' },
+  { rank:4, at:svFloor(3),  label:'Silver Maximalist',     adds:'+ Legendary' },
 ];
 
 function arenaRenderPoolLadder() {
