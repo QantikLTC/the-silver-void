@@ -3361,6 +3361,10 @@ function svIntroParticles() {
 
 <!-- HERO -->
 <section id="hero">
+  <!-- Invitation à descendre : l'accueil occupe tout le premier écran. -->
+  <a href="#choose-path" class="hero-scroll-cue" onclick="document.getElementById('choose-path').scrollIntoView({behavior:'smooth'});return false;" aria-label="Scroll to continue">
+    <span>Enter</span><i></i>
+  </a>
   <!-- ═══ Hero backdrop — "the ledger" ═══
        The old SVG was generic space art. This one draws the chain itself: a
        faded grid, light sweeping across it, and fragments of hashes surfacing
@@ -3408,6 +3412,7 @@ function svIntroParticles() {
       <span id="hero-total">—</span><span id="hero-burners">—</span><span id="hero-burns">—</span>
       <span id="hero-total-pc">—</span><span id="hero-burners-pc">—</span><span id="hero-burns-pc">—</span>
     </div>
+
 
 </section>
 
@@ -19337,6 +19342,26 @@ body.sv-rail-on #hero{
 }
 @media (min-width:960px){
   body.sv-rail-on #hero{ padding:2.8rem 2rem 3.5rem !important }
+  /* L'accueil occupe tout l'écran : la section suivante (« Burn. The chain
+     remembers. ») ne déborde plus en bas du premier écran, elle se découvre
+     en faisant défiler. Le contenu reste calé en haut, comme les autres pages. */
+  body.sv-rail-on #hero{ min-height:100vh !important; box-sizing:border-box; }
+}
+.hero-scroll-cue{ display:none; }
+@media (min-width:960px){
+  body.sv-rail-on .hero-scroll-cue{
+    display:flex; flex-direction:column; align-items:center; gap:0.5rem;
+    position:absolute; left:50%; bottom:2.2rem; transform:translateX(-50%); z-index:20;
+    font-family:'Cinzel',serif; font-size:0.58rem; letter-spacing:0.35em; text-transform:uppercase;
+    color:rgba(255,255,255,0.45); text-decoration:none; transition:color .3s;
+  }
+  body.sv-rail-on .hero-scroll-cue:hover{ color:var(--teal); }
+  body.sv-rail-on .hero-scroll-cue i{
+    width:1px; height:42px; background:linear-gradient(180deg, rgba(0,229,204,0.7), rgba(0,229,204,0));
+    animation:svCue 2.4s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion:reduce){ body.sv-rail-on .hero-scroll-cue i{ animation:none; } }
+  @keyframes svCue{ 0%{ transform:scaleY(0.3); transform-origin:top; opacity:0.4 } 50%{ transform:scaleY(1); opacity:1 } 100%{ transform:scaleY(0.3); transform-origin:bottom; opacity:0.4 } }
 }
 
 /* Store: two stat cards still duplicated The Records. */
