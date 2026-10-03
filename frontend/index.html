@@ -7983,7 +7983,8 @@ async function loadChainData(){
       // Les très petits burns envoyés directement à l'adresse morte (sous le
       // minimum du Rituel) ne sont pas dans son total : on borne à zéro.
       const rit = Math.max(0, all - dul - sto - frg);
-      const short = (n) => n >= 1000 ? Math.round(n).toLocaleString('en') : n.toFixed(n < 10 ? 2 : 1);
+      // Petits montants : assez de décimales pour ne pas afficher 0.00 quand ce n'est pas zéro.
+      const short = (n) => n >= 1000 ? Math.round(n).toLocaleString('en') : n === 0 ? '0' : n < 0.01 ? n.toFixed(4).replace(/0+$/, '') : n.toFixed(n < 10 ? 2 : 1);
 
       vhSet('vh-total', fmt);
       vhSet('vh-b-ritual', short(rit));
