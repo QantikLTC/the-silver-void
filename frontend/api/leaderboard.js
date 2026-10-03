@@ -32,8 +32,8 @@
 
 // ─── CONFIG — à modifier au moment du passage au mainnet ───────────────
 const RPC_URL = 'https://liteforge.rpc.caldera.xyz/http';
-const CONTRACT_ADDRESS = '0x0AD3f776C45FF457d2d8e211A3174A4Db201b656';
-const NETWORK_TAG = 'liteforge-v12';
+const CONTRACT_ADDRESS = '0x8A64B46634B26D5E4fcfcD8167379546A353Aaf6';   // Rituel v2
+const NETWORK_TAG = 'liteforge-v2';   // cache distinct de l'ancien Rituel, même si la base Upstash est partagée
 
 /// Slot du tableau `burners` dans le storage. VÉRIFIÉ en lisant
 /// keccak256(5)+0, qui renvoie l'adresse du créateur.
@@ -44,7 +44,9 @@ const BURNERS_ARRAY_SLOT = 5n;
 // ─────────────────────────────────────────────────────────────────────
 
 const SEL_BURNER_INFO = '0x39b7a75b';   // keccak("getBurnerInfo(address)")[0:4]
-const SEL_BURNER_COUNT = '0xba8e15f1';  // keccak("getBurnerCount()")[0:4]
+const SEL_BURNER_COUNT = '0xba8e15f1';
+const SEL_BURNERS_PAGE = '0xe1246167';   // keccak("burnersPage(uint256,uint256)")[0:4]
+const PAGE_SIZE = 200;                     // plafond du contrat  // keccak("getBurnerCount()")[0:4]
 
 const BATCH_SIZE = 40;
 const BATCH_PAUSE_MS = 60;
@@ -236,59 +238,45 @@ function keccak256(bytes) {
 }
 // ──────────────────────────────────────────────────────────────────────
 
+// Rituel v2 : une seule fonction, burnersPage(), rend 200 burners et leurs
+// montants à la fois. Plus besoin de lire le stockage case par case ni de
+// rappeler getBurnerInfo() pour chaque adresse : ~10 appels pour 2 000 burners.
+function word(hex, i) { return hex.slice(2 + i * 64, 2 + (i + 1) * 64); }
+
+function decodePage(hex) {
+  // (address[] addresses, uint256[] amounts, uint256 nextCursor)
+  const offA = Number(BigInt('0x' + word(hex, 0))) / 32;
+  const offB = Number(BigInt('0x' + word(hex, 1))) / 32;
+  const next = Number(BigInt('0x' + word(hex, 2)));
+  const nA = Number(BigInt('0x' + word(hex, offA)));
+  const nB = Number(BigInt('0x' + word(hex, offB)));
+  const out = [];
+  for (let k = 0; k < Math.min(nA, nB); k++) {
+    const addr = '0x' + word(hex, offA + 1 + k).slice(24);
+    const amt = BigInt('0x' + word(hex, offB + 1 + k));
+    out.push({ address: addr.toLowerCase(), amount: amt });
+  }
+  return { rows: out, next };
+}
+
 async function readLeaderboard(deadline) {
   const cntHex = await rpcSingle('eth_call',
     [{ to: CONTRACT_ADDRESS, data: SEL_BURNER_COUNT }, 'latest']);
   const count = Number(BigInt(cntHex));
   if (!count) return { list: [], count: 0 };
 
-  const base = arrayBase(BURNERS_ARRAY_SLOT);
-
-  const addrSlots = new Array(count).fill(null);
-  const addrStarts = [];
-  for (let i = 0; i < count; i += BATCH_SIZE) addrStarts.push(i);
-
-  for (let w = 0; w < addrStarts.length; w += CONCURRENCY) {
-    if (Date.now() > deadline) throw new Error('BUDGET_EPUISE');
-    const wave = addrStarts.slice(w, w + CONCURRENCY);
-    await Promise.all(wave.map(async (start) => {
-      const reqs = [];
-      for (let k = start; k < Math.min(start + BATCH_SIZE, count); k++) {
-        reqs.push({ jsonrpc: '2.0', id: k, method: 'eth_getStorageAt',
-          params: [CONTRACT_ADDRESS, '0x' + (base + BigInt(k)).toString(16), 'latest'] });
-      }
-      const res = await rpcBatch(reqs);
-      for (const x of res) {
-        if (x.error || !x.result || x.result.length !== 66) continue;
-        const a = '0x' + x.result.slice(-40);
-        if (a !== '0x' + '0'.repeat(40)) addrSlots[x.id] = a.toLowerCase();
-      }
-    }));
-    await sleep(BATCH_PAUSE_MS);
-  }
-  const addrs = addrSlots.filter(Boolean);
-
   const list = [];
-  const amtStarts = [];
-  for (let i = 0; i < addrs.length; i += BATCH_SIZE) amtStarts.push(i);
-
-  for (let w = 0; w < amtStarts.length; w += CONCURRENCY) {
+  let cursor = 0, guard = 0;
+  do {
     if (Date.now() > deadline) throw new Error('BUDGET_EPUISE');
-    const wave = amtStarts.slice(w, w + CONCURRENCY);
-    await Promise.all(wave.map(async (start) => {
-      const slice = addrs.slice(start, start + BATCH_SIZE);
-      const reqs = slice.map((a, k) => ({ jsonrpc: '2.0', id: k, method: 'eth_call',
-        params: [{ to: CONTRACT_ADDRESS,
-                   data: SEL_BURNER_INFO + a.slice(2).padStart(64, '0') }, 'latest'] }));
-      const res = await rpcBatch(reqs);
-      for (const x of res) {
-        if (x.error || !x.result || x.result.length < 66) continue;
-        const v = BigInt('0x' + x.result.slice(2, 66));
-        if (v > 0n) list.push({ address: slice[x.id], amount: v.toString() });
-      }
-    }));
-    await sleep(BATCH_PAUSE_MS);
-  }
+    const data = SEL_BURNERS_PAGE + cursor.toString(16).padStart(64, '0') + PAGE_SIZE.toString(16).padStart(64, '0');
+    const hex = await rpcSingle('eth_call', [{ to: CONTRACT_ADDRESS, data }, 'latest']);
+    const { rows, next } = decodePage(hex);
+    for (const r of rows) if (r.amount > 0n) list.push({ address: r.address, amount: r.amount.toString() });
+    cursor = next;
+    guard++;
+    if (cursor) await sleep(BATCH_PAUSE_MS);
+  } while (cursor && guard < 500);
 
   list.sort((a, b) => {
     const d = BigInt(b.amount) - BigInt(a.amount);
@@ -297,10 +285,6 @@ async function readLeaderboard(deadline) {
 
   return { list: list.slice(0, LEADERBOARD_SIZE), count };
 }
-
-// ═══════════════════════════════════════════════════════════════════════
-// Handler
-// ═══════════════════════════════════════════════════════════════════════
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
