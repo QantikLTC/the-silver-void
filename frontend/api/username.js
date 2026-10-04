@@ -133,7 +133,9 @@ export default async function handler(req, res) {
       const key = `username:${String(wallet).toLowerCase()}`;
       try {
         const data = await redisCall(`/get/${encodeURIComponent(key)}`, { method: 'GET' });
-        res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
+        // Lecture de SON propre profil (?fresh=…) : jamais en cache, sinon un
+        // pseudo ou un avatar tout juste choisi resterait invisible des minutes.
+        res.setHeader('Cache-Control', (req.query && req.query.fresh) ? 'no-store' : 'public, s-maxage=300, stale-while-revalidate=3600');
         res.status(200).json({ username: data.result || null });
       } catch (e) {
         console.error('username.js GET degraded:', e.message);
