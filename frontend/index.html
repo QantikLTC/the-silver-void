@@ -11104,7 +11104,7 @@ function duelSelectStake(amount) {
   const total = parseFloat(amount)*2;
   if(winEl) winEl.textContent = '+'+(total*DUEL_WIN_SHARE - parseFloat(amount)).toFixed(3)+' zkLTC net';
   if(burnEl) burnEl.textContent = (total*DUEL_BURN_SHARE).toFixed(3)+' zkLTC ∞';
-  duelShowStakeLimit();
+  if (window._duelStakeBounds) duelFlagStake(); else duelShowStakeLimit();
 }
 
 /// Affiche combien de places restent au palier choisi, et desactive le bouton
@@ -11310,8 +11310,25 @@ async function duelShowStakeLimit() {
     if (!connectedAddress || !(duelReadContract || duelContract)) { el.textContent = ''; return; }
     const c = duelReadContract || duelContract;
     const [min, max] = await Promise.all([c.MIN_STAKE(), c.maxStakeOf(connectedAddress)]);
-    el.textContent = `${duelFmt(min)} – ${duelFmt(max)} zkLTC for your rank`;
+    window._duelStakeBounds = { min: Number(ethers.formatEther(min)), max: Number(ethers.formatEther(max)) };
+    el.dataset.base = `${duelFmt(min)} – ${duelFmt(max)} zkLTC for your rank`;
+    duelFlagStake();
   } catch (_) { el.textContent = ''; }
+}
+
+/// Signale tout de suite une mise hors des limites du rang, sans attendre le clic.
+function duelFlagStake() {
+  const el = document.getElementById('duel-stake-limit');
+  const btn = (document.getElementById('duel-open-btn-label') || {}).parentElement || null;
+  const b = window._duelStakeBounds;
+  if (!el) return;
+  const v = parseFloat(String(duelSelectedStake).replace(',', '.'));
+  const bad = b && (v < b.min || v > b.max);
+  el.textContent = bad
+    ? (v > b.max ? `Above your limit · max ${b.max} zkLTC for your rank` : `Below the minimum · ${b.min} zkLTC`)
+    : (el.dataset.base || '');
+  el.style.color = bad ? '#ff8a80' : '';
+  if (btn) { btn.style.opacity = bad ? '0.45' : ''; btn.style.cursor = bad ? 'not-allowed' : ''; }
 }
 
 async function duelCountOpenAtStake(stakeEth) {
@@ -12771,7 +12788,11 @@ document.addEventListener('DOMContentLoaded', function() {
     el.addEventListener('click', function() { duelSelectStake(this.dataset.duelStake); });
   });
   var _cs = document.getElementById('duel-stake-custom');
-  if (_cs) _cs.addEventListener('input', function() { if (parseFloat(this.value.replace(',', '.')) > 0) duelSelectStake(this.value); });
+  if (_cs) _cs.addEventListener('input', function() {
+    const v = parseFloat(this.value.replace(',', '.'));
+    if (v > 0) duelSelectStake(this.value);
+    else duelSelectStake('0.1');   // champ vidé : on revient au montant par défaut, sans garder un chiffre fantôme
+  });
   document.querySelectorAll('[data-duel-action]').forEach(function(el) {
     el.addEventListener('click', function() {
       var a = this.dataset.duelAction;
