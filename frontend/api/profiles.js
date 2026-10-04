@@ -1,3 +1,6 @@
+// Version de test (contrats v2) : toutes les clés Redis portent le préfixe
+// « v2: », pour ne jamais se mélanger aux profils du site en ligne, même si
+// la base Upstash est partagée.
 // /api/profiles — batch read of username + avatar + skin for many wallets.
 //
 // WHY THIS EXISTS (Vercel Fluid CPU quota):
@@ -71,7 +74,7 @@ export default async function handler(req, res) {
 
     // One MGET for the whole board: [u1, a1, s1, u2, a2, s2, ...]
     const keys = [];
-    for (const w of wallets) keys.push(`username:${w}`, `avatar:${w}`, `skin:${w}`);
+    for (const w of wallets) keys.push(`v2:username:${w}`, `v2:avatar:${w}`, `v2:skin:${w}`);
 
     let vals;
     try {

@@ -1,3 +1,6 @@
+// Version de test (contrats v2) : toutes les clés Redis portent le préfixe
+// « v2: », pour ne jamais se mélanger aux profils du site en ligne, même si
+// la base Upstash est partagée.
 // /api/username — get/set a player's display name.
 //
 // Storage (Upstash Redis REST API via Vercel KV):
@@ -130,7 +133,7 @@ export default async function handler(req, res) {
         res.status(400).json({ error: 'Missing wallet' });
         return;
       }
-      const key = `username:${String(wallet).toLowerCase()}`;
+      const key = `v2:username:${String(wallet).toLowerCase()}`;
       try {
         const data = await redisCall(`/get/${encodeURIComponent(key)}`, { method: 'GET' });
         res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
@@ -179,7 +182,7 @@ export default async function handler(req, res) {
       }
 
       const nameLower = trimmed.toLowerCase();
-      const takenKey = `usernametaken:${nameLower}`;
+      const takenKey = `v2:usernametaken:${nameLower}`;
 
       const existing = await redisCall(`/get/${encodeURIComponent(takenKey)}`, { method: 'GET' });
       if (existing.result && existing.result !== walletKey) {
@@ -187,10 +190,10 @@ export default async function handler(req, res) {
         return;
       }
 
-      const userKey = `username:${walletKey}`;
+      const userKey = `v2:username:${walletKey}`;
       const prev = await redisCall(`/get/${encodeURIComponent(userKey)}`, { method: 'GET' });
       if (prev.result) {
-        const prevTakenKey = `usernametaken:${prev.result.toLowerCase()}`;
+        const prevTakenKey = `v2:usernametaken:${prev.result.toLowerCase()}`;
         if (prevTakenKey !== takenKey) {
           await redisCall(`/del/${encodeURIComponent(prevTakenKey)}`, { method: 'POST' });
         }

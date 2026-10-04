@@ -1,3 +1,6 @@
+// Version de test (contrats v2) : toutes les clés Redis portent le préfixe
+// « v2: », pour ne jamais se mélanger aux profils du site en ligne, même si
+// la base Upstash est partagée.
 // /api/avatar — get/set a player's chosen avatar.
 //
 // The avatar itself is just an ID string (e.g. "rank_2", "feat_first_win") —
@@ -63,7 +66,7 @@ export default async function handler(req, res) {
         res.status(400).json({ error: 'Missing wallet' });
         return;
       }
-      const key = `avatar:${String(wallet).toLowerCase()}`;
+      const key = `v2:avatar:${String(wallet).toLowerCase()}`;
       try {
         const data = await redisCall(`/get/${encodeURIComponent(key)}`, { method: 'GET' });
         res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=300');
@@ -92,7 +95,7 @@ export default async function handler(req, res) {
         return;
       }
 
-      const key = `avatar:${String(wallet).toLowerCase()}`;
+      const key = `v2:avatar:${String(wallet).toLowerCase()}`;
       await redisCall(`/set/${encodeURIComponent(key)}/${encodeURIComponent(avatar)}`, { method: 'POST' });
 
       res.status(200).json({ ok: true, avatar });
