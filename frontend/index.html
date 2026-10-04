@@ -8965,31 +8965,17 @@ async function initNFTContract() {
 }
 
 async function checkNFTStatus(rankNum) {
+  // Contrats v2 : le « NFT » de la carte de rang est le badge incessible du
+  // contrat Order. On lit s'il est détenu, et son numéro de jeton.
   try {
-    if(!connectedAddress || !signer) return { canMint: false, claimed: false };
-    const nc = await initNFTContract();
-    if(!nc) return { canMint: false, claimed: false };
-    // rankNum is 0-3 (index), contract expects 1-4
+    if (!connectedAddress) return { canMint: false, claimed: false };
+    await initOrderContract();
+    if (!orderReadContract) return { canMint: false, claimed: false };
     const rankId = Math.min(Math.max(rankNum + 1, 1), 4);
-    // Each rank has a small pool of possible NFTs (see POOL_DATA) — the
-    // player picks/rolls one nftId within that pool. To know whether THIS
-    // rank's NFT has been claimed at all, check hasClaimed() across every
-    // nftId in that rank's pool; claimed if any one of them is true.
-    const pool = (typeof POOL_DATA !== 'undefined' && POOL_DATA[rankNum]) ? POOL_DATA[rankNum] : [];
-    let claimed = false;
-    let claimedTokenId = 0;
-    for (let nftId = 0; nftId < pool.length; nftId++) {
-      try {
-        const has = await nc.hasClaimed(connectedAddress, rankId, nftId);
-        if (has) {
-          claimed = true;
-          try { claimedTokenId = await nc.mintedNFT(connectedAddress, rankId, nftId); } catch(e) {}
-          break;
-        }
-      } catch(e) { /* keep checking other nftIds */ }
-    }
-    return { canMint: false, claimed, tokenId: claimedTokenId, rankId };
-  } catch(e) { console.error('checkNFTStatus:', e); return { canMint: false, claimed: false }; }
+    const tokenId = Number(await orderReadContract.badgeOf(rankId, connectedAddress));
+    const can = tokenId ? false : await orderReadContract.canClaim(connectedAddress, rankId).catch(() => false);
+    return { canMint: !!can, claimed: tokenId > 0, tokenId, rankId };
+  } catch (e) { console.error('checkNFTStatus:', e); return { canMint: false, claimed: false }; }
 }
 
 // claimNFT(rankId) a ete retiree ici : une SECONDE fonction du meme nom,
@@ -9023,15 +9009,14 @@ async function updateNFTButton(rankNum) {
   } else {
     btn.removeAttribute('disabled');
     btn.disabled = false;
-    btn.textContent = '⬡ Claim NFT';
+    btn.textContent = '⬡ Claim badge';
     btn.style.background = 'linear-gradient(135deg, ' + c + '99, rgba(90,159,255,0.7))';
     btn.style.color = '#fff';
     btn.style.border = '1px solid ' + c + '66';
     btn.style.cursor = 'pointer';
-    btn.onclick = function() {
-      if(typeof toggleNFTPool === 'function') toggleNFTPool(null, rIdx, c);
-    };
-    if(status) status.textContent = 'Click to see your NFT pool';
+    // Contrats v2 : un clic réclame tous les badges déjà mérités, en un paiement.
+    btn.onclick = function() { if (typeof svClaimRankBadge === 'function') svClaimRankBadge(); };
+    if(status) status.textContent = 'Soulbound badge · claim every rank you reached at once';
   }
 }
 
@@ -10437,7 +10422,7 @@ const LEGACY_DUEL_CONTRACTS = [];
 // verifiable, but not an object. These badges make it permanent and readable
 // by any tool, independent of us. Transfers revert at the contract level, so
 // "soulbound" is enforced rather than promised.
-const ORDER_CONTRACT_ADDRESS = '0xD21daA1a264eb9770ECA992e9414Fac5058AfB12';
+const ORDER_CONTRACT_ADDRESS = SV_CONTRACTS.order;
 const ORDER_ABI = [
   'function claim(uint8 rank) external payable returns (uint256)',
   'function claimAll() external payable returns (uint256)',
@@ -10445,7 +10430,9 @@ const ORDER_ABI = [
   'function claimableRanks(address seeker) external view returns (uint8[])',
   'function canClaim(address seeker, uint8 rank) external view returns (bool)',
   'function burnedBy(address seeker) external view returns (uint256)',
-  'function thresholdFor(uint8 rank) external pure returns (uint256)',
+  // Order v2 : le rang est lu sur le Rituel, plus de seuils recopiés ici.
+  'function rankOf(address seeker) external view returns (uint8)',
+  'error BadFee(uint256 sent, uint256 expected)', 'error NothingToClaim()', 'error RankNotReached()', 'error AlreadyClaimed()',
   'function mintedPerRank(uint8) external view returns (uint256)',
   'function badgeOf(uint8, address) external view returns (uint256)',
   'function totalMinted() external view returns (uint256)',
@@ -10779,14 +10766,24 @@ async function initSagaContract() {
 }
 
 // ── The Void Store — generic NFT marketplace ──
-const STORE_CONTRACT_ADDRESS = '0x50FbF3fe230c67913e4a8dB9230D538ADAA08Ef7';
+const STORE_CONTRACT_ADDRESS = SV_CONTRACTS.store;
 const STORE_ABI = [
   'function list(address nftContract, uint256 tokenId, uint256 price) external payable returns (uint256 listingId)',
   'function cancel(uint256 listingId) external',
   'function buy(uint256 listingId) external payable',
   'function getListing(uint256 listingId) external view returns (tuple(address seller, address nftContract, uint256 tokenId, uint256 price, bool active))',
   'function nextListingId() external view returns (uint256)',
-  'function LISTING_COST() external view returns (uint256)',
+  // Store v2 : frais de mise en vente réglés au déploiement, part créateur sur la vente.
+  'function listingCost() external view returns (uint256)',
+  'function LISTING_BURN() external view returns (uint256)',
+  'function LISTING_FEE() external view returns (uint256)',
+  'function BURN_BPS() external view returns (uint256)',
+  'function SALE_FEE_BPS() external view returns (uint256)',
+  'function activeListingOf(address, uint256) external view returns (uint256)',
+  'event Replaced(uint256 indexed oldListingId, uint256 indexed newListingId)',
+  'error ZeroPrice()', 'error BadFee(uint256 sent, uint256 expected)', 'error NotOwner()', 'error NotApproved()',
+  'error NotActive()', 'error NotYourListing()', 'error WrongPayment(uint256 sent, uint256 expected)',
+  'error SellerNoLongerOwns()', 'error ApprovalRevoked()', 'error CannotBuyYourOwn()', 'error NothingToWithdraw()',
   // ── New in the mainnet-revision contract ──
   'function getActiveListings(uint256 cursor, uint256 count) external view returns (uint256[] ids, tuple(address seller, address nftContract, uint256 tokenId, uint256 price, bool active)[] page, uint256 nextCursor)',
   'function getStats() external view returns (uint256 _totalSold, uint256 _totalVolume, uint256 _totalBurned, uint256 _totalListingsCreated)',
@@ -11443,6 +11440,24 @@ function duelDecodeError(e) {
     for (const k of Object.keys(o)) walk(o[k], d + 1);
   })(e, 0);
   for (const d of datas) { try { const p = iface.parseError(d); if (p && DUEL_PLAIN[p.name]) return '✖ ' + DUEL_PLAIN[p.name](p.args); } catch (_) {} }
+  // Les actions du Store passent par la même fonction : on tente aussi ses erreurs.
+  if (typeof STORE_ABI !== 'undefined') {
+    const si = new ethers.Interface(STORE_ABI);
+    const STORE_PLAIN = {
+      ZeroPrice: () => 'Set a price above zero.',
+      BadFee: (a) => `Listing costs exactly ${duelFmt(a[1])} zkLTC.`,
+      NotOwner: () => 'You do not own this item.',
+      NotApproved: () => 'The Store is not allowed to move this item yet. Approve it first.',
+      NotActive: () => 'This offer is no longer for sale.',
+      NotYourListing: () => 'Only the seller can cancel this offer.',
+      WrongPayment: (a) => `This item costs exactly ${duelFmt(a[1])} zkLTC.`,
+      SellerNoLongerOwns: () => 'The seller no longer owns this item: the offer is void.',
+      ApprovalRevoked: () => 'The seller withdrew the Store\'s permission: the offer is void.',
+      CannotBuyYourOwn: () => 'You cannot buy your own offer.',
+      NothingToWithdraw: () => 'Nothing is waiting for you to withdraw.',
+    };
+    for (const d of datas) { try { const p = si.parseError(d); if (p && STORE_PLAIN[p.name]) return '✖ ' + STORE_PLAIN[p.name](p.args); } catch (_) {} }
+  }
   return null;
 }
 
@@ -14046,7 +14061,7 @@ const FAQ_ITEMS = [
   { q: 'I keep drawing the same relic. Is that a bug?',
     a: 'No \u2014 duplicates are expected, and they are the point. You have two ways to use them: trade them at the Void Store with players still missing them, or take three of the same tier to the Forge and turn them into something better. The Store shows a \u00d72 badge on anything you hold more than one of.' },
   { q: 'What happens to the money when I sell?',
-    a: 'The Store contract splits every sale: 80% to you, 17% burned forever, 3% to the Order. Listing costs 0.0075 zkLTC, of which 0.005 is burned. Every sale therefore shrinks the supply a little further.' },
+    a: 'The Store contract splits every sale: 95.5% to you, 3% burned forever and credited to the buyer\'s rank, 1.5% to the Order. Listing costs 0.0075 zkLTC. If the collection declares a royalty, it is paid out of your share.' },
   { q: 'Are the rank badges the same thing as relics?',
     a: 'No. Badges of the Order are soulbound \u2014 they prove what you burned and can never be sold or transferred. Relics are transferable NFTs: yours to trade. A badge says who you are; a relic is something you own.' },
   { q: 'My burn is not showing in the leaderboard.',
@@ -14986,7 +15001,7 @@ async function sagaMint(sagaId) {
           </div>
           <!-- Taux du contrat mainnet. Le contrat testnet actuel en brûle 17 %. -->
           <div style="margin-top:0.55rem;font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;color:#ffc140;text-shadow:0 1px 8px rgba(0,0,0,0.9);">
-            On every sale, 3% is sent to the Void
+            On every sale, 3% is burned for the buyer's rank
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:1.4rem;margin-top:1rem;font-family:'Cinzel',serif;font-size:0.52rem;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.5);">
             <div><b id="store-hero-burned" style="display:block;font-size:1.2rem;letter-spacing:0.02em;color:#ffc140;">—</b>zkLTC burned by the City</div>
@@ -15004,7 +15019,7 @@ async function sagaMint(sagaId) {
     <!-- Le titre vit désormais dans le bandeau de la Cité, en haut de page. -->
     <div style="text-align:center;margin-bottom:1.2rem;display:none;">
       <div style="font-family:'Cinzel',serif;font-size:1.6rem;letter-spacing:0.08em;color:#fff;text-transform:uppercase;">The Void Store</div>
-      <div style="font-size:0.78rem;color:rgba(255,255,255,0.4);font-style:italic;margin-top:0.2rem;">Every sale feeds the void. 80% to the seller, 17% burned forever, 3% to the order.</div>
+      <div style="font-size:0.78rem;color:rgba(255,255,255,0.4);font-style:italic;margin-top:0.2rem;">Every sale feeds the void. 95.5% to the seller, 3% burned for the buyer, 1.5% to the order.</div>
     </div>
 
     <!-- STORE STATS BANNER — fed by the contract's on-chain getStats() counters: one RPC call, no event scanning -->
@@ -15654,7 +15669,7 @@ function storeBuildCity(resolved) {
 const STORE_SALES_WINDOW = 3000;      // blocs regardés en arrière (9000 saturait le RPC public)
 let _storeSalesBusy = false;
 const STORE_SALES_TTL_MS = 10 * 60 * 1000;
-const STORE_SALE_BURN_BPS = 1700;     // 17 % sur le contrat actuel
+const STORE_SALE_BURN_BPS = 300;      // Store v2 : 3 % brûlés, crédités à l'acheteur
 
 async function storeLoadRecentSales() {
   const box = document.getElementById('store-recent');
@@ -16708,7 +16723,7 @@ async function storeList() {
     // ne répond pas vite, on utilise la valeur connue plutôt que d'attendre.
     // Lectures lancées en parallèle : les délais ne s'additionnent plus.
     const [listingCost, gasOpts] = await Promise.all([
-      svTimeout(storeContract.LISTING_COST(), 2500, 'LISTING_COST').catch(() => ethers.parseEther('0.0075')),
+      svTimeout(storeContract.listingCost(), 2500, 'listingCost').catch(() => ethers.parseEther('0.0075')),
       typeof svGasOverrides === 'function' ? svGasOverrides() : Promise.resolve({}),
     ]);
     const priceWei = ethers.parseEther(price);
@@ -17574,7 +17589,30 @@ const SKIN_API = '/api/skin';
 //   2) la moitié envoyée ici
 // Le joueur signe donc deux fois — c'est visible et volontaire.
 const FORGE_TREASURY = '0x5489667F306a6F03F550FCB129F765f83FaCB24E';
-const SKIN_PRICE_USD = { rare: 2, epic: 3.5, legendary: 5 };
+const SKIN_PRICE_USD = { rare: 2, epic: 3.5, legendary: 5 };   // (ancien système, plus utilisé)
+/// Skins v2 : prix fixes en zkLTC par palier, lus sur le contrat des skins.
+const SKINS_V2_ABI = [
+  'function buy(string key) payable',
+  'function priceForTier(uint8 tier) view returns (uint256)',
+  'function owns(address wallet, string key) view returns (bool)',
+  'function skinsOf(address wallet) view returns (string[])',
+  'function totalSold() view returns (uint256)',
+  'error WrongPrice(uint256 sent, uint256 expected)', 'error AlreadyOwned()', 'error UnknownSkin()',
+];
+const SKIN_ZK_PRICE = { rare: 0.02, epic: 0.035, legendary: 0.05 };   // recalés sur la chaîne
+let _skinPricesLoaded = false;
+async function svSkinPricesReady() {
+  if (_skinPricesLoaded) return true;
+  try {
+    const c = new ethers.Contract(SV_CONTRACTS.skins, SKINS_V2_ABI, window.svReadProvider);
+    const [a, b, d] = await Promise.all([c.priceForTier(1), c.priceForTier(2), c.priceForTier(3)]);
+    SKIN_ZK_PRICE.rare = Number(ethers.formatEther(a));
+    SKIN_ZK_PRICE.epic = Number(ethers.formatEther(b));
+    SKIN_ZK_PRICE.legendary = Number(ethers.formatEther(d));
+    _skinPricesLoaded = true;
+  } catch (e) { console.warn('skin prices:', e.message); }
+  return true;   // à défaut, les prix de départ restent affichés
+}
 // Safety clamps on the converted amount, whatever the price feed says:
 const SKIN_ZK_MIN = 0.001, SKIN_ZK_MAX = 0.5;
 const SKIN_RARITY_COLORS = { rare:'#00e5cc', epic:'#b075ff', legendary:'#ffd27a', relic:'#ff8899', default:'rgba(255,255,255,0.5)' };
@@ -17761,55 +17799,61 @@ async function skinBuy(id) {
   if (!connectedAddress) { showToast('Connect your wallet first', true); await connectWallet(); if (!connectedAddress) return; }
   // Connexion avant le paiement : l'équipement qui suit l'achat en a besoin.
   try { await svEnsureSession(true); } catch (e) { showToast('Sign-in cancelled', true); return; }
-  const ltc = await ltcUsdPrice();
-  if (!ltc) { showToast('Price feed unavailable — try again in a minute', true); return; }
-  const amt = skinZkAmount(SKIN_PRICE_USD[s.rarity], ltc);
-  const splitTreasury = FORGE_TREASURY && FORGE_TREASURY.length === 42;
-  const burnPart = splitTreasury ? amt / 2 : amt;
-  let burned = false;
+  let paid = false;
   try {
-    showToast('🔥 Forging ' + s.name + ' — ' + amt + ' zkLTC (~$' + SKIN_PRICE_USD[s.rarity] + ')...');
-    // 1) The burn half goes through the ritual contract in YOUR name —
-    //    it counts toward your rank like any other offering.
-    const tx1 = await contract.burn({ value: ethers.parseEther(burnPart.toFixed(6)) });
-    await tx1.wait();
-    burned = true;
-    // 2) Treasury half (skipped while FORGE_TREASURY is unset = 100% burn)
-    if (splitTreasury) {
-      const tx2 = await contract.runner.sendTransaction({ to: FORGE_TREASURY, value: ethers.parseEther((amt - burnPart).toFixed(6)) });
-      await tx2.wait();
+    // Skins v2 : UNE transaction. Le contrat encaisse le prix exact, brûle la
+    // moitié pour ton rang, verse l'autre moitié et enregistre la possession.
+    const c = new ethers.Contract(SV_CONTRACTS.skins, SKINS_V2_ABI, signer);
+    const r = new ethers.Contract(SV_CONTRACTS.skins, SKINS_V2_ABI, window.svReadProvider);
+    if (await r.owns(connectedAddress, id)) {
+      paid = true;   // déjà acheté sur la chaîne : il ne reste qu'à l'enregistrer
+    } else {
+      const tier = { rare: 1, epic: 2, legendary: 3 }[s.rarity];
+      const price = await r.priceForTier(tier);
+      showToast('🔥 Forging ' + s.name + ' — ' + ethers.formatEther(price) + ' zkLTC...');
+      const tx = await c.buy(id, await svGasOverrides({ value: price }));
+      await tx.wait();
+      paid = true;
     }
-    // Le serveur vérifie désormais le burn sur la chaîne. On lit sa réponse :
-    // avant, un refus passait inaperçu, le skin s'affichait possédé puis
-    // disparaissait au rechargement. 503 = chaîne momentanément injoignable,
-    // on réessaie ; tout autre refus est affiché avec le hash à conserver.
+    // Le serveur vérifie la possession sur le contrat (une seule lecture).
     let _skinRes = null, _skinData = {};
     for (let _try = 0; _try < 4; _try++) {
       _skinRes = await fetch(SKIN_API, { method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ wallet: connectedAddress.toLowerCase(), buy: id, tx: tx1.hash }) });
+        body: JSON.stringify({ wallet: connectedAddress.toLowerCase(), buy: id }) });
       _skinData = await _skinRes.json().catch(() => ({}));
-      if (_skinRes.status !== 503) break;
-      await new Promise(r => setTimeout(r, 3000));
+      if (_skinRes.status !== 503 && _skinRes.status !== 402) break;
+      await new Promise(r => setTimeout(r, 3000));   // nœud RPC en retard juste après l'achat
     }
     if (!_skinRes || !_skinRes.ok) {
-      console.warn('skin purchase not recorded:', _skinData, 'burn tx:', tx1.hash);
-      showToast('Payment sent but not recorded (' + ((_skinData && _skinData.error) || 'server error') + '). Keep this tx: ' + tx1.hash.slice(0, 10) + '…', true);
+      console.warn('skin purchase not recorded:', _skinData);
+      showToast('Your skin is bought on-chain but could not be equipped yet. Reload the page in a minute — it stays yours.', true);
       forgeRender();
       return;
     }
     if (Array.isArray(_skinData.owned)) _myOwned = _skinData.owned;
     if (!_myOwned.includes(id)) _myOwned.push(id);
     await skinEquip(id);
-    if (typeof window.loadSkinsForged === 'function') setTimeout(window.loadSkinsForged, 1200); // maj du compteur global
-    showToast('🔥 ' + s.name + ' forged! Your offering fed the Void.');
-    if (typeof loadUserData === 'function') loadUserData(); // burn credit may bump the rank
+    if (typeof window.loadSkinsForged === 'function') setTimeout(window.loadSkinsForged, 1200);
+    showToast('✦ ' + s.name + ' forged! Half of it fed the Void, in your name.');
+    if (typeof loadUserData === 'function') loadUserData();   // le burn compte pour ton rang
   } catch(e) {
     console.warn('skinBuy failed:', e);
-    if (burned) showToast('Purchase incomplete — but your burn was still credited to your rank.', true);
-    else showToast('Forge cancelled: ' + (e.shortMessage || 'transaction rejected'), true);
+    const plain = (() => {
+      try {
+        const iface = new ethers.Interface(SKINS_V2_ABI), seen = new Set(), datas = [];
+        (function w(o, d) { if (!o || d > 8 || seen.has(o)) return; if (typeof o === 'string') { if (/^0x[0-9a-fA-F]{8,}$/.test(o)) datas.push(o); return; } if (typeof o !== 'object') return; seen.add(o); for (const k of Object.keys(o)) w(o[k], d + 1); })(e, 0);
+        for (const d of datas) { const p = iface.parseError(d); if (p) return { WrongPrice: 'The price changed. Refresh and try again.', AlreadyOwned: 'You already own this skin.', UnknownSkin: 'This skin is not for sale.' }[p.name]; }
+      } catch (_) {}
+      return null;
+    })();
+    if (paid) showToast('Your skin is bought on-chain. Reload the page to equip it.', true);
+    else if (plain) showToast(plain, true);
+    else if (e && (e.code === 4001 || /user rejected|denied/i.test(e.message || ''))) showToast('Forge cancelled.', true);
+    else showToast('The purchase could not go through. Check your balance and try again.', true);
   }
   forgeRender();
 }
+
 // Relics are granted automatically when their feat unlocks — never sold.
 async function skinGrantRelics() {
   if (!connectedAddress) return;
@@ -17857,7 +17901,7 @@ async function forgeRender() {
   const list = document.getElementById('forge-list');
   if (!list) return;
   const unlocked = (typeof featsLoad === 'function') ? featsLoad() : {};
-  const ltc = await ltcUsdPrice();
+  const ltc = await svSkinPricesReady();
   list.innerHTML = SKINS.map(s => {
     const col = SKIN_RARITY_COLORS[s.rarity];
     const owned = s.id === 'ring_default' || _myOwned.includes(s.id);
@@ -17885,7 +17929,7 @@ async function forgeRender() {
       }
       action = '<span style="font-size:0.64rem;color:' + (done?col:'rgba(255,255,255,0.3)') + ';letter-spacing:0.08em;font-family:\'Cinzel\',serif;text-align:right;">' + (done ? 'UNLOCKING…' : lockText) + '</span>';
     } else {
-      const price = ltc ? skinZkAmount(SKIN_PRICE_USD[s.rarity], ltc) + '<br><span style="opacity:0.5;font-size:0.85em;">~$' + SKIN_PRICE_USD[s.rarity] + '</span>' : '—';
+      const price = SKIN_ZK_PRICE[s.rarity] + '<br><span style="opacity:0.5;font-size:0.85em;">zkLTC</span>';
       action = '<button onclick="skinBuy(\'' + s.id + '\')" style="font-family:\'Cinzel\',serif;font-size:0.68rem;letter-spacing:0.06em;line-height:1.3;color:' + col + ';background:transparent;border:1px solid ' + col + '55;border-radius:6px;padding:0.38rem 0.55rem;cursor:pointer;text-align:center;">' + price + '</button>';
     }
     return '<div style="display:flex;align-items:center;gap:0.7rem;border:1px solid ' + col + '33;border-radius:8px;padding:0.65rem;' + (equipped?'background:rgba(0,229,204,0.04);':'') + '">'
@@ -17913,7 +17957,7 @@ async function forgeStoreRender() {
   const grid = document.getElementById('forge-store-grid');
   if (!grid) return;
   const unlocked = (typeof featsLoad === 'function') ? featsLoad() : {};
-  const ltc = await ltcUsdPrice();
+  const ltc = await svSkinPricesReady();
   const RARITY_ORDER = { rare:1, epic:2, legendary:3, relic:4 };
   const avatarInner = (typeof avatarHTMLFor === 'function' && typeof _myAvatarId !== 'undefined')
     ? avatarHTMLFor(_myAvatarId, 86) : '';
@@ -17943,9 +17987,9 @@ async function forgeStoreRender() {
         ? '<span class="vb-cta" style="--rc:' + col + ';">\u2026</span>'
         : '<span class="vb-cta vb-cta-lock" title="' + req + ' \u2014 NEVER SOLD">Locked</span>';
     } else {
-      const zk = ltc ? skinZkAmount(SKIN_PRICE_USD[s.rarity], ltc) : null;
+      const zk = SKIN_ZK_PRICE[s.rarity];
       priceHTML = ltc
-        ? '<div class="vb-price"><span class="vb-zk">' + zk + '</span><span class="vb-usd">~$' + SKIN_PRICE_USD[s.rarity] + '</span></div>'
+        ? '<div class="vb-price"><span class="vb-zk">' + zk + '</span><span class="vb-usd">zkLTC · half burned for your rank</span></div>'
         : '<div class="vb-price"><span class="vb-usd">price feed offline</span></div>';
       ctaHTML = ltc
         ? '<span class="vb-cta" style="--rc:' + col + ';" onclick="skinBuy(\'' + s.id + '\')">Forge</span>'
