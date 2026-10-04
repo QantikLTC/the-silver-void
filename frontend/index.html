@@ -16978,7 +16978,7 @@ async function usernameFetch(wallet) {
   const _isMine = connectedAddress && wallet.toLowerCase() === connectedAddress.toLowerCase();
   if (hit && (hit.username || !_isMine)) return hit.username;
   try {
-    const res = await fetch(`${USERNAME_API}?wallet=${encodeURIComponent(wallet)}`);
+    const res = await fetch(`${USERNAME_API}?wallet=${encodeURIComponent(wallet)}` + (_isMine ? '&fresh=' + Date.now() : ''));
     if (!res.ok) return null;
     const data = await res.json();
     const name = data.username || null;
@@ -17094,6 +17094,10 @@ async function usernameSubmit() {
     }
 
     _myUsername = data.username;
+    // Le cache des profils est mis à jour tout de suite : Codex, classements et
+    // rail lisent ce cache, pas _myUsername.
+    { const k = connectedAddress.toLowerCase();
+      _profileCache[k] = Object.assign({ avatar: null, skin: null }, _profileCache[k] || {}, { username: _myUsername, ts: Date.now() }); }
     showToast('✦ Name set: ' + _myUsername);
     document.getElementById('username-modal').style.display = 'none';
     const _wbtn = document.getElementById('wallet-btn');
@@ -17268,7 +17272,8 @@ async function avatarFetch(wallet, force) {
   const hit = (!force && typeof _profileGet === 'function') ? _profileGet(wallet) : null;
   if (hit) return hit.avatar;
   try {
-    const res = await fetch(`${AVATAR_API}?wallet=${encodeURIComponent(wallet)}`);
+    const _mineAv = connectedAddress && String(wallet).toLowerCase() === connectedAddress.toLowerCase();
+    const res = await fetch(`${AVATAR_API}?wallet=${encodeURIComponent(wallet)}` + (_mineAv ? '&fresh=' + Date.now() : ''));
     if (!res.ok) return null;
     const data = await res.json();
     return data.avatar || null;
