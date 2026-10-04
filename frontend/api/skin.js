@@ -54,6 +54,7 @@ const SKIN_CATALOG = {
   ring_block: 'rare', ring_moon: 'rare', ring_halving: 'rare',
   ring_eclipse: 'epic', ring_bolt: 'epic', ring_mimble: 'epic',
   ring_trinity: 'legendary', ring_ember: 'legendary', ring_shadow: 'legendary',
+  ring_84m: 'legendary',
   ring_devour: 'relic', ring_hollow: 'relic',
 };
 
@@ -91,31 +92,30 @@ async function rpcBatch(reqs) {
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-/// Renvoie null si la transaction est un paiement valide, sinon la raison du refus.
-async function verifyBurnTx(hash, walletKey, rarity) {
-  let tx = null, receipt = null;
-  // Le site attend tx.wait() avant d'appeler l'API, mais un nœud RPC peut
-  // avoir un léger retard : quelques tentatives espacées.
-  for (let i = 0; i < 4; i++) {
-    [tx, receipt] = await rpcBatch([
-      { jsonrpc: '2.0', id: 1, method: 'eth_getTransactionByHash', params: [hash] },
-      { jsonrpc: '2.0', id: 2, method: 'eth_getTransactionReceipt', params: [hash] },
-    ]);
-    if (tx && receipt) break;
-    await sleep(1500);
-  }
-  if (!tx || !receipt) return 'Transaction not found';
-  if (receipt.status !== '0x1') return 'Transaction failed';
-  if (String(tx.from).toLowerCase() !== walletKey) return 'Transaction not sent by this wallet';
-  if (String(tx.to || '').toLowerCase() !== RITUAL_CONTRACT) return 'Transaction is not a ritual burn';
-  if (BigInt(tx.value) < SKIN_MIN_BURN_WEI[rarity]) return 'Burn amount too low for this skin';
+// ── Skins v2 : l'achat se fait sur le contrat des skins, qui encaisse le
+// prix exact, brûle la moitié pour le rang de l'acheteur et enregistre la
+// possession. Le serveur n'a plus à retrouver ni à lire des transactions :
+// une seule lecture, owns(wallet, skin), et un skin acheté l'est pour toujours.
+const SKINS_CONTRACT = '0x32399249d097cbd2f3842afa3b47737eb592f255';
+const SEL_OWNS = '0xead47200';   // keccak("owns(address,string)")[0:4]
 
-  const [block] = await rpcBatch([
-    { jsonrpc: '2.0', id: 1, method: 'eth_getBlockByNumber', params: [receipt.blockNumber, false] },
-  ]);
-  const age = Math.floor(Date.now() / 1000) - Number(BigInt(block.timestamp));
-  if (age > MAX_TX_AGE_S) return 'Transaction too old';
-  return null;
+function encodeOwns(walletKey, key) {
+  const addr = walletKey.replace(/^0x/, '').padStart(64, '0');
+  const bytes = Buffer.from(key, 'utf8');
+  const len = bytes.length.toString(16).padStart(64, '0');
+  const data = bytes.toString('hex').padEnd(Math.ceil(bytes.length / 32) * 64 || 64, '0');
+  return SEL_OWNS + addr + '40'.padStart(64, '0') + len + data;
+}
+
+/// Renvoie null si le wallet possède bien le skin sur la chaîne, sinon la raison.
+async function verifyOwnsOnChain(walletKey, key) {
+  for (let i = 0; i < 3; i++) {
+    const [res] = await rpcBatch([{ jsonrpc: '2.0', id: 1, method: 'eth_call',
+      params: [{ to: SKINS_CONTRACT, data: encodeOwns(walletKey, key) }, 'latest'] }]);
+    if (res && BigInt(res) === 1n) return null;
+    await sleep(1500);   // nœud RPC en léger retard après l'achat
+  }
+  return 'This wallet does not own this skin on-chain';
 }
 
 async function redisCmd(cmd) {
@@ -162,7 +162,7 @@ function parseOwned(raw) {
 }
 
 async function getOwned(walletKey) {
-  const data = await redisCall(`/get/${encodeURIComponent('skinsowned:' + walletKey)}`, { method: 'GET' });
+  const data = await redisCall(`/get/${encodeURIComponent('v2:skinsowned:' + walletKey)}`, { method: 'GET' });
   return parseOwned(data.result);
 }
 
@@ -181,7 +181,7 @@ export default async function handler(req, res) {
       // Stat globale : total de skins forgés (aucun wallet requis).
       if (req.query && req.query.stats === '1') {
         try {
-          const data = await redisCall(`/get/${encodeURIComponent('skins:sold:total')}`, { method: 'GET' });
+          const data = await redisCall(`/get/${encodeURIComponent('v2:skins:sold:total')}`, { method: 'GET' });
           res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
           res.status(200).json({ totalForged: Number(data.result) || 0 });
         } catch (e) {
@@ -201,7 +201,7 @@ export default async function handler(req, res) {
       try {
         // Un seul aller-retour : [skin équipé, liste possédée]
         const data = await redisCall(
-          `/mget/${encodeURIComponent('skin:' + walletKey)}/${encodeURIComponent('skinsowned:' + walletKey)}`,
+          `/mget/${encodeURIComponent('v2:skin:' + walletKey)}/${encodeURIComponent('v2:skinsowned:' + walletKey)}`,
           { method: 'GET' }
         );
         const vals = Array.isArray(data.result) ? data.result : [];
@@ -233,8 +233,8 @@ export default async function handler(req, res) {
           res.status(400).json({ error: 'Unknown or non-purchasable skin' });
           return;
         }
-        if (rarity === 'relic' ? tx !== 'feat' : !TX_REGEX.test(String(tx || ''))) {
-          res.status(400).json({ error: rarity === 'relic' ? 'Relics are unlocked by feats' : 'Missing or invalid payment tx' });
+        if (rarity === 'relic' && tx !== 'feat') {
+          res.status(400).json({ error: 'Relics are unlocked by feats' });
           return;
         }
 
@@ -250,40 +250,31 @@ export default async function handler(req, res) {
         }
 
         if (rarity !== 'relic') {
-          const hash = String(tx).toLowerCase();
           let reason;
           try {
-            reason = await verifyBurnTx(hash, walletKey, rarity);
+            reason = await verifyOwnsOnChain(walletKey, buy);
           } catch (e) {
             console.error('skin.js verify error:', e.message);
-            // Chaîne injoignable : le joueur a payé, on lui demande de réessayer
-            // plutôt que de refuser définitivement.
-            res.status(503).json({ error: 'Could not verify payment right now, try again shortly' });
+            res.status(503).json({ error: 'Could not verify ownership right now, try again shortly' });
             return;
           }
           if (reason) {
             res.status(402).json({ error: reason });
             return;
           }
-          // Un hash ne sert qu'à UN achat. SET NX : la première réservation gagne.
-          const reserved = await redisCmd(['SET', `skintxused:${hash}`, `${walletKey}:${buy}`, 'NX', 'EX', String(TX_USED_TTL_S)]);
-          if (reserved !== 'OK') {
-            res.status(409).json({ error: 'This transaction was already used' });
-            return;
-          }
         }
 
         owned.push(buy);
         await redisCall(
-          `/set/${encodeURIComponent('skinsowned:' + walletKey)}/${encodeURIComponent(JSON.stringify(owned.slice(0, 100)))}`,
+          `/set/${encodeURIComponent('v2:skinsowned:' + walletKey)}/${encodeURIComponent(JSON.stringify(owned.slice(0, 100)))}`,
           { method: 'POST' }
         );
         await redisCall(
-          `/set/${encodeURIComponent('skintx:' + walletKey + ':' + buy)}/${encodeURIComponent(tx)}`,
+          `/set/${encodeURIComponent('v2:skintx:' + walletKey + ':' + buy)}/${encodeURIComponent(tx)}`,
           { method: 'POST' }
         );
         if (tx !== 'feat') {
-          await redisCall(`/incr/${encodeURIComponent('skins:sold:total')}`, { method: 'POST' });
+          await redisCall(`/incr/${encodeURIComponent('v2:skins:sold:total')}`, { method: 'POST' });
         }
         res.status(200).json({ ok: true, owned });
         return;
@@ -310,7 +301,7 @@ export default async function handler(req, res) {
         }
       }
       await redisCall(
-        `/set/${encodeURIComponent('skin:' + walletKey)}/${encodeURIComponent(skin)}`,
+        `/set/${encodeURIComponent('v2:skin:' + walletKey)}/${encodeURIComponent(skin)}`,
         { method: 'POST' }
       );
       res.status(200).json({ ok: true, skin });
