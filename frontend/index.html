@@ -4033,7 +4033,7 @@ function svIntroParticles() {
     <div class="ah-in">
       <div class="ah-title">The Arena</div>
       <div class="ah-sub">Rock · Paper · Scissors</div>
-      <p class="ah-lede">Stake your zkLTC. Seal your move. The chain decides, and a fifth of every pot is burned forever.</p>
+      <p class="ah-lede">Stake your zkLTC. Seal your move. The chain decides, and 16% of every pot is burned — counted for both players' ranks.</p>
       <div class="ah-stats">
         <div><b id="arena-hero-duels">—</b>duels played</div>
         <div><b id="arena-hero-duelists">—</b>duelists</div>
@@ -10729,13 +10729,24 @@ const ARENA_ABI = [
 let arenaContract = null, arenaReadContract = null;
 
 async function initArenaContract() {
+  // Contrats v2 : l'ancien contrat de rang d'Arène comptait les duels de
+  // l'ANCIENNE Arène (d'où « Arena Keeper » avec 15 duels de test). Le rang
+  // d'Arène se calcule maintenant sur l'Arène v2, à partir des duels décidés
+  // (victoires, défaites, forfaits) — les égalités ne comptent pas, comme
+  // pour les tirages de reliques.
   if (!arenaReadContract && window.svReadProvider) {
-    arenaReadContract = new ethers.Contract(ARENA_CONTRACT_ADDRESS, ARENA_ABI, window.svReadProvider);
+    const duel = new ethers.Contract(DUEL_CONTRACT, DUEL_ABI, window.svReadProvider);
+    const tiers = () => (typeof ARENA_TIERS !== 'undefined') ? ARENA_TIERS : [1, 10, 30, 50];
+    arenaReadContract = {
+      duelsOf: (a) => duel.duelCountOf(a),
+      rankOf: async (a) => {
+        const n = Number(await duel.duelCountOf(a));
+        let r = 0; tiers().forEach((t, i) => { if (n >= t) r = i + 1; });
+        return r;
+      },
+    };
   }
-  if (!arenaContract && typeof signer !== 'undefined' && signer) {
-    arenaContract = new ethers.Contract(ARENA_CONTRACT_ADDRESS, ARENA_ABI, signer);
-  }
-  return arenaReadContract || arenaContract;
+  return arenaReadContract;
 }
 
 // ── Duelist Saga NFT contract (separate from the duel and rank-NFT contracts) ──
