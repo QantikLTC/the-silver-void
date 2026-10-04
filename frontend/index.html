@@ -1015,6 +1015,20 @@ body.sv-rail-on section#store-page[data-rail]{max-width:none !important;padding:
 /* FAQ. Le blanc pur fatiguait sur ce fond bleu nuit — les reponses passent
    en bleu clair, une teinte qui appartient deja a la palette du site et qui
    se lit longtemps sans forcer. */
+.how-key{margin:0 0 1.4rem;padding:0.9rem 1.1rem;border-left:2px solid var(--teal);background:rgba(0,229,204,0.06);border-radius:0 6px 6px 0;font-size:0.95rem;line-height:1.55;color:rgba(255,255,255,0.8);}
+.how-key b{color:#fff;}
+.how-s{margin:0 0 1.8rem;}
+.how-s h3{display:flex;align-items:center;gap:0.55rem;font-family:'Cinzel',serif;font-weight:600;font-size:1.05rem;letter-spacing:0.06em;color:#fff;margin:0 0 0.45rem;}
+.how-s h3 span{color:var(--teal);font-size:0.95rem;}
+.how-s p{margin:0 0 0.7rem;font-size:0.92rem;line-height:1.6;color:rgba(255,255,255,0.68);}
+.how-note{font-size:0.82rem !important;color:rgba(255,255,255,0.5) !important;font-style:italic;}
+.how-tw{overflow-x:auto;margin:0 0 0.7rem;border:1px solid rgba(140,190,240,0.14);border-radius:8px;}
+.how-t{width:100%;border-collapse:collapse;font-size:0.84rem;}
+.how-t th{text-align:left;font-family:'Cinzel',serif;font-weight:400;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.45);padding:0.55rem 0.75rem;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(140,190,240,0.12);white-space:nowrap;}
+.how-t td{padding:0.55rem 0.75rem;color:rgba(255,255,255,0.8);border-bottom:1px solid rgba(140,190,240,0.07);}
+.how-t tr:last-child td{border-bottom:0;}
+.how-t td.how-k{color:#fff;}
+.how-faq-h{font-family:'Cinzel',serif;font-weight:600;font-size:1.05rem;letter-spacing:0.06em;color:#fff;margin:2rem 0 0.8rem;}
 .faq-lead{
   font-family:'Cormorant Garamond',serif; font-size:1rem; font-style:italic;
   line-height:1.65; color:#b8d4f0; margin-bottom:1.6rem;
@@ -4038,7 +4052,7 @@ function svIntroParticles() {
         <div><b id="arena-hero-duels">—</b>duels played</div>
         <div><b id="arena-hero-duelists">—</b>duelists</div>
         <div><b id="arena-hero-open">—</b>open duels</div>
-        <div><b>80 / 16 / 4</b>winner · burned · creator</div>
+        <div><b>16%</b>of every pot burned</div>
       </div>
     </div>
   </div>
@@ -7492,7 +7506,7 @@ function spherierDemo(db, ds) {
      backdrop-filter:blur(12px);
      align-items:flex-start;justify-content:center;overflow-y:auto;padding:3rem 1rem;"
      onclick="if(event.target===this)faqClose()">
-  <div style="width:100%;max-width:760px;
+  <div style="width:100%;max-width:920px;
               background:linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015));
               border:1px solid rgba(140,190,240,0.14);border-radius:12px;padding:2rem 1.8rem;
               box-shadow:0 24px 70px rgba(0,0,0,0.35);">
@@ -7508,8 +7522,7 @@ function spherierDemo(db, ds) {
     <div class="faq-lead">
       Two systems, one object. Burning zkLTC raises your <b>rank</b>, and your rank decides
       <b>which</b> relics can reach you. Duelling earns <b>draws</b>, and a draw decides
-      <b>when</b> a relic arrives. Burning alone never yields a relic; duelling alone never
-      raises a rank.
+      <b>when</b> a relic arrives. Burning alone never yields a relic: duels decide when one arrives. And every zkLTC burned, wherever you burn it, raises your rank.
       <br><br>
       And what you already hold counts too: three relics of one tier can be
       <b>forged</b> into one of the tier above. Burn opens the chest, duels turn
@@ -11327,7 +11340,7 @@ function duelFlagStake() {
   el.textContent = bad
     ? (v > b.max ? `Above your limit · max ${b.max} zkLTC for your rank` : `Below the minimum · ${b.min} zkLTC`)
     : (el.dataset.base || '');
-  el.style.color = bad ? '#ff8a80' : '';
+  el.style.color = bad ? '#ff8a80' : 'rgba(255,255,255,0.5)';
   if (btn) { btn.style.opacity = bad ? '0.45' : ''; btn.style.cursor = bad ? 'not-allowed' : ''; }
 }
 
@@ -12866,11 +12879,11 @@ document.addEventListener('DOMContentLoaded', function() {
         <div style="font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;color:var(--teal);text-transform:uppercase;margin-bottom:0.6rem;">💰 Prize Split</div>
         <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;"><span>🏆 Winner</span><span style="color:var(--teal);">80% of pot</span></div>
         <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;"><span>🔥 Burned forever</span><span style="color:#c8a84a;">16% of pot · half credited to each player's rank</span></div>
-        <div style="display:flex;justify-content:space-between;"><span>⚙ Protocol fee</span><span style="color:rgba(255,255,255,0.4);">4% of pot</span></div>
+
       </div>
 
       <div style="font-size:0.78rem;color:rgba(255,255,255,0.4);line-height:1.5;">
-        <strong style="color:rgba(255,255,255,0.55);">🤝 Tie:</strong> both players are fully refunded.<br>
+        <strong style="color:rgba(255,255,255,0.55);">🤝 Tie:</strong> each player gets 95.5% back; 3% of each stake is burned for their rank.<br>
         <strong style="color:rgba(255,255,255,0.55);">⏱ Reveal timeout:</strong> if the creator doesn't unseal within 24h, the opponent can claim the full pot.<br>
         <strong style="color:rgba(255,255,255,0.55);">↩ Cancel:</strong> an unmatched duel can be cancelled anytime for a full refund, as long as no one has joined.
       </div>
@@ -14069,21 +14082,67 @@ async function codexLoadLadders(target) {
 
 /// FAQ du Codex. Repliee par defaut : une liste de questions se parcourt,
 /// un mur de texte se saute.
+/// « How it works » : une section par outil, chacune avec son tableau.
+/// La transparence complète (frais compris) vit ici, dans l'aide ; là où
+/// l'on joue, seul le burn est affiché.
+function howSectionsHTML() {
+  const F = SV_RANK_FLOORS.map(v => v.toLocaleString('en-US'));
+  const t = (head, rows) => `<div class="how-tw"><table class="how-t"><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r => `<tr>${r.map((c, k) => `<td${k ? '' : ' class="how-k"'}>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  const sec = (icon, title, text, tables) => `<div class="how-s"><h3><span>${icon}</span>${title}</h3><p>${text}</p>${tables}</div>`;
+  return `
+  <div class="how-key">
+    <div><b>Every burn counts.</b> Whatever you burn — at the Ritual, in a duel, in the Lower City, at the Forge or on a ring skin — is destroyed for good <em>and</em> credited to your rank.</div>
+  </div>
+  ${sec('◈', 'The Ritual', 'Offer zkLTC to the Void. Every wei is destroyed at the dead address, and your lifetime total sets your rank.',
+    t(['Action', 'Burned', 'Counts for your rank'], [['Offering', '100%', 'Yes']])
+    + t(['Rank', 'Title', 'Lifetime burned'], [
+        ['I', 'Simple Holder', F[0] + ' zkLTC'], ['II', 'Apprentice Litecoiner', F[1] + ' zkLTC'],
+        ['III', 'Devoted Litecoiner', F[2] + ' zkLTC'], ['IV', 'Silver Maximalist', F[3] + ' zkLTC']]))}
+  ${sec('⚔', 'The Arena', 'Rock · Paper · Scissors, settled on-chain. The creator seals a hidden move, an opponent joins with theirs, the creator reveals within 24 hours. The burned share is split evenly between both players\' ranks — winner and loser alike.',
+    t(['Outcome', 'Winner', 'Burned', 'The Order'], [
+        ['A winner is decided', '80% of the pot', '16% (8% for each rank)', '4%'],
+        ['Forfeit (no reveal in 24h)', '80% to the joiner', '16% (8% for each rank)', '4%'],
+        ['Tie', 'each keeps 95.5%', '3% of each stake, for each rank', '1.5% of each stake'],
+        ['Cancelled before anyone joined', 'full refund', '—', '—']])
+    + t(['Your rank', 'Maximum stake'], [['No rank', '0.1 zkLTC'], ['I', '0.5 zkLTC'], ['II', '1 zkLTC'], ['III', '3 zkLTC'], ['IV', '10 zkLTC']])
+    + '<p class="how-note">Minimum stake: 0.01 zkLTC. Cancelling takes two steps: ask, then claim your refund 10 minutes later — the duel stays joinable meanwhile, so nobody can dodge an opponent at the last second.</p>')}
+  ${sec('⬡', 'Relics & the Forge', 'Every 3 decided duels (wins, losses, forfeits — not ties) earn one draw. Your rank decides which relics can drop; the Forge turns three relics of one rarity into one of the rarity above, whatever your rank.',
+    t(['Draw odds (rank IV pool)', 'Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'], [['Chance', '75%', '18%', '5%', '1.5%', '0.5%']])
+    + t(['Forge to', 'Fee', 'Burned (for your rank)', 'The Order'], [
+        ['Uncommon', '0.01 zkLTC', '95%', '5%'], ['Rare', '0.03 zkLTC', '95%', '5%'],
+        ['Epic', '0.05 zkLTC', '95%', '5%'], ['Legendary', '0.075 zkLTC', '95%', '5%']])
+    + '<p class="how-note">A draw costs only network fees. Lower ranks draw from a smaller pool, so their odds are rebalanced over the rarities they can reach.</p>')}
+  ${sec('◇', 'The Lower City', 'A market open to every NFT collection on LitVM. Items never leave the seller\'s wallet until they sell.',
+    t(['Action', 'Seller', 'Burned', 'The Order'], [
+        ['Listing', '—', '—', '0.0075 zkLTC'],
+        ['Sale', '95.5% (minus royalties, if any)', '3%, for the buyer\'s rank', '1.5%'],
+        ['Cancelling a listing', 'free', '—', '—']]))}
+  ${sec('✦', 'Ring Skins', 'Cosmetic rings for your portrait, bought once and yours forever. Skins earned through feats are never sold.',
+    t(['Tier', 'Price', 'Burned (for your rank)', 'The Order'], [
+        ['Rare', '0.02 zkLTC', '50%', '50%'], ['Epic', '0.035 zkLTC', '50%', '50%'], ['Legendary', '0.05 zkLTC', '50%', '50%']]))}
+  ${sec('▲', 'Badges of the Order', 'Soulbound badges that prove the rank you reached. They can never be sold or transferred.',
+    t(['Action', 'Cost', 'The Order'], [['Claim every badge you earned, at once', '0.01 zkLTC', '100%']]))}
+  ${sec('§', 'The Chronicles', 'On mainnet, the community\'s total burn lights the next step of the story: a new fragment, a new place, a new legend. No single wallet decides it — every burn, big or small, moves the path forward.',
+    t(['Next step', 'Unlocked by'], [['Every new element of the Path', '50 zkLTC burned by the whole community']]))}
+  <h3 class="how-faq-h">Questions</h3>`;
+}
+
 const FAQ_ITEMS = [
   { q: 'How do I get a relic?',
-    a: 'Every 3 duels earns you one draw, win or lose \u2014 only fighting counts. In the Arena you seal the draw, then reveal it, and the relic is minted to you. Burning zkLTC does not give relics directly; it decides which ones can drop.' },
+    a: 'Every 3 decided duels earn you one draw, win or lose \u2014 ties do not count. In the Arena you seal the draw, then reveal it, and the relic is minted to you. Burning zkLTC does not give relics directly; it decides which ones can drop.' },
   { q: 'Why does my rank matter if duels give the relics?',
-    a: 'Your rank sets the pool, and pools stack. Rank 1 draws Commons and Uncommons. Rank 2 adds Rares, rank 3 adds Epics, and only rank 4 can ever DRAW The Silver Throne. A rank 3 player draws from ranks 1 to 3 together, not from rank 3 alone. At rank 4 the pool still includes every lower card \u2014 you do not stop drawing Commons. The Forge is the one exception: it ignores rank entirely.' },
+    a: 'Your rank sets the pool, and pools stack. Rank 1 draws Commons and Uncommons. Rank 2 adds Rares, rank 3 adds Epics, and only rank 4 can ever DRAW a Legendary. A rank 3 player draws from ranks 1 to 3 together, not from rank 3 alone. At rank 4 the pool still includes every lower card \u2014 you do not stop drawing Commons. The Forge is the one exception: it ignores rank entirely.' },
   { q: 'What is the Forge?',
-    a: 'Three relics of the same tier become one relic of the tier above \u2014 guaranteed, not another roll. They do not have to be the same card: any three Commons will do. Which card you receive is decided on-chain. It costs 0.002 zkLTC, burned, and the three relics are destroyed for good.' },
-  { q: 'Can I forge my way to The Silver Throne without rank 4?',
-    a: 'Yes. The Forge ignores rank, which is the whole point of it. The draw rewards what you burned; the Forge rewards what you collected. Buy three Rares on the Store and you have paid for your Epic in zkLTC rather than offerings \u2014 a different road, not a shortcut. Drawing the Throne still requires rank 4.' },
+    a: 'Three relics of the same tier become one relic of the tier above \u2014 guaranteed, not another roll. They do not have to be the same card: any three Commons will do. Which card you receive is decided on-chain. The fee grows with the rarity you aim for, 95% of it is burned for your rank, and the three relics are destroyed for good.' },
+  { q: 'Can I forge my way to a Legendary without rank 4?',
+    a: 'Yes. The Forge ignores rank, which is the whole point of it. The draw rewards what you burned; the Forge rewards what you collected. Buy three Rares on the Store and you have paid for your Epic in zkLTC rather than offerings \u2014 a different road, not a shortcut. Drawing a Legendary still requires rank 4.' },
   { q: 'Can I forge a relic I only own once?',
     a: 'Yes, and the interface warns you before you do. The contract does not protect you from yourself: if you want to sacrifice the only Epic you hold for a shot at the tier above, that is your call. Nothing is refunded.' },
   { q: 'Does the zkLTC burned in duels raise my rank?',
-    a: 'No. Only the Ritual counts toward rank. The share burned when a duel settles, and the share burned on a Store sale, leave circulation but are not credited to your lifetime total. Opening a 5 zkLTC duel will not make you an Apprentice.' },
+    a: 'Yes. Every burn in the Void is credited to the player it belongs to: both duellists for the share burned in a duel, the buyer for a Lower City sale, the forger at the Forge, the buyer of a ring skin. It all adds up to your lifetime total, and your rank.' },
   { q: 'What are the drop rates?',
-    a: 'They are shown in the Arena on the draw panel, adjusted to your own pool. At rank 1 you see roughly 81% Common and 19% Uncommon, because the rarer tiers are not in your pool at all. At rank 4 the full ladder applies: 75% Common, 18% Uncommon, 5% Rare, 1.5% Epic, 0.5% Legendary.' },
+    a: 'They are shown in the Arena on the draw panel, adjusted to your own pool. At rank 1 you see roughly 80.6% Common and 19.4% Uncommon, because the rarer tiers are not in your pool at all. At rank 4 the full ladder applies: 75% Common, 18% Uncommon, 5% Rare, 1.5% Epic, 0.5% Legendary.' },
   { q: 'I have gone 15 draws without anything rare.',
     a: 'After 15 consecutive draws with no Rare or better, the next draw skips Commons and Uncommons entirely. It does not guarantee a Legendary \u2014 it guarantees you leave the bottom two tiers. This only applies if your pool contains Rare or better, so a rank 1 player never triggers it: there is nothing above Uncommon to fall into.' },
   { q: 'Why does drawing take two transactions?',
@@ -14093,7 +14152,7 @@ const FAQ_ITEMS = [
   { q: 'I keep drawing the same relic. Is that a bug?',
     a: 'No \u2014 duplicates are expected, and they are the point. You have two ways to use them: trade them at the Void Store with players still missing them, or take three of the same tier to the Forge and turn them into something better. The Store shows a \u00d72 badge on anything you hold more than one of.' },
   { q: 'What happens to the money when I sell?',
-    a: 'The Store contract splits every sale: 95.5% to you, 3% burned forever and credited to the buyer\'s rank, 1.5% to the Order. Listing costs 0.0075 zkLTC. If the collection declares a royalty, it is paid out of your share.' },
+    a: 'On every sale, 3% of the price is burned forever and credited to the buyer\'s rank. The full split, fees included, is in the Lower City table above. If the collection declares a royalty, it is paid out of the seller\'s share.' },
   { q: 'Are the rank badges the same thing as relics?',
     a: 'No. Badges of the Order are soulbound \u2014 they prove what you burned and can never be sold or transferred. Relics are transferable NFTs: yours to trade. A badge says who you are; a relic is something you own.' },
   { q: 'My burn is not showing in the leaderboard.',
@@ -14470,7 +14529,7 @@ function faqOpen(){
   if (!m) return;
   const host = document.getElementById('faq-list');
   if (host && host.dataset.done !== '1') {
-    host.innerHTML = FAQ_ITEMS.map(f => `
+    host.innerHTML = howSectionsHTML() + FAQ_ITEMS.map(f => `
       <div class="faq-item" onclick="this.classList.toggle('open')">
         <div class="q"><span>${f.q}</span><i>+</i></div>
         <div class="a">${f.a}</div>
@@ -15051,7 +15110,7 @@ async function sagaMint(sagaId) {
     <!-- Le titre vit désormais dans le bandeau de la Cité, en haut de page. -->
     <div style="text-align:center;margin-bottom:1.2rem;display:none;">
       <div style="font-family:'Cinzel',serif;font-size:1.6rem;letter-spacing:0.08em;color:#fff;text-transform:uppercase;">The Void Store</div>
-      <div style="font-size:0.78rem;color:rgba(255,255,255,0.4);font-style:italic;margin-top:0.2rem;">Every sale feeds the void. 95.5% to the seller, 3% burned for the buyer, 1.5% to the order.</div>
+      <div style="font-size:0.78rem;color:rgba(255,255,255,0.4);font-style:italic;margin-top:0.2rem;">Every sale feeds the void: 3% of the price is burned for the buyer's rank.</div>
     </div>
 
     <!-- STORE STATS BANNER — fed by the contract's on-chain getStats() counters: one RPC call, no event scanning -->
@@ -15202,7 +15261,7 @@ async function sagaMint(sagaId) {
           <input id="store-sell-price" type="number" step="0.001" min="0" oninput="storeSyncApproveState()" placeholder="e.g. 1.2" style="width:100%;padding:0.5rem 0.7rem;font-size:0.75rem;background:rgba(255,255,255,0.04);border:1px solid rgba(0,229,204,0.25);border-radius:3px;color:#fff;outline:none;box-sizing:border-box;">
         </div>
 
-        <div style="font-size:0.65rem;color:rgba(255,170,68,0.6);margin-bottom:1rem;font-style:italic;">⚠ Listing costs 0.0075 zkLTC (0.005 burned + 0.0025 to the order).</div>
+        <div style="font-size:0.65rem;color:rgba(255,170,68,0.6);margin-bottom:1rem;font-style:italic;">⚠ Listing costs 0.0075 zkLTC.</div>
         <div id="store-sell-error" style="display:none;font-size:0.7rem;color:#ff6655;margin-bottom:0.8rem;"></div>
 
         <button id="store-approve-btn" onclick="storeApprove()" style="width:100%;padding:0.6rem;font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.1em;cursor:pointer;background:transparent;border:1px solid rgba(157,127,238,0.4);color:#9d7fee;border-radius:3px;text-transform:uppercase;margin-bottom:0.5rem;">1. Approve NFT</button>
