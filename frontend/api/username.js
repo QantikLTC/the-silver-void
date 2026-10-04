@@ -90,7 +90,11 @@ async function redisCmd(cmd) {
 function applyCors(req, res) {
   const origin = req.headers.origin;
   if (!origin) return true;
-  if (ALLOWED_ORIGINS.includes(origin)) {
+  // Prévisualisations Vercel du projet (branche de test) : *.vercel.app de
+  // ton compte, en plus du domaine public.
+  const isPreview = /^https:\/\/the-silver-void-[a-z0-9-]+-camille-s-projects14\.vercel\.app$/.test(origin)
+                 || /^https:\/\/the-silver-void-git-[a-z0-9-]+-camille-s-projects14\.vercel\.app$/.test(origin);
+  if (ALLOWED_ORIGINS.includes(origin) || isPreview) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
     return true;
