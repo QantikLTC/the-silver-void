@@ -17287,20 +17287,15 @@ let _avatarPoolCache = null; // cached claim status per (rankIdx, nftId) for the
 // Pre-fetch claim status for every pool NFT — called once before opening
 // any avatar UI, so avatarAllUnlocked() itself can stay synchronous.
 async function avatarRefreshPoolCache() {
+  // Contrats v2 : un avatar de relique se débloque en POSSÉDANT la relique
+  // (tirée, forgée ou achetée), lu sur le contrat des reliques. L'ancien NFT
+  // de rang, qui servait avant, n'existe plus dans ce monde.
   _avatarPoolCache = {};
   if (!connectedAddress) return;
   try {
-    await initNFTContract();
-    if (!nftReadContract) return;
-    for (let rankIdx = 0; rankIdx < 4; rankIdx++) {
-      const pool = POOL_DATA[rankIdx] || [];
-      for (let nftId = 0; nftId < pool.length; nftId++) {
-        try {
-          const has = await nftReadContract.hasClaimed(connectedAddress, rankIdx + 1, nftId);
-          _avatarPoolCache[rankIdx + '_' + nftId] = has;
-        } catch (e) { _avatarPoolCache[rankIdx + '_' + nftId] = false; }
-      }
-    }
+    const c = new ethers.Contract(SV_CONTRACTS.relics, ASCENT_ABI, window.svReadProvider);
+    const counts = await c.inventoryOf(connectedAddress);
+    Array.from(counts, Number).forEach((n, k) => { _avatarPoolCache['relic_' + (k + 1)] = n > 0; });
   } catch (e) { console.warn('avatarRefreshPoolCache failed:', e); }
 }
 
@@ -17313,18 +17308,12 @@ function avatarAllUnlocked() {
   // One avatar per pool NFT (Common/Rare/Epic/etc. within each rank),
   // unlocked only if this specific NFT was actually minted by the wallet —
   // not just "reached this rank" as before.
-  const rankNames = ['Simple Holder', 'Apprentice Litecoiner', 'Devoted Litecoiner', 'Silver Maximalist'];
-  for (let rankIdx = 0; rankIdx < 4; rankIdx++) {
-    const pool = (typeof POOL_DATA !== 'undefined' && POOL_DATA[rankIdx]) || [];
-    pool.forEach((entry, nftId) => {
-      const isUnlocked = !!(_avatarPoolCache && _avatarPoolCache[rankIdx + '_' + nftId]);
-      list.push({
-        id: 'rank_' + (rankIdx + 1) + '_' + nftId,
-        type: 'image',
-        url: entry.artUrl,
-        name: entry.name + ' (' + rankNames[rankIdx] + ')',
-        unlocked: isUnlocked
-      });
+  // Une relique possédée = un avatar, dans l'ordre du catalogue (Série II
+  // comprise). Les reliques ajoutées plus tard apparaissent d'elles-mêmes.
+  if (typeof ASCENT_ITEMS !== 'undefined') {
+    ASCENT_ITEMS.forEach((it, k) => {
+      const id = 'relic_' + (k + 1);
+      list.push({ id, type: 'image', url: it.img, name: it.name, unlocked: !!(_avatarPoolCache && _avatarPoolCache[id]) });
     });
   }
   // Duelist Saga avatars (saga_1..saga_4) — same image used for the Hall of
@@ -17410,7 +17399,13 @@ function avatarRenderInfoFor(id) {
   // Avatar Ł : rendu en type 'glyph' (et non 'emoji') pour qu'il occupe
   // pleinement le cercle et porte la couleur du projet.
   if (id === 'ltc_sigil') return { type: 'glyph', icon: '\u0141' };
-  // New format: rank_<rankNum>_<nftId> — e.g. "rank_1_2" = rank 1, pool entry 2
+  // Contrats v2 : relic_<itemId>, l'illustration de la relique au catalogue.
+  const relicMatch = /^relic_(\d+)$/.exec(id);
+  if (relicMatch && typeof ASCENT_ITEMS !== 'undefined') {
+    const it = ASCENT_ITEMS[parseInt(relicMatch[1], 10) - 1];
+    if (it) return { type: 'image', url: it.img };
+  }
+  // Ancien format : rank_<rankNum>_<nftId>
   const poolMatch = /^rank_(\d)_(\d+)$/.exec(id);
   if (poolMatch) {
     const rankIdx = parseInt(poolMatch[1], 10) - 1;
@@ -17517,7 +17512,7 @@ async function avatarOpen() {
       </div>`;
     const clickAttr = a.unlocked ? `onclick="avatarSelect('${a.id}')"` : '';
     const cursor = a.unlocked ? 'cursor:pointer;' : 'cursor:not-allowed;';
-    const reqText = SAGA_REQS[a.id] || (a.id.startsWith('rank_') ? 'Mint this relic to unlock' : '');
+    const reqText = SAGA_REQS[a.id] || (a.id.startsWith('relic_') ? 'Own this relic to unlock' : '');
     const caption = a.unlocked ? '' : `<div style="font-size:0.52rem;color:rgba(0,229,204,0.45);text-align:center;margin-top:0.3rem;line-height:1.3;">${reqText}</div>`;
     return `
     <div>
