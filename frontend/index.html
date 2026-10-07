@@ -9655,6 +9655,10 @@ if(window.ethereum){
       // hence "nothing to claim" for an address that had never claimed at all.
       orderContract = null;
       arenaContract = null;
+      // Les reliques aussi : tirages et forges partaient encore signés par
+      // l'ancien wallet après un changement de compte (« no draws » alors que
+      // le nouveau compte en avait).
+      if (typeof ascentContract !== 'undefined') ascentContract = null;
       duelContract = null; // was missing — after an account switch, reveal/join txs
                            // were still signed against state belonging to the previous
                            // wallet ("only player A can reveal" until a full reload)
