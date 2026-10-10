@@ -36,7 +36,7 @@
 // compteur du contrat est passé de ~2 000 à plus de 12 000 « burners » en
 // quelques jours. Deux conséquences :
 //   1. Le chiffre affiché n'avait plus de sens. Est désormais compté comme
-//      Sacrifiant un wallet qui a brûlé au moins REAL_MIN (0.001 zkLTC).
+//      Sacrifiant un wallet qui a brûlé au moins REAL_MIN (0.0001 zkLTC).
 //   2. Relire 12 000 adresses toutes les 5 minutes dépassait le budget de la
 //      fonction. L'état est maintenant gardé dans Redis : on ne lit que les
 //      NOUVELLES entrées du tableau, on relit les montants des vrais
@@ -46,7 +46,7 @@
 // ─── CONFIG — à modifier au moment du passage au mainnet ───────────────
 const RPC_URL = 'https://liteforge.rpc.caldera.xyz/http';
 const CONTRACT_ADDRESS = '0x0AD3f776C45FF457d2d8e211A3174A4Db201b656';
-const NETWORK_TAG = 'liteforge-v13';
+const NETWORK_TAG = 'liteforge-v14';   // v14 : seuil 0.0001, relecture complète
 
 /// Slot du tableau `burners` dans le storage. VÉRIFIÉ en lisant
 /// keccak256(5)+0, qui renvoie l'adresse du créateur.
@@ -69,7 +69,10 @@ const CONCURRENCY = 3;
 const FRESH_MS = 300000;
 
 /// En dessous de ce total, un wallet n'est pas compté comme Sacrifiant.
-const REAL_MIN = 10n ** 15n;          // 0.001 zkLTC
+/// Même valeur que la plus petite offrande acceptée par le site
+/// (SV_MIN_OFFERING dans index.html) : tout ce que l'interface laisse brûler
+/// compte, seule la poussière des bots (1 wei) est écartée.
+const REAL_MIN = 10n ** 14n;          // 0.0001 zkLTC
 /// Entrées anciennes relues à chaque lecture (balayage tournant).
 const SWEEP_PER_RUN = 400;
 /// Marge gardée sur le budget pour écrire l'état dans Redis.
