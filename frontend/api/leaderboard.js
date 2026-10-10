@@ -428,7 +428,11 @@ export default async function handler(req, res) {
 
     const data = fresh || cached;
     if (data) {
-      res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
+      // Lecture encore partielle : cache très court, pour que la visite
+      // suivante relance la suite au lieu de recevoir la même réponse 2 min.
+      res.setHeader('Cache-Control', data.partial
+        ? 'public, s-maxage=10'
+        : 'public, s-maxage=120, stale-while-revalidate=600');
       res.status(200).json({
         leaderboard: data.leaderboard,
         totalBurners: data.totalBurners,
