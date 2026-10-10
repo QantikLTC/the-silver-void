@@ -30,10 +30,23 @@
 //    de mémoriser les adresses déjà lues (le tableau ne fait que grandir) et
 //    de ne relire que les nouvelles, ce qui divise la lecture par deux.
 
+// ═══ v13 — LECTURE INCRÉMENTALE ET FILTRE ANTI-POUSSIÈRE (octobre 2026) ═══
+//
+// Des bots qui farment l'airdrop de LitVM appellent burn() avec 1 wei : le
+// compteur du contrat est passé de ~2 000 à plus de 12 000 « burners » en
+// quelques jours. Deux conséquences :
+//   1. Le chiffre affiché n'avait plus de sens. Est désormais compté comme
+//      Sacrifiant un wallet qui a brûlé au moins REAL_MIN (0.001 zkLTC).
+//   2. Relire 12 000 adresses toutes les 5 minutes dépassait le budget de la
+//      fonction. L'état est maintenant gardé dans Redis : on ne lit que les
+//      NOUVELLES entrées du tableau, on relit les montants des vrais
+//      Sacrifiants, et on balaie les anciennes entrées par tranches (un
+//      wallet à 1 wei peut un jour faire une vraie offrande).
+
 // ─── CONFIG — à modifier au moment du passage au mainnet ───────────────
 const RPC_URL = 'https://liteforge.rpc.caldera.xyz/http';
 const CONTRACT_ADDRESS = '0x0AD3f776C45FF457d2d8e211A3174A4Db201b656';
-const NETWORK_TAG = 'liteforge-v12';
+const NETWORK_TAG = 'liteforge-v13';
 
 /// Slot du tableau `burners` dans le storage. VÉRIFIÉ en lisant
 /// keccak256(5)+0, qui renvoie l'adresse du créateur.
@@ -54,6 +67,13 @@ const LEADERBOARD_SIZE = 100;
 const CONCURRENCY = 3;
 
 const FRESH_MS = 300000;
+
+/// En dessous de ce total, un wallet n'est pas compté comme Sacrifiant.
+const REAL_MIN = 10n ** 15n;          // 0.001 zkLTC
+/// Entrées anciennes relues à chaque lecture (balayage tournant).
+const SWEEP_PER_RUN = 400;
+/// Marge gardée sur le budget pour écrire l'état dans Redis.
+const SAFETY_MS = 8000;
 const INVOCATION_BUDGET_MS = 52000;   // maxDuration vaut 60 s
 
 /// Durée pendant laquelle aucune nouvelle lecture n'est tentée après un échec.
@@ -61,6 +81,7 @@ const FAIL_COOLDOWN_S = 300;
 
 const KEY_DATA = `leaderboard:${NETWORK_TAG}:data`;
 const KEY_LOCK = `leaderboard:${NETWORK_TAG}:lock`;
+const KEY_STATE = `leaderboard:${NETWORK_TAG}:state`;
 
 export const config = { maxDuration: 60 };
 
@@ -236,66 +257,98 @@ function keccak256(bytes) {
 }
 // ──────────────────────────────────────────────────────────────────────
 
-async function readLeaderboard(deadline) {
+/// Lit les adresses du tableau `burners` aux index donnés.
+async function readAddresses(indices) {
+  const base = arrayBase(BURNERS_ARRAY_SLOT);
+  const out = new Map();
+  for (let i = 0; i < indices.length; i += BATCH_SIZE * CONCURRENCY) {
+    const wave = [];
+    for (let j = i; j < Math.min(i + BATCH_SIZE * CONCURRENCY, indices.length); j += BATCH_SIZE) {
+      wave.push(indices.slice(j, j + BATCH_SIZE));
+    }
+    await Promise.all(wave.map(async (chunk) => {
+      const res = await rpcBatch(chunk.map((k, n) => ({ jsonrpc: '2.0', id: n, method: 'eth_getStorageAt',
+        params: [CONTRACT_ADDRESS, '0x' + (base + BigInt(k)).toString(16), 'latest'] })));
+      for (const x of res) {
+        if (x.error || !x.result || x.result.length !== 66) continue;
+        const a = ('0x' + x.result.slice(-40)).toLowerCase();
+        if (a !== '0x' + '0'.repeat(40)) out.set(chunk[x.id], a);
+      }
+    }));
+    await sleep(BATCH_PAUSE_MS);
+  }
+  return out;
+}
+
+/// Lit le total brûlé de chaque adresse.
+async function readAmounts(addrs) {
+  const out = new Map();
+  for (let i = 0; i < addrs.length; i += BATCH_SIZE * CONCURRENCY) {
+    const wave = [];
+    for (let j = i; j < Math.min(i + BATCH_SIZE * CONCURRENCY, addrs.length); j += BATCH_SIZE) {
+      wave.push(addrs.slice(j, j + BATCH_SIZE));
+    }
+    await Promise.all(wave.map(async (chunk) => {
+      const res = await rpcBatch(chunk.map((a, n) => ({ jsonrpc: '2.0', id: n, method: 'eth_call',
+        params: [{ to: CONTRACT_ADDRESS, data: SEL_BURNER_INFO + a.slice(2).padStart(64, '0') }, 'latest'] })));
+      for (const x of res) {
+        if (x.error || !x.result || x.result.length < 66) continue;
+        out.set(chunk[x.id], BigInt('0x' + x.result.slice(2, 66)));
+      }
+    }));
+    await sleep(BATCH_PAUSE_MS);
+  }
+  return out;
+}
+
+/// Lit des entrées du tableau et met à jour la liste des vrais Sacrifiants.
+async function scanIndices(indices, real) {
+  const addrs = await readAddresses(indices);
+  const amounts = await readAmounts([...new Set(addrs.values())]);
+  for (const [a, v] of amounts) {
+    if (v >= REAL_MIN) real[a] = v.toString();
+    else delete real[a];
+  }
+}
+
+/// Une lecture : nouvelles entrées d'abord, puis montants des vrais
+/// Sacrifiants, puis une tranche du balayage. S'arrête proprement avant la fin
+/// du budget ; la lecture suivante reprend où celle-ci s'est arrêtée.
+async function readLeaderboard(deadline, state) {
   const cntHex = await rpcSingle('eth_call',
     [{ to: CONTRACT_ADDRESS, data: SEL_BURNER_COUNT }, 'latest']);
   const count = Number(BigInt(cntHex));
-  if (!count) return { list: [], count: 0 };
+  const st = state || { scanned: 0, sweep: 0, real: {} };
+  const stop = deadline - SAFETY_MS;
+  const CHUNK = BATCH_SIZE * CONCURRENCY * 4;   // 480 entrées par tranche
 
-  const base = arrayBase(BURNERS_ARRAY_SLOT);
-
-  const addrSlots = new Array(count).fill(null);
-  const addrStarts = [];
-  for (let i = 0; i < count; i += BATCH_SIZE) addrStarts.push(i);
-
-  for (let w = 0; w < addrStarts.length; w += CONCURRENCY) {
-    if (Date.now() > deadline) throw new Error('BUDGET_EPUISE');
-    const wave = addrStarts.slice(w, w + CONCURRENCY);
-    await Promise.all(wave.map(async (start) => {
-      const reqs = [];
-      for (let k = start; k < Math.min(start + BATCH_SIZE, count); k++) {
-        reqs.push({ jsonrpc: '2.0', id: k, method: 'eth_getStorageAt',
-          params: [CONTRACT_ADDRESS, '0x' + (base + BigInt(k)).toString(16), 'latest'] });
-      }
-      const res = await rpcBatch(reqs);
-      for (const x of res) {
-        if (x.error || !x.result || x.result.length !== 66) continue;
-        const a = '0x' + x.result.slice(-40);
-        if (a !== '0x' + '0'.repeat(40)) addrSlots[x.id] = a.toLowerCase();
-      }
-    }));
-    await sleep(BATCH_PAUSE_MS);
-  }
-  const addrs = addrSlots.filter(Boolean);
-
-  const list = [];
-  const amtStarts = [];
-  for (let i = 0; i < addrs.length; i += BATCH_SIZE) amtStarts.push(i);
-
-  for (let w = 0; w < amtStarts.length; w += CONCURRENCY) {
-    if (Date.now() > deadline) throw new Error('BUDGET_EPUISE');
-    const wave = amtStarts.slice(w, w + CONCURRENCY);
-    await Promise.all(wave.map(async (start) => {
-      const slice = addrs.slice(start, start + BATCH_SIZE);
-      const reqs = slice.map((a, k) => ({ jsonrpc: '2.0', id: k, method: 'eth_call',
-        params: [{ to: CONTRACT_ADDRESS,
-                   data: SEL_BURNER_INFO + a.slice(2).padStart(64, '0') }, 'latest'] }));
-      const res = await rpcBatch(reqs);
-      for (const x of res) {
-        if (x.error || !x.result || x.result.length < 66) continue;
-        const v = BigInt('0x' + x.result.slice(2, 66));
-        if (v > 0n) list.push({ address: slice[x.id], amount: v.toString() });
-      }
-    }));
-    await sleep(BATCH_PAUSE_MS);
+  // 1. Nouvelles entrées du tableau.
+  while (st.scanned < count && Date.now() < stop) {
+    const end = Math.min(st.scanned + CHUNK, count);
+    const idx = []; for (let k = st.scanned; k < end; k++) idx.push(k);
+    await scanIndices(idx, st.real);
+    st.scanned = end;
   }
 
-  list.sort((a, b) => {
-    const d = BigInt(b.amount) - BigInt(a.amount);
-    return d > 0n ? 1 : d < 0n ? -1 : 0;
-  });
+  // 2. Montants à jour des vrais Sacrifiants (ce sont eux qui font le classement).
+  if (Date.now() < stop) {
+    const amounts = await readAmounts(Object.keys(st.real));
+    for (const [a, v] of amounts) st.real[a] = v.toString();
+  }
 
-  return { list: list.slice(0, LEADERBOARD_SIZE), count };
+  // 3. Balayage tournant des entrées déjà lues.
+  if (st.scanned > 0 && Date.now() < stop) {
+    const idx = [];
+    for (let n = 0; n < Math.min(SWEEP_PER_RUN, st.scanned); n++) idx.push((st.sweep + n) % st.scanned);
+    await scanIndices(idx, st.real);
+    st.sweep = (st.sweep + idx.length) % st.scanned;
+  }
+
+  const list = Object.entries(st.real)
+    .map(([address, amount]) => ({ address, amount }))
+    .sort((a, b) => { const d = BigInt(b.amount) - BigInt(a.amount); return d > 0n ? 1 : d < 0n ? -1 : 0; });
+
+  return { list: list.slice(0, LEADERBOARD_SIZE), real: list.length, count, complete: st.scanned >= count, state: st };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -337,11 +390,12 @@ export default async function handler(req, res) {
       return;
     }
 
-    if (cached && age < FRESH_MS) {
+    if (cached && age < FRESH_MS && !cached.partial) {
       res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
       res.status(200).json({
         leaderboard: cached.leaderboard,
         totalBurners: cached.totalBurners,
+        rawBurners: cached.rawBurners,
         updatedAt: new Date(cached.t).toISOString(),
       });
       return;
@@ -352,9 +406,15 @@ export default async function handler(req, res) {
       const started = Date.now();   // hors du try : visible dans le catch
       let failed = false;
       try {
-        const r = await readLeaderboard(started + INVOCATION_BUDGET_MS);
+        const prev = await redisGet(KEY_STATE);
+        const r = await readLeaderboard(started + INVOCATION_BUDGET_MS, prev);
+        await redisSet(KEY_STATE, r.state);
+        // Même partielle (premier passage en plusieurs fois), la liste est
+        // publiable : les vrais Sacrifiants sont surtout dans les premières
+        // entrées du tableau, lues en premier.
         if (r.list.length > 0) {
-          fresh = { t: Date.now(), leaderboard: r.list, totalBurners: r.count };
+          fresh = { t: Date.now(), leaderboard: r.list, totalBurners: r.real, rawBurners: r.count,
+                    partial: !r.complete };
           await redisSet(KEY_DATA, fresh);
         }
       } catch (e) {
@@ -372,6 +432,7 @@ export default async function handler(req, res) {
       res.status(200).json({
         leaderboard: data.leaderboard,
         totalBurners: data.totalBurners,
+        rawBurners: data.rawBurners,
         updatedAt: new Date(data.t).toISOString(),
         stale: !fresh,
       });
