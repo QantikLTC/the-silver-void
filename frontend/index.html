@@ -3814,7 +3814,7 @@ function svIntroParticles() {
         </div>
         <!-- INPUT -->
         <div class="burn-input-row">
-          <input class="burn-inp" id="amt" type="number" value="0.5" min="0.01" step="0.01" placeholder="Custom..." oninput="updateVortex(this.value);const _v=parseFloat(this.value)||0;const _xp=document.getElementById('live-xp');if(_xp)_xp.textContent='+'+Math.round(_v*1000).toLocaleString()+' XP'">
+          <input class="burn-inp" id="amt" type="number" value="0.5" min="0.0001" step="0.01" placeholder="Custom..." oninput="updateVortex(this.value);const _v=parseFloat(this.value)||0;const _xp=document.getElementById('live-xp');if(_xp)_xp.textContent='+'+Math.round(_v*1000).toLocaleString()+' XP'">
           <div class="burn-inp-unit">zkLTC</div>
         </div>
         <!-- Bloc "Void XP Generated" retire : l'XP n'ouvre rien. Les rangs
@@ -8077,7 +8077,7 @@ function disconnectWallet(){
 /// Pourquoi pas le compteur du contrat : depuis octobre 2026, des bots qui
 /// farment l'airdrop de LitVM appellent burn() avec 1 wei, et le contrat les
 /// compte comme burners (et chaque appel comme une offrande). Le serveur ne
-/// retient que les wallets qui ont brûlé au moins 0.001 zkLTC. Pour la même
+/// retient que les wallets qui ont brûlé au moins 0.0001 zkLTC. Pour la même
 /// raison, le nombre d'offrandes n'est plus affiché : on montre la moyenne
 /// brûlée par Sacrifiant, que les bots ne faussent pas.
 function svShowSacrifiants() {
@@ -8156,7 +8156,7 @@ async function loadChainData(){
     } catch(e) { console.warn('ledger breakdown failed:', e); }
     // Le compteur de burners du contrat compte aussi les bots qui brûlent
     // 1 wei pour farmer l'airdrop : on n'affiche que les VRAIS Sacrifiants
-    // (>= 0.001 zkLTC), comptés par /api/leaderboard. Voir svShowSacrifiants.
+    // (>= 0.0001 zkLTC), comptés par /api/leaderboard. Voir svShowSacrifiants.
     window._svRitualBurned = parseFloat(ethers.formatEther(totalBurned));
     svShowSacrifiants();
     // Also update leaderboard sidebar stats
@@ -8475,9 +8475,15 @@ async function svWithGasLimit(contractMethod, ...args) {
   return contractMethod(...args);
 }
 
+/// Plus petite offrande acceptée par le site, et seuil à partir duquel un
+/// wallet est compté comme Sacrifiant (même valeur dans api/leaderboard.js).
+/// Une seule règle partout : ce que l'interface laisse brûler compte toujours.
+const SV_MIN_OFFERING = 0.0001;
+
 async function burn(){
   const v=parseFloat(document.getElementById('amt').value)||0;
   if(v<=0){showToast('Enter an amount',true);return;}
+  if(v<SV_MIN_OFFERING){showToast('The smallest offering is '+SV_MIN_OFFERING+' zkLTC.',true);return;}
   if(!connectedAddress){showToast('Connect your wallet first',true);await connectWallet();return;}
   const btn=document.querySelector('.btn-transmute-main') || document.querySelector('.burn-btn');
   const orig=btn.innerHTML;
@@ -8797,7 +8803,7 @@ async function loadLeaderboard(){
     } catch (e) {}
     if(lbData && lbData.totalBurners) {
       _lbTotalBurners = Number(lbData.totalBurners);
-      window._svRealBurners = Number(lbData.totalBurners);   // vrais Sacrifiants (>= 0.001 zkLTC)
+      window._svRealBurners = Number(lbData.totalBurners);   // vrais Sacrifiants (>= 0.0001 zkLTC)
       svShowSacrifiants();
     }
 
