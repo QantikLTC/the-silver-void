@@ -77,7 +77,7 @@ const SAFETY_MS = 8000;
 const INVOCATION_BUDGET_MS = 52000;   // maxDuration vaut 60 s
 
 /// Durée pendant laquelle aucune nouvelle lecture n'est tentée après un échec.
-const FAIL_COOLDOWN_S = 300;
+const FAIL_COOLDOWN_S = 60;
 
 const KEY_DATA = `leaderboard:${NETWORK_TAG}:data`;
 const KEY_LOCK = `leaderboard:${NETWORK_TAG}:lock`;
@@ -322,33 +322,41 @@ async function readLeaderboard(deadline, state) {
   const stop = deadline - SAFETY_MS;
   const CHUNK = BATCH_SIZE * CONCURRENCY * 4;   // 480 entrées par tranche
 
-  // 1. Nouvelles entrées du tableau.
-  while (st.scanned < count && Date.now() < stop) {
-    const end = Math.min(st.scanned + CHUNK, count);
-    const idx = []; for (let k = st.scanned; k < end; k++) idx.push(k);
-    await scanIndices(idx, st.real);
-    st.scanned = end;
-  }
+  // Une erreur RPC (limite de débit, délai dépassé) n'efface plus le travail
+  // fait : on s'arrête, on garde l'état, la lecture suivante reprend.
+  let error = null;
+  try {
+    // 1. Nouvelles entrées du tableau.
+    while (st.scanned < count && Date.now() < stop) {
+      const end = Math.min(st.scanned + CHUNK, count);
+      const idx = []; for (let k = st.scanned; k < end; k++) idx.push(k);
+      await scanIndices(idx, st.real);
+      st.scanned = end;
+    }
 
-  // 2. Montants à jour des vrais Sacrifiants (ce sont eux qui font le classement).
-  if (Date.now() < stop) {
-    const amounts = await readAmounts(Object.keys(st.real));
-    for (const [a, v] of amounts) st.real[a] = v.toString();
-  }
+    // 2. Montants à jour des vrais Sacrifiants (ce sont eux qui font le classement).
+    if (st.scanned >= count && Date.now() < stop) {
+      const amounts = await readAmounts(Object.keys(st.real));
+      for (const [a, v] of amounts) st.real[a] = v.toString();
+    }
 
-  // 3. Balayage tournant des entrées déjà lues.
-  if (st.scanned > 0 && Date.now() < stop) {
-    const idx = [];
-    for (let n = 0; n < Math.min(SWEEP_PER_RUN, st.scanned); n++) idx.push((st.sweep + n) % st.scanned);
-    await scanIndices(idx, st.real);
-    st.sweep = (st.sweep + idx.length) % st.scanned;
+    // 3. Balayage tournant des entrées déjà lues.
+    if (st.scanned >= count && st.scanned > 0 && Date.now() < stop) {
+      const idx = [];
+      for (let n = 0; n < Math.min(SWEEP_PER_RUN, st.scanned); n++) idx.push((st.sweep + n) % st.scanned);
+      await scanIndices(idx, st.real);
+      st.sweep = (st.sweep + idx.length) % st.scanned;
+    }
+  } catch (e) {
+    error = e;
+    console.warn(`lecture interrompue à ${st.scanned}/${count}:`, e.message);
   }
 
   const list = Object.entries(st.real)
     .map(([address, amount]) => ({ address, amount }))
     .sort((a, b) => { const d = BigInt(b.amount) - BigInt(a.amount); return d > 0n ? 1 : d < 0n ? -1 : 0; });
 
-  return { list: list.slice(0, LEADERBOARD_SIZE), real: list.length, count, complete: st.scanned >= count, state: st };
+  return { list: list.slice(0, LEADERBOARD_SIZE), real: list.length, count, complete: st.scanned >= count, state: st, error };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -409,6 +417,8 @@ export default async function handler(req, res) {
         const prev = await redisGet(KEY_STATE);
         const r = await readLeaderboard(started + INVOCATION_BUDGET_MS, prev);
         await redisSet(KEY_STATE, r.state);
+        console.log(`leaderboard: ${r.state.scanned}/${r.count} lues, ${r.real} vrais Sacrifiants${r.error ? ', interrompue: ' + r.error.message : ''}`);
+        if (r.error && r.list.length === 0) throw r.error;
         // Même partielle (premier passage en plusieurs fois), la liste est
         // publiable : les vrais Sacrifiants sont surtout dans les premières
         // entrées du tableau, lues en premier.
