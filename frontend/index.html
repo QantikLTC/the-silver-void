@@ -1019,6 +1019,7 @@ body.sv-rail-on section#store-page[data-rail]{max-width:none !important;padding:
 /* FAQ. Le blanc pur fatiguait sur ce fond bleu nuit — les reponses passent
    en bleu clair, une teinte qui appartient deja a la palette du site et qui
    se lit longtemps sans forcer. */
+.faq-cat{font-family:'Cinzel',serif;font-weight:500;font-size:0.68rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--teal);margin:1.6rem 0 0.6rem;}
 .faq-lead{
   font-family:'Cormorant Garamond',serif; font-size:1rem; font-style:italic;
   line-height:1.65; color:#b8d4f0; margin-bottom:1.6rem;
@@ -2998,6 +2999,42 @@ body.sv-rail-on section[data-rail]:not(.sv-active){ display:none !important }
 @media (min-width:901px){
   #sv-burger, #sv-drawer{ display:none !important }
 }
+/* ═══ Quêtes hebdomadaires ═══ */
+.quest-panel{margin:0 0 1.6rem;padding:1.2rem 1.3rem;border:1px solid rgba(0,229,204,0.25);border-radius:10px;background:linear-gradient(135deg,rgba(0,229,204,0.06),rgba(90,159,255,0.03));}
+.qp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:0.9rem;}
+.qp-eyebrow{font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.24em;text-transform:uppercase;color:var(--teal);}
+.qp-title{font-family:'Cinzel',serif;font-size:1.05rem;color:#fff;margin-top:0.2rem;}
+.qp-reset{font-size:0.72rem;color:rgba(255,255,255,0.45);font-style:italic;}
+.qp-list{display:grid;gap:0.6rem;}
+.qp-q{display:grid;grid-template-columns:1fr auto;gap:0.25rem 1rem;align-items:center;padding:0.6rem 0.75rem;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);}
+.qp-q.done{border-color:rgba(0,229,204,0.35);}
+.qp-q b{font-family:'Cinzel',serif;font-weight:500;font-size:0.85rem;color:#fff;}
+.qp-q.done b::before{content:'\2713  ';color:var(--teal);}
+.qp-q small{grid-column:1/-1;font-size:0.72rem;color:rgba(255,255,255,0.45);}
+.qp-q span{font-size:0.75rem;color:rgba(255,255,255,0.6);font-variant-numeric:tabular-nums;}
+.qp-bar{grid-column:1/-1;height:3px;border-radius:2px;background:rgba(255,255,255,0.08);overflow:hidden;}
+.qp-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),#5a9fff);}
+.qp-foot{display:flex;align-items:center;gap:0.9rem;flex-wrap:wrap;margin-top:0.9rem;}
+.qp-claim{font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.18em;text-transform:uppercase;padding:0.6rem 1.1rem;border-radius:4px;cursor:pointer;border:1px solid rgba(0,229,204,0.5);background:rgba(0,229,204,0.12);color:var(--teal);}
+.qp-claim:disabled{opacity:0.4;cursor:not-allowed;}
+.qp-note{font-size:0.75rem;color:rgba(255,255,255,0.5);font-style:italic;}
+.qp-fab{position:fixed;bottom:152px;right:24px;z-index:9990;width:56px;height:56px;border-radius:50%;border:1px solid rgba(255,193,64,0.55);background:radial-gradient(circle at 35% 30%,rgba(255,193,64,0.35),rgba(20,10,50,0.95) 70%);color:#ffc140;font-size:1.35rem;cursor:pointer;box-shadow:0 4px 20px rgba(255,193,64,0.25);display:flex;align-items:center;justify-content:center;}
+.qp-fab b{position:absolute;top:-4px;right:-6px;min-width:22px;height:20px;padding:0 5px;border-radius:10px;background:#ffc140;color:#0a0620;font:600 0.62rem/20px 'Cinzel',serif;letter-spacing:0.02em;}
+.qp-fab.done{border-color:rgba(0,229,204,0.6);color:var(--teal);} .qp-fab.done b{background:var(--teal);}
+#quest-modal{display:none;position:fixed;inset:0;z-index:10001;background:rgba(2,1,12,0.85);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1.5rem;}
+#quest-modal .qm-box{background:linear-gradient(135deg,rgba(12,6,45,0.98),rgba(6,3,28,0.99));border:1px solid rgba(255,193,64,0.3);border-radius:8px;max-width:440px;width:100%;padding:1.6rem 1.5rem;position:relative;max-height:88vh;overflow-y:auto;}
+.qm-close{position:absolute;top:1rem;right:1rem;width:28px;height:28px;border-radius:50%;background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.45);cursor:pointer;}
+#quest-modal .qp-head{padding-right:2.2rem;}
+.qm-acts{display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:1rem;}
+.qm-acts button{flex:1;min-width:120px;}
+.qp-pennant{display:flex;align-items:center;gap:0.9rem;position:relative;z-index:20;margin:1.6rem auto 0;max-width:560px;padding:0.8rem 1rem;border-radius:8px;border:1px solid rgba(255,193,64,0.3);background:linear-gradient(135deg,rgba(255,193,64,0.08),rgba(8,4,40,0.6));cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%;box-sizing:border-box;}
+.qp-pennant:hover{border-color:rgba(255,193,64,0.6);}
+.qp-pennant .pi{font-size:1.4rem;color:#ffc140;flex-shrink:0;}
+.qp-pennant .pt{flex:1;min-width:0;}
+.qp-pennant .pt div:first-child{font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.22em;text-transform:uppercase;color:#ffc140;}
+.qp-pennant .pt div:last-child{font-size:0.85rem;color:rgba(255,255,255,0.8);margin-top:0.15rem;}
+.qp-pennant .pc{font-family:'Cinzel',serif;font-size:1.05rem;color:#fff;white-space:nowrap;}
+.qp-preview{margin:0 0 0.9rem;padding:0.55rem 0.75rem;border-radius:6px;border:1px dashed rgba(255,193,64,0.4);background:rgba(255,193,64,0.06);font-size:0.75rem;line-height:1.5;color:rgba(255,220,150,0.85);}
 </style>
 </head>
 <body>
@@ -3016,7 +3053,7 @@ body.sv-rail-on section[data-rail]:not(.sv-active){ display:none !important }
     <!-- Header (fixed) -->
     <div style="padding:2.2rem 2.4rem 1.2rem;border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0;">
       <div style="font-family:'Cinzel',serif;font-size:clamp(1.5rem,5vw,2rem);letter-spacing:0.3em;text-transform:uppercase;color:#fff;line-height:1.15;font-weight:600;text-align:center;margin-bottom:0.5rem;">THE SI<span class="ltc-letter" style="display:inline-block;transform:skewX(-6deg);">Ł</span>VER VOID</div>
-      <div style="font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:0.22em;color:var(--glow);text-transform:uppercase;text-align:center;">Terms of Use · Version 1 · July 10, 2026</div>
+      <div style="font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:0.22em;color:var(--glow);text-transform:uppercase;text-align:center;">Terms of Use · Version 2 · October 9, 2026</div>
       <!-- Close button — only visible in reader mode -->
       <button id="terms-close-btn" onclick="closeTermsReader()" style="display:none;position:absolute;top:1.2rem;right:1.2rem;width:30px;height:30px;border-radius:50%;background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);cursor:pointer;font-size:0.9rem;align-items:center;justify-content:center;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">✕</button>
     </div>
@@ -3025,44 +3062,144 @@ body.sv-rail-on section[data-rail]:not(.sv-active){ display:none !important }
     <div style="overflow-y:auto;padding:1.6rem 2.4rem;flex:1;">
       <div style="font-size:0.9rem;color:rgba(255,255,255,0.72);line-height:1.8;font-family:'Cormorant Garamond',Georgia,serif;">
 
-        <p style="margin-bottom:1.5rem;">Welcome to The Silver Void (the "dApp"). By accessing, connecting a wallet to, or interacting with the dApp in any way, you ("the user") acknowledge that you have read, understood, and agree to be bound by these Terms of Use. If you do not agree, do not use the dApp.</p>
+        <p style="margin-bottom:1.5rem;">Please read these Terms carefully. They contain important information about the risks of using blockchain applications, the finality of every transaction, and the limits of our liability.</p>
 
-        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">1. Nature of the Service</h3>
-        <p style="margin-bottom:1.2rem;">The Silver Void is a decentralized application that interacts with smart contracts deployed on the LiteForge network. It enables users to burn zkLTC tokens, acquire and trade digital collectibles, purchase cosmetic items, and participate in on-chain duel games. The dApp is a non-custodial interface: it never holds, controls, or has access to your funds or private keys. All transactions are executed directly between your wallet and the relevant smart contracts.</p>
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">1. Who we are and what these Terms cover</h3>
 
-        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">2. Irreversibility of Transactions</h3>
-        <p style="margin-bottom:1.2rem;">Blockchain transactions are final and irreversible by design. Burning zkLTC permanently destroys those tokens: once a burn transaction is confirmed on-chain, the funds are gone forever and cannot be recovered, reversed, or refunded by anyone, including the operators of The Silver Void. You are solely responsible for verifying every transaction before confirming it in your wallet.</p>
+        <p style="margin-bottom:1.2rem;">The Silver Void (the "dApp") is an independent project operated by its creator ("we", "us"). These Terms of Use govern your access to the website thesilvervoid.com, its interface, and its use of the smart contracts of The Silver Void. By accessing the dApp, connecting a wallet, or interacting with any of its smart contracts through it, you ("you", "the user") agree to these Terms. If you do not agree, do not use the dApp.</p>
 
-        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">3. No Refunds</h3>
-        <p style="margin-bottom:1.2rem;">All actions performed through the dApp — including but not limited to burns, purchases, sales, listings, cosmetic acquisitions, and duel stakes — are final and non-refundable under any circumstances. This includes transactions resulting from user error, mistaken amounts, wrong network selection, or misunderstanding of the mechanics.</p>
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">2. Eligibility</h3>
 
-        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">4. Duels and Staked Games</h3>
-        <p style="margin-bottom:1.2rem;">Duels involve staking zkLTC against another participant. Outcomes are determined on-chain. If you open a duel, you must reveal your move within the time window enforced by the smart contract; failure to reveal in time may allow your opponent to claim the entire stake, including your own. You are responsible for safeguarding any secret required to reveal your move. Losses arising from failure to reveal, lost secrets, or the ordinary outcome of a game are non-refundable.</p>
+        <p style="margin-bottom:1.2rem;">You must be at least 18 years old, or the age of legal majority where you live if it is higher.</p>
 
-        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">5. No Warranty</h3>
-        <p style="margin-bottom:1.2rem;">The dApp and all associated smart contracts are provided on an "as is" and "as available" basis, without warranties of any kind, whether express or implied. We do not warrant that the dApp will be uninterrupted, error-free, secure, or free of harmful components. We make no guarantee regarding the behavior, security, or correctness of the underlying smart contracts or the LiteForge network.</p>
+        <p style="margin-bottom:1.2rem;">You may not use the dApp if you are located in, or a resident of, a country or territory where its features are prohibited, or if you are subject to economic sanctions. Some features, in particular duels with a stake, may be restricted or prohibited in certain jurisdictions. It is your sole responsibility to check that your use of every feature is legal where you are. We may restrict access to the interface from any location at our discretion.</p>
 
-        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">6. Limitation of Liability</h3>
-        <p style="margin-bottom:1.2rem;">To the fullest extent permitted by law, the operators of The Silver Void shall not be liable for any direct, indirect, incidental, consequential, or punitive damages, or any loss of funds, tokens, or data, arising from or related to your use of the dApp. This includes losses caused by software bugs, smart-contract vulnerabilities, network failures or congestion, wallet or key mismanagement, phishing, downtime, or any other technical problem, whether or not foreseeable.</p>
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">3. A non-custodial interface</h3>
 
-        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">7. User Responsibility</h3>
-        <p style="margin-bottom:1.2rem;">You are solely responsible for your wallet, your private keys, your seed phrase, and every decision you make while using the dApp. You are responsible for ensuring you understand the mechanics of each action before performing it, and for complying with any laws applicable to you in your jurisdiction.</p>
+        <p style="margin-bottom:1.2rem;">The dApp is an interface to smart contracts deployed on the LitVM network (and, during testing, on its LiteForge testnet). We never hold, control, or have access to your funds, your NFTs, or your private keys. Every transaction is signed by you in your own wallet and executed directly between your wallet and the smart contracts.</p>
 
-        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">8. No Financial Advice</h3>
-        <p style="margin-bottom:1.2rem;">Nothing in the dApp constitutes financial, investment, legal, or tax advice. Tokens and digital collectibles may have no monetary value. You should not use the dApp with the expectation of profit.</p>
+        <p style="margin-bottom:1.2rem;">The smart contracts are autonomous. Once deployed, nobody, including us, can pause them, reverse a transaction, change a rule, or recover assets on your behalf. The only administrative role is the curator of the relic catalogue, who can add new relics; it cannot alter, remove, or take any relic or any funds.</p>
 
-        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">9. Changes to These Terms</h3>
-        <p style="margin-bottom:1.2rem;">We may update these Terms from time to time. When the terms change materially, you may be asked to accept the new version before continuing to use the dApp. Continued use after an update constitutes acceptance of the revised Terms.</p>
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">4. Testnet</h3>
 
-        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">10. Acceptance</h3>
-        <p style="margin-bottom:0.5rem;">By clicking "I Accept", connecting your wallet, or interacting with any smart contract through the dApp, you confirm your acceptance of these Terms of Use in full.</p>
+        <p style="margin-bottom:1.2rem;">On the LiteForge testnet, zkLTC and every item obtained with it are test assets with no monetary value. Testnet contracts, items, ranks, and data may be reset, migrated, or discontinued at any time and will not carry over to mainnet unless we explicitly announce otherwise.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">5. Burns are permanent</h3>
+
+        <p style="margin-bottom:1.2rem;">Burning sends zkLTC to an address nobody controls. Once a burn is confirmed on-chain, the tokens are destroyed forever and cannot be recovered, reversed, or refunded by anyone, including us. Several features burn part of the amount involved (offerings, duels, the Forge, Lower City sales, ring skins). The share burned for each feature is described in "How it works".</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">6. All transactions are final</h3>
+
+        <p style="margin-bottom:1.2rem;">Every action performed through the dApp, including burns, duel stakes, draws, forges, purchases, sales, listings, cosmetic purchases, and badge claims, is final and non-refundable, including in case of user error, a mistaken amount, a wrong network, a misunderstanding of the rules, or a change of mind. You alone are responsible for checking every transaction before confirming it in your wallet.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">7. Duels</h3>
+
+        <p style="margin-bottom:1.2rem;">A duel is a game between two players, each staking zkLTC. The creator seals a hidden move; the opponent joins with theirs; the creator must reveal within the window enforced by the contract (currently 24 hours). If the creator does not reveal in time, the opponent may claim the duel as a forfeit, including the creator's stake. Cancelling an open duel takes two steps and a waiting period during which it can still be joined.</p>
+
+        <p style="margin-bottom:1.2rem;">The secret needed to reveal is stored in your browser, with an encrypted backup we cannot read. If you lose it (for example by clearing your browser data or changing device), you may be unable to reveal and lose the duel. We cannot reveal on your behalf.</p>
+
+        <p style="margin-bottom:1.2rem;">Stakes are capped according to your rank. Part of each pot is burned and part is retained as a protocol fee, as described in "How it works". Outcomes are final.</p>
+
+        <p style="margin-bottom:1.2rem;">Duels involve staking assets on an outcome. You confirm that taking part in them is legal where you are. Do not stake more than you can afford to lose.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">8. Relics, draws and the Forge</h3>
+
+        <p style="margin-bottom:1.2rem;">Draws use a commit-reveal mechanism seeded by blockchain data. We publish the intended odds, but we do not guarantee any particular result, rarity, or sequence of results, and the randomness depends on the underlying network. A sealed draw must be revealed within a limited window, after which it is lost and not refunded.</p>
+
+        <p style="margin-bottom:1.2rem;">The Forge permanently destroys the relics you put into it in exchange for one relic of a higher rarity, chosen on-chain. Destroyed relics cannot be recovered.</p>
+
+        <p style="margin-bottom:1.2rem;">New relics may be added to the catalogue over time. The rarity, supply, or perceived value of existing relics may change as a result, and we make no promise about the scarcity or value of any relic.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">9. What you own</h3>
+
+        <p style="margin-bottom:1.2rem;">Owning a relic, badge, or other NFT means you control that token on the blockchain. It does not transfer any copyright or other intellectual property. All artwork, names, logos, lore, texts, and other content of The Silver Void remain our property.</p>
+
+        <p style="margin-bottom:1.2rem;">As long as you own a relic, we grant you a personal, non-exclusive, worldwide, royalty-free licence to display its artwork for non-commercial purposes, including in your wallet, on marketplaces, and on social media. This licence moves with the token when you sell or transfer it, and ends for you when you no longer hold it. Any commercial use requires our prior written consent.</p>
+
+        <p style="margin-bottom:1.2rem;">Rank badges are soulbound: they cannot be transferred or sold.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">10. The Lower City (marketplace)</h3>
+
+        <p style="margin-bottom:1.2rem;">The Lower City lets users list and buy NFTs from any collection on LitVM. Sales are made directly between users through the smart contract; we are not a party to them, we do not hold the items, and we do not act as a broker, agent, or escrow.</p>
+
+        <p style="margin-bottom:1.2rem;">Collections other than The Silver Void are created by third parties. A collection being listed, or shown as "verified", is not an endorsement. We are not responsible for their content, authenticity, value, rights, or conduct, and we may hide any collection or listing from the interface at our discretion. Always check the contract address before buying.</p>
+
+        <p style="margin-bottom:1.2rem;">A listing may become impossible to complete if the seller moves, sells, or destroys the item, or revokes the marketplace's permission. Fees, the burned share, and any royalties declared by the collection are applied automatically by the contract, as described in "How it works".</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">11. Fees</h3>
+
+        <p style="margin-bottom:1.2rem;">Some features charge a fee, part of which is retained by the protocol and part of which may be burned. Current fees are published in "How it works" and are enforced by the smart contracts, which may differ between testnet and mainnet. Resales of relics on other marketplaces may carry a royalty paid to the creator. Every transaction also costs network (gas) fees, paid to the network, not to us.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">12. Profile, ranks and cosmetics</h3>
+
+        <p style="margin-bottom:1.2rem;">Ranks, badges, feats, titles, ring skins, usernames, and avatars are features of the game. They have no monetary value and confer no right, ownership share, or claim against us.</p>
+
+        <p style="margin-bottom:1.2rem;">Usernames, avatars, equipped skins, and similar profile data are stored on our servers, outside the blockchain. We may refuse, change, or remove any username that is offensive, misleading, impersonates someone, or infringes rights, and we may reset profile data if necessary. Purchased ring skins are recorded on-chain and remain yours.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">13. The Chronicles and future features</h3>
+
+        <p style="margin-bottom:1.2rem;">The Chronicles, the Path, and any roadmap are creative works and plans, not commitments. Unlock thresholds, schedules, content, and features may change, be delayed, or be abandoned. No purchase or burn entitles you to any future feature, content, airdrop, or reward.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">14. Prohibited conduct</h3>
+
+        <p style="margin-bottom:1.2rem;">You agree not to: exploit bugs or vulnerabilities, or fail to report one you discover; use bots or scripts to abuse the interface or its servers; overload, scrape, or attack our services; manipulate prices, volumes, rankings, or duel results, including by trading or duelling with yourself through several wallets; impersonate others or the project; use the dApp for money laundering, fraud, sanctions evasion, or any unlawful purpose. We may block access to the interface for anyone who breaches these Terms.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">15. Risks you accept</h3>
+
+        <p style="margin-bottom:1.2rem;">You understand and accept that: crypto assets are volatile and may lose all value; LitVM is a new network that may suffer outages, congestion, reorganisations, or changes; smart contracts may contain bugs despite testing and audits; transactions may fail or cost more than expected; laws and regulations may change and affect the dApp or your use of it; and phishing sites may imitate the dApp. Only use thesilvervoid.com and always check what your wallet asks you to sign.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">16. Third-party services</h3>
+
+        <p style="margin-bottom:1.2rem;">The dApp relies on services we do not control, including your wallet, the LitVM network and its RPC providers, Arweave (artwork storage), our hosting provider, and other marketplaces or explorers. We are not responsible for their availability, security, or actions.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">17. No financial advice, no investment</h3>
+
+        <p style="margin-bottom:1.2rem;">Nothing on the dApp is financial, investment, legal, or tax advice. zkLTC burned, relics, badges, and cosmetics are not investments, and you should not use the dApp with any expectation of profit. You are responsible for any taxes that apply to your transactions.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">18. No warranty</h3>
+
+        <p style="margin-bottom:1.2rem;">The dApp and the smart contracts are provided "as is" and "as available", without any warranty, express or implied, including of merchantability, fitness for a particular purpose, availability, accuracy, security, or non-infringement.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">19. Limitation of liability</h3>
+
+        <p style="margin-bottom:1.2rem;">To the fullest extent permitted by law, we shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or for any loss of funds, tokens, NFTs, data, profits, or opportunities arising from your use of, or inability to use, the dApp or the smart contracts, including losses caused by bugs, exploits, network failures, lost secrets, wallet compromise, or third-party services. Where liability cannot be excluded, our total liability is limited to the fees retained by the protocol from your own transactions during the twelve months before the event giving rise to the claim. Nothing in these Terms limits liability that cannot be limited by law.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">20. Indemnification</h3>
+
+        <p style="margin-bottom:1.2rem;">You agree to indemnify and hold us harmless from any claim, loss, or expense, including reasonable legal fees, arising from your breach of these Terms, your violation of any law, or your infringement of any third party's rights.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">21. Changes and discontinuation</h3>
+
+        <p style="margin-bottom:1.2rem;">We may modify these Terms at any time. When they change materially, you will be asked to accept the new version before continuing. We may change, suspend, or discontinue the interface at any time; the smart contracts remain on the blockchain and can still be used by other means.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">22. Privacy</h3>
+
+        <p style="margin-bottom:1.2rem;">We collect as little as possible. Your wallet address and your transactions are public on the blockchain by nature. If you choose them, we store your username, avatar, and equipped skin, linked to your wallet address. Messages sent through the feedback form are delivered to us by email through a form service. Our hosting provider may process technical data such as IP addresses to deliver the site and protect it from abuse. Your browser stores your preferences, duel secrets, and acceptance of these Terms locally.</p>
+
+        <p style="margin-bottom:1.2rem;">We process personal data in accordance with the Swiss Federal Act on Data Protection (FADP). We do not sell your data, and we do not use advertising trackers. You may ask us to delete your off-chain profile data at any time through the feedback form. Data recorded on the blockchain cannot be deleted by anyone.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">23. Governing law</h3>
+
+        <p style="margin-bottom:1.2rem;">These Terms are governed by Swiss law, excluding its conflict-of-law rules and the United Nations Convention on Contracts for the International Sale of Goods. Any dispute arising from or in connection with these Terms or the dApp shall be submitted exclusively to the ordinary courts at the operator's domicile in Switzerland, subject to any mandatory place of jurisdiction for consumers under applicable law.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">24. Miscellaneous</h3>
+
+        <p style="margin-bottom:1.2rem;">If any provision of these Terms is held invalid, the rest remains in force. Our failure to enforce a provision is not a waiver. These Terms are the entire agreement between you and us regarding the dApp. They are written in English; any translation is for convenience only.</p>
+
+        <h3 style="font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.08em;color:var(--silver-mid);margin:1.8rem 0 0.7rem;">25. Contact</h3>
+
+        <p style="margin-bottom:1.2rem;">For any question about these Terms, or to exercise your privacy rights, use the feedback form on the dApp.</p>
 
       </div>
     </div>
 
     <!-- Footer (fixed) — Accept button, gate mode only -->
     <div id="terms-accept-bar" style="padding:1.4rem 2.4rem 1.8rem;border-top:1px solid rgba(255,255,255,0.08);flex-shrink:0;">
-      <button onclick="acceptTermsGate()" style="width:100%;padding:0.95rem;font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.16em;cursor:pointer;background:linear-gradient(135deg,var(--teal),#5a9fff);color:#04021a;border:none;border-radius:4px;text-transform:uppercase;font-weight:600;transition:filter 0.2s;" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">✦ &ensp;I Accept the Terms of Use</button>
+      <label for="terms-age" style="display:flex;gap:0.7rem;align-items:flex-start;margin-bottom:1rem;font-size:0.82rem;color:rgba(255,255,255,0.75);line-height:1.5;cursor:pointer;">
+        <input id="terms-age" type="checkbox" style="margin-top:0.2rem;width:16px;height:16px;flex-shrink:0;accent-color:var(--teal);" onchange="document.getElementById('terms-accept-btn').disabled=!this.checked;document.getElementById('terms-accept-btn').style.opacity=this.checked?'1':'0.4';">
+        <span>I am at least 18 years old, and using The Silver Void, including duels with a stake, is legal where I live.</span>
+      </label>
+      <button id="terms-accept-btn" disabled onclick="if(!document.getElementById('terms-age').checked)return;acceptTermsGate()" style="opacity:0.4;width:100%;padding:0.95rem;font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.16em;cursor:pointer;background:linear-gradient(135deg,var(--teal),#5a9fff);color:#04021a;border:none;border-radius:4px;text-transform:uppercase;font-weight:600;transition:filter 0.2s;" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">✦ &ensp;I Accept the Terms of Use</button>
       <div style="font-size:0.68rem;color:rgba(255,255,255,0.35);text-align:center;margin-top:0.9rem;line-height:1.5;">
         By clicking "I Accept", you confirm you have read, understood, and agree to the Terms of Use.
       </div>
@@ -3072,7 +3209,7 @@ body.sv-rail-on section[data-rail]:not(.sv-active){ display:none !important }
 
 <script>
 /* ---- Terms modal: entry gate + reopenable reader ---- */
-const TERMS_GATE_VERSION = 'v1';
+const TERMS_GATE_VERSION = 'v2';   // nouvelle version : tout le monde réaccepte
 const TERMS_GATE_KEY = 'silvervoid_terms_accepted_' + TERMS_GATE_VERSION;
 
 function acceptTermsGate() {
@@ -3126,38 +3263,34 @@ if (document.readyState === 'loading') {
      que ceux qui avaient ferme la precedente revoient le message. -->
 <div id="sv-duel-notice" style="display:none;position:fixed;inset:0;z-index:99500;background:rgba(4,2,26,0.85);align-items:center;justify-content:center;padding:1.5rem;">
   <div style="max-width:500px;background:linear-gradient(135deg,rgba(8,4,40,0.98),rgba(4,2,26,0.99));border:1px solid rgba(255,193,64,0.35);border-radius:8px;padding:2rem 1.8rem;text-align:center;max-height:88vh;overflow-y:auto;">
-    <div style="font-size:1.6rem;margin-bottom:0.6rem;">⬡</div>
-    <div style="font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:0.1em;color:#ffc140;text-transform:uppercase;margin-bottom:0.9rem;">The Forge is open</div>
+    <div style="font-size:1.6rem;margin-bottom:0.6rem;">&#10022;</div>
+    <div style="font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:0.1em;color:#ffc140;text-transform:uppercase;margin-bottom:0.9rem;">Weekly quests are here</div>
 
     <div style="font-family:'Cormorant Garamond',serif;font-size:1.05rem;color:rgba(255,255,255,0.8);line-height:1.6;margin-bottom:1.1rem;text-align:left;">
-      Three relics of one tier become one of the tier above. Guaranteed — not another roll.
-      Until now, a Common you already owned led nowhere. Now every duplicate is a step.
+      Every Monday, three new quests open for the whole Void. Finish all three before Sunday night (UTC).
     </div>
 
     <div style="font-family:'Cormorant Garamond',serif;font-size:0.95rem;color:rgba(255,255,255,0.62);line-height:1.65;margin-bottom:1.1rem;text-align:left;">
-      What changed:<br>
-      • <strong style="color:rgba(255,255,255,0.85);">The Forge.</strong> Any three relics of the same tier — they need not be the same card. Found in your Codex, under Relics.<br>
-      • <strong style="color:rgba(255,255,255,0.85);">It ignores rank.</strong> Buy three Rares on the Store and you have paid for your Epic, in zkLTC rather than offerings.<br>
-      • <strong style="color:rgba(255,255,255,0.85);">Three duels per draw</strong>, down from four.<br>
-      • <strong style="color:rgba(255,255,255,0.85);">Fifty seconds to reveal a draw</strong>, up from sixteen. (Duels keep their 24h window.)
+      This week:<br>
+      &bull; <strong style="color:rgba(255,255,255,0.85);">Make an offering</strong> at the Ritual.<br>
+      &bull; <strong style="color:rgba(255,255,255,0.85);">Take part in a duel</strong> in the Arena.<br>
+      &bull; <strong style="color:rgba(255,255,255,0.85);">Win a duel.</strong><br>
+      Follow your progress with the &#10022; button at the bottom right of the screen.
     </div>
 
-    <!-- Le point le plus important de l'annonce : il vaut mieux l'apprendre
-         ici que devant une grille grisee. -->
-    <div style="font-family:'Cormorant Garamond',serif;font-size:0.95rem;line-height:1.6;margin-bottom:1.2rem;text-align:left;padding:0.9rem 1rem;border-radius:7px;background:rgba(255,193,64,0.07);border:1px solid rgba(255,193,64,0.25);color:rgba(255,255,255,0.78);">
-      <strong style="color:#ffc140;">Relics minted before today cannot be forged.</strong><br>
-      The Forge lives in a new contract, and a contract can only destroy its own tokens.
-      Everything you already hold stays yours and stays visible in your Codex — it simply
-      cannot go into the Forge. Relics drawn from now on can.
+    <div style="font-family:'Cormorant Garamond',serif;font-size:0.95rem;line-height:1.6;margin-bottom:1.2rem;text-align:left;padding:0.9rem 1rem;border-radius:7px;background:rgba(255,193,64,0.07);border:1px solid rgba(255,193,64,0.25);color:rgba(255,255,255,0.75);">
+      <strong style="color:#ffc140;">This is a test run.</strong><br>
+      On the testnet, quests give no reward: we are testing them with you. On mainnet,
+      completing all three in a week will grant a bonus relic draw.
     </div>
 
     <div style="font-family:'Cormorant Garamond',serif;font-size:0.9rem;color:rgba(255,255,255,0.5);line-height:1.55;margin-bottom:1.2rem;text-align:left;">
-      Your duels were not lost: draws are counted from your full history, so you may find
-      you have more waiting than before.
+      You need a rank to take part. Duels count from Monday; offerings count from
+      your first visit of the week, so connect your wallet early.
     </div>
 
     <div style="display:flex;gap:0.6rem;justify-content:center;flex-wrap:wrap;">
-      <button onclick="svDismissDuelNotice();if(typeof svRailGo==='function')svRailGo('arena');" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;background:transparent;border:1px solid rgba(255,193,64,0.6);color:#ffc140;padding:0.65rem 1.3rem;border-radius:6px;cursor:pointer;">To the Arena</button>
+      <button onclick="svDismissDuelNotice();if(typeof questGoTo==='function')questGoTo();else if(typeof svRailGo==='function')svRailGo('arena');" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;background:transparent;border:1px solid rgba(255,193,64,0.6);color:#ffc140;padding:0.65rem 1.3rem;border-radius:6px;cursor:pointer;">See the quests</button>
       <button onclick="svDismissDuelNotice()" style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;background:transparent;border:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.55);padding:0.65rem 1.3rem;border-radius:6px;cursor:pointer;">Later</button>
     </div>
   </div>
@@ -3165,16 +3298,15 @@ if (document.readyState === 'loading') {
 
 <script>
 function svDismissDuelNotice() {
-  // v5 — la Forge et le nouveau contrat de reliques. Nouvelle cle : ceux qui
-  // avaient ferme l'annonce v4 doivent revoir celle-ci, notamment la ligne
-  // sur les reliques d'avant la migration.
-  try { localStorage.setItem('sv_notice_seen_v5', '1'); } catch {}
+  // v6 — les quêtes hebdomadaires (aperçu sans récompense). Nouvelle cle :
+  // ceux qui avaient ferme l'annonce de la Forge (v5) voient celle-ci.
+  try { localStorage.setItem('sv_notice_seen_v6', '1'); } catch {}
   const el = document.getElementById('sv-duel-notice');
   if (el) el.style.display = 'none';
 }
 function svShowDuelNoticeIfNeeded() {
   let seen = false;
-  try { seen = localStorage.getItem('sv_notice_seen_v5') === '1'; } catch {}
+  try { seen = localStorage.getItem('sv_notice_seen_v6') === '1'; } catch {}
   if (seen) return;
   const el = document.getElementById('sv-duel-notice');
   if (el) el.style.display = 'flex';
@@ -3404,6 +3536,13 @@ function svIntroParticles() {
       &ldquo;Lost coins only make everybody else&rsquo;s coins worth slightly more. Think of it as a donation to everyone.&rdquo; <span style="font-size:0.75rem;font-style:normal;letter-spacing:0.15em;color:rgba(255,255,255,0.85);font-family:'Cinzel',serif;">— SATOSHI NAKAMOTO</span>
     </blockquote>
 
+    <!-- Fanion des quêtes de la semaine : ouvre la fenêtre des quêtes. -->
+    <button type="button" id="quest-pennant" class="qp-pennant" onclick="questOpen()">
+      <span class="pi">&#10022;</span>
+      <span class="pt"><div>Weekly quests</div><div id="quest-pennant-txt">Make an offering, take part in a duel, win a duel.</div></span>
+      <span class="pc" id="quest-pennant-count"></span>
+    </button>
+
     <!-- Bannière : dernier fragment paru des Chroniques (remplie par chroniclesHeroBanner) -->
     <a id="hero-chronicle" href="#chronicles" onclick="chroniclesOpenLatest();return false;" style="display:none;position:relative;z-index:20;margin:2.2rem auto 0;max-width:560px;text-decoration:none;"></a>
 
@@ -3541,7 +3680,7 @@ function svIntroParticles() {
       <div class="name"><h3>The Ritual</h3><p>zkLTC burned, never to return</p></div>
       <div class="vals">
         <div><b id="vh-row-burned">—</b><span>Burned</span></div>
-        <div><b id="vh-burns">—</b><span>Offerings</span></div>
+        <div><b id="vh-burns">—</b><span>Per Sacrifiant</span></div>
         <div><b id="vh-row-sacrifiants">—</b><span>Sacrifiants</span></div>
       </div>
     </div>
@@ -3896,7 +4035,7 @@ function svIntroParticles() {
           <div class="lb-stat-val" id="lb-burners">—</div>
         </div>
         <div class="lb-stat-item">
-          <span class="lb-stat-label">Total Burns</span>
+          <span class="lb-stat-label">Per Sacrifiant</span>
           <div class="lb-stat-val" id="lb-burns">—</div>
         </div>
       </div>
@@ -4145,6 +4284,20 @@ function svIntroParticles() {
         </div>
         <div id="arena-odds" style="display:flex;gap:0.4rem;flex-wrap:wrap;"></div>
       </div>
+    </div>
+
+    <!-- ═══ Quêtes hebdomadaires — APERÇU sans récompense (le tirage bonus arrive avec le mainnet) ═══ -->
+    <div id="quest-panel" class="quest-panel" hidden>
+      <div class="qp-head">
+        <div>
+          <div class="qp-eyebrow">Weekly quests &middot; Preview</div>
+          <div class="qp-title">Three tasks a week</div>
+        </div>
+        <div class="qp-reset" id="quest-reset"></div>
+      </div>
+      <div class="qp-preview">This is a test run: quests give no reward on the testnet. On mainnet, completing all three will grant a bonus relic draw.</div>
+      <div id="quest-list" class="qp-list"></div>
+      <div class="qp-foot"><span id="quest-note" class="qp-note"></span></div>
     </div>
 
     <!-- MAIN GRID -->
@@ -7924,6 +8077,24 @@ function disconnectWallet(){
   });
 })();
 
+/// Affiche le nombre de VRAIS Sacrifiants et la moyenne brûlée par Sacrifiant.
+///
+/// Pourquoi pas le compteur du contrat : depuis octobre 2026, des bots qui
+/// farment l'airdrop de LitVM appellent burn() avec 1 wei, et le contrat les
+/// compte comme burners (et chaque appel comme une offrande). Le serveur ne
+/// retient que les wallets qui ont brûlé au moins 0.001 zkLTC. Pour la même
+/// raison, le nombre d'offrandes n'est plus affiché : on montre la moyenne
+/// brûlée par Sacrifiant, que les bots ne faussent pas.
+function svShowSacrifiants() {
+  const n = window._svRealBurners, burned = window._svRitualBurned;
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  if (n > 0) ['hero-burners', 'hero-burners-pc', 'lb-burners'].forEach(id => set(id, n.toLocaleString('en')));
+  if (n > 0 && burned > 0) {
+    const avg = burned / n;
+    ['hero-burns', 'hero-burns-pc', 'lb-burns'].forEach(id => set(id, avg.toFixed(avg < 1 ? 3 : 2)));
+  }
+}
+
 // ═══ LOAD CHAIN DATA ═══
 async function loadChainData(){
   try{
@@ -7961,7 +8132,7 @@ async function loadChainData(){
 
     const fmt=parseFloat(ethers.formatEther(combinedBurned)).toLocaleString('en',{maximumFractionDigits:3});
     ['hero-total','hero-total-pc','void-n'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=fmt;});
-    if (typeof svSpherierUpdate === 'function') { try { svSpherierUpdate(combinedBurned, totalBurners); } catch (e) {} }
+    if (typeof svSpherierUpdate === 'function') { try { svSpherierUpdate(combinedBurned, window._svRealBurners || totalBurners); } catch (e) {} }
 
     // ── Ledger dashboard: split the total by where it was burned ──────────
     // The three contracts each report their own burns, so the breakdown is
@@ -7988,14 +8159,14 @@ async function loadChainData(){
       bar('vh-bar-duel',   dul);
       bar('vh-bar-store',  sto);
     } catch(e) { console.warn('ledger breakdown failed:', e); }
-    const hb=document.getElementById('hero-burners'); if(hb)hb.textContent=totalBurners.toString();
-    const hbpc=document.getElementById('hero-burners-pc'); if(hbpc)hbpc.textContent=totalBurners.toString();
-    const hbr=document.getElementById('hero-burns'); if(hbr)hbr.textContent=totalBurns.toString();
-    const hbrpc=document.getElementById('hero-burns-pc'); if(hbrpc)hbrpc.textContent=totalBurns.toString();
+    // Le compteur de burners du contrat compte aussi les bots qui brûlent
+    // 1 wei pour farmer l'airdrop : on n'affiche que les VRAIS Sacrifiants
+    // (>= 0.001 zkLTC), comptés par /api/leaderboard. Voir svShowSacrifiants.
+    window._svRitualBurned = parseFloat(ethers.formatEther(totalBurned));
+    svShowSacrifiants();
     // Also update leaderboard sidebar stats
     const lbt=document.getElementById('lb-total'); if(lbt)lbt.innerHTML=fmt+'<span class="lb-stat-unit">zkLTC</span>';
-    const lbb=document.getElementById('lb-burners'); if(lbb)lbb.textContent=totalBurners.toString();
-    const lbbr=document.getElementById('lb-burns'); if(lbbr)lbbr.textContent=totalBurns.toString();
+
   }catch(e){console.warn('Chain data:',e.message);}
 }
 
@@ -8574,8 +8745,8 @@ async function loadLeaderboard(){
       const lbBurners=document.getElementById('lb-burners');
       const lbBurnsEl=document.getElementById('lb-burns');
       if(lbTotal) lbTotal.innerHTML=parseFloat(ethers.formatEther(combinedTb)).toFixed(3)+'<span class="lb-stat-unit">zkLTC</span>';
-      if(lbBurners) lbBurners.textContent=totalBurners.toString();
-      if(lbBurnsEl) lbBurnsEl.textContent=totalBurns.toString();
+      window._svRitualBurned = parseFloat(ethers.formatEther(tb));
+      svShowSacrifiants();
     }catch(e){ console.warn('Stats error:',e.message); }
 
     console.log('Burner count:',burnerCount);
@@ -8629,7 +8800,11 @@ async function loadLeaderboard(){
       window._svBurnByWallet = _bm;
       localStorage.setItem('sv_burn_by_wallet', JSON.stringify(_bm));
     } catch (e) {}
-    if(lbData && lbData.totalBurners) _lbTotalBurners = Number(lbData.totalBurners);
+    if(lbData && lbData.totalBurners) {
+      _lbTotalBurners = Number(lbData.totalBurners);
+      window._svRealBurners = Number(lbData.totalBurners);   // vrais Sacrifiants (>= 0.001 zkLTC)
+      svShowSacrifiants();
+    }
 
     // Bandeau "dernière mise à jour" : évite qu'un burn tout juste effectué,
     // qui n'apparaît pas immédiatement à cause du cache serveur, ne soit pris
@@ -9137,6 +9312,7 @@ function obToggle(head){
 /// Called on connect and on disconnect, so nothing keeps showing the state of
 /// a session that has ended — or stays empty after one has begun.
 function svRefreshWalletViews(){
+  try { if (typeof questRefresh === 'function') questRefresh(true); } catch(e) {}
   try { if (typeof featsEvaluate === 'function') featsEvaluate(); } catch(e) {}
   try { if (typeof rkRefreshLadders === 'function') rkRefreshLadders(); } catch(e) {}
   try { if (typeof profilePanelRender === 'function') profilePanelRender(); } catch(e) {}
@@ -11977,7 +12153,94 @@ async function svFeeOverrides(multiplier) {
 /// Refreshes the draw counter in the Duels section. Hidden entirely when the
 /// wallet isn't connected or hasn't duelled yet — no point advertising a
 /// mechanic you can't use.
+// ═══ QUÊTES HEBDOMADAIRES — APERÇU ═══
+// Le serveur (/api/quests) suit la progression sur la chaîne. Sur le site en
+// ligne, aucune récompense : le tirage bonus arrive avec les contrats mainnet.
+const QUESTS_API = '/api/quests';
+let _questLast = 0, _questWallet = null;
+
+/// Relue à l'ouverture de l'Arène et après chaque action ; au plus une fois
+/// toutes les 20 s pour le même wallet (le tirage interroge en boucle).
+// Les quêtes telles qu'un visiteur non connecté les voit (sans progression).
+const QUESTS_STATIC = [
+  { metric: 'offerings', goal: 1, title: 'Make an offering', desc: 'Burn any amount at the Ritual.' },
+  { metric: 'played',    goal: 1, title: 'Take part in a duel', desc: 'Create or join a duel in the Arena.' },
+  { metric: 'wins',      goal: 1, title: 'Win a duel', desc: 'Beat an opponent, or win by forfeit.' },
+];
+let _questData = null;
+
+function questRowsHTML(quests, withProgress) {
+  return quests.map(q => {
+    const pct = withProgress ? Math.min(100, Math.round(q.progress / q.goal * 100)) : 0;
+    const val = withProgress ? (q.done ? 'Done' : q.progress + ' / ' + q.goal) : '';
+    return '<div class="qp-q' + (q.done ? ' done' : '') + '"><b>' + q.title + '</b><span>' + val + '</span>'
+      + '<div class="qp-bar"><i style="width:' + pct + '%"></i></div><small>' + q.desc + '</small></div>';
+  }).join('');
+}
+
+/// Dessine les quêtes partout où elles apparaissent : fenêtre, fanion de
+/// l'accueil, bouton flottant, Codex, Arène.
+function questRender() {
+  const d = _questData, set = (id, prop, v) => { const el = document.getElementById(id); if (el) el[prop] = v; };
+  const quests = d ? d.quests : QUESTS_STATIC;
+  const html = questRowsHTML(quests, !!d);
+  ['qm-list', 'quest-list', 'cx-quest-list'].forEach(id => set(id, 'innerHTML', html));
+
+  const endTs = d ? d.end : (function () { const w = Math.floor((Date.now() / 1000 + 3 * 86400) / 604800); return w * 604800 - 3 * 86400 + 604800; })();
+  const left = endTs * 1000 - Date.now();
+  const days = Math.floor(left / 86400000), hrs = Math.floor(left % 86400000 / 3600000);
+  const reset = 'New quests in ' + (days ? days + 'd ' : '') + hrs + 'h';
+  ['qm-reset', 'quest-reset', 'cx-quest-reset'].forEach(id => set(id, 'textContent', reset));
+
+  const note = !d ? 'Connect your wallet to track your progress.'
+    : !d.ranked ? 'You need a rank to take part: make your first offering at the Ritual.'
+    : d.allDone ? '✦ All three done this week. Well played, Seeker.'
+    : 'Duels count from Monday. Offerings count from your first visit of the week.';
+  ['qm-note', 'quest-note', 'cx-quest-note'].forEach(id => set(id, 'textContent', note));
+
+  const nDone = d ? d.quests.filter(q => q.done).length : 0;
+  const count = d && d.ranked ? nDone + '/' + d.quests.length : '';
+  set('cx-n-quests', 'textContent', count || '—');
+  set('quest-pennant-count', 'textContent', count);
+  set('quest-pennant-txt', 'textContent', !d ? 'Make an offering, take part in a duel, win a duel.'
+    : d.allDone ? 'All three done this week. Well played.'
+    : (d.quests.length - nDone) + ' left this week: ' + d.quests.filter(q => !q.done).map(q => q.title.toLowerCase()).join(', ') + '.');
+  const n = document.getElementById('quest-fab-n'), fab = document.getElementById('quest-fab');
+  if (n) { n.hidden = !count; n.textContent = count; }
+  if (fab) fab.classList.toggle('done', !!(d && d.allDone));
+
+  const panel = document.getElementById('quest-panel');
+  if (panel) panel.hidden = !d;
+}
+
+async function questRefresh(force) {
+  if (!connectedAddress) { _questData = null; _questWallet = null; questRender(); return; }
+  if (!force && _questWallet === connectedAddress && Date.now() - _questLast < 20000) return;
+  _questWallet = connectedAddress; _questLast = Date.now();
+  try {
+    const r = await fetch(QUESTS_API + '?wallet=' + connectedAddress);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'quests');
+    _questData = d;
+  } catch (e) {
+    console.warn('quests:', e.message);
+    _questData = null;
+  }
+  questRender();
+}
+
+function questOpen() {
+  const m = document.getElementById('quest-modal');
+  if (m) m.style.display = 'flex';
+  questRender();
+  questRefresh(true);
+}
+function questClose() { const m = document.getElementById('quest-modal'); if (m) m.style.display = 'none'; }
+function questGoTo() { questOpen(); }
+document.addEventListener('DOMContentLoaded', () => { try { questRender(); } catch (e) {} });
+
 async function arenaRefreshDraws() {
+  try { questRefresh(); } catch (e) {}
   const panel = document.getElementById('arena-draw-panel');
   if (!panel) return;
   if (!connectedAddress) { panel.style.display = 'none'; return; }
@@ -13426,6 +13689,7 @@ async function featsOpen() {
       <aside class="cx-side">
         <div class="cx-grp">Progress</div>
         <div id="cx-tab-paths" onclick="codexTab('paths')" class="cx-cat">Paths<span id="cx-n-paths">—</span></div>
+        <div id="cx-tab-quests" onclick="codexTab('quests')" class="cx-cat">Weekly quests<span id="cx-n-quests">—</span></div>
         <div class="cx-grp">Collections</div>
         <div id="cx-tab-relics" onclick="codexTab('relics')" class="cx-cat">Relics<span id="cx-n-relics">—</span></div>
         <div class="cx-grp">Cosmetics</div>
@@ -13445,6 +13709,19 @@ async function featsOpen() {
       <div id="cx-ladder-fire" class="rk-ladder" style="margin-bottom:1.6rem;"></div>
       <div class="rk-lab">⚔ The Arena</div>
       <div id="cx-ladder-arena" class="rk-ladder"></div>
+    </div>
+    <div id="codex-quests-pane" style="display:none;">
+      <div class="qp-head">
+        <div>
+          <div class="qp-eyebrow">Weekly quests &middot; Preview</div>
+          <div class="qp-title">Three tasks a week</div>
+        </div>
+        <div class="qp-reset" id="cx-quest-reset"></div>
+      </div>
+      <div class="qp-preview">This is a test run: quests give no reward on the testnet. On mainnet, completing all three will grant a bonus relic draw.</div>
+      <div id="cx-quest-list" class="qp-list"></div>
+      <div class="qp-foot"><span id="cx-quest-note" class="qp-note"></span>
+        <button class="qp-claim" onclick="questGoTo()">Go to the Arena</button></div>
     </div>
     <div id="codex-relics-pane">
       <div id="cx-bar-relics" style="margin-bottom:1.1rem;"></div>
@@ -13742,7 +14019,7 @@ async function orderClaimAll(){
 }
 
 function codexTab(which){
-  const panes = { paths:'codex-paths-pane', relics:'codex-relics-pane', forge:'codex-forge-pane', feats:'codex-feats-pane' };
+  const panes = { paths:'codex-paths-pane', quests:'codex-quests-pane', relics:'codex-relics-pane', forge:'codex-forge-pane', feats:'codex-feats-pane' };
   for (const [k, id] of Object.entries(panes)) {
     const el = document.getElementById(id);
     if (el) el.style.display = (k === which) ? 'block' : 'none';
@@ -13768,6 +14045,7 @@ function codexTab(which){
     }
   }
   if (which === 'forge') codexSkinsRender();
+  if (which === 'quests' && typeof questRefresh === 'function') questRefresh(true);
   if (which === 'feats' && typeof featsOpen === 'function') featsOpen();
 }
 
@@ -13809,35 +14087,52 @@ async function codexLoadLadders(target) {
 
 /// FAQ du Codex. Repliee par defaut : une liste de questions se parcourt,
 /// un mur de texte se saute.
+/// Ordre d'affichage des catégories de la FAQ.
+const FAQ_CATS = ['Getting started', 'Burning & ranks', 'The Arena', 'Relics & draws', 'The Forge', 'The Lower City', 'Ownership & safety'];
+
 const FAQ_ITEMS = [
-  { q: 'How do I get a relic?',
+  { cat: 'Relics & draws', q: 'What are the weekly quests?',
+    a: 'Every Monday (UTC), three quests open: make an offering at the Ritual, take part in a duel, and win a duel. Follow them with the \u2726 button at the bottom right of the screen. On the testnet they are a preview and give no reward. On mainnet, completing all three in a week will grant one bonus relic draw. You need a rank to take part. Duels count from Monday; offerings count from your first visit of the week.' },
+  { cat: 'Relics & draws', q: 'How do I get a relic?',
     a: 'Every 3 duels earns you one draw, win or lose \u2014 only fighting counts. In the Arena you seal the draw, then reveal it, and the relic is minted to you. Burning zkLTC does not give relics directly; it decides which ones can drop.' },
-  { q: 'Why does my rank matter if duels give the relics?',
+  { cat: 'Relics & draws', q: 'Why does my rank matter if duels give the relics?',
     a: 'Your rank sets the pool, and pools stack. Rank 1 draws Commons and Uncommons. Rank 2 adds Rares, rank 3 adds Epics, and only rank 4 can ever DRAW The Silver Throne. A rank 3 player draws from ranks 1 to 3 together, not from rank 3 alone. At rank 4 the pool still includes every lower card \u2014 you do not stop drawing Commons. The Forge is the one exception: it ignores rank entirely.' },
-  { q: 'What is the Forge?',
+  { cat: 'The Forge', q: 'What is the Forge?',
     a: 'Three relics of the same tier become one relic of the tier above \u2014 guaranteed, not another roll. They do not have to be the same card: any three Commons will do. Which card you receive is decided on-chain. It costs 0.002 zkLTC, burned, and the three relics are destroyed for good.' },
-  { q: 'Can I forge my way to The Silver Throne without rank 4?',
+  { cat: 'The Forge', q: 'Can I forge my way to The Silver Throne without rank 4?',
     a: 'Yes. The Forge ignores rank, which is the whole point of it. The draw rewards what you burned; the Forge rewards what you collected. Buy three Rares on the Store and you have paid for your Epic in zkLTC rather than offerings \u2014 a different road, not a shortcut. Drawing the Throne still requires rank 4.' },
-  { q: 'Can I forge a relic I only own once?',
+  { cat: 'The Forge', q: 'Can I forge a relic I only own once?',
     a: 'Yes, and the interface warns you before you do. The contract does not protect you from yourself: if you want to sacrifice the only Epic you hold for a shot at the tier above, that is your call. Nothing is refunded.' },
-  { q: 'Does the zkLTC burned in duels raise my rank?',
+  { cat: 'Burning & ranks', q: 'Does the zkLTC burned in duels raise my rank?',
     a: 'No. Only the Ritual counts toward rank. The share burned when a duel settles, and the share burned on a Store sale, leave circulation but are not credited to your lifetime total. Opening a 5 zkLTC duel will not make you an Apprentice.' },
-  { q: 'What are the drop rates?',
+  { cat: 'Relics & draws', q: 'What are the drop rates?',
     a: 'They are shown in the Arena on the draw panel, adjusted to your own pool. At rank 1 you see roughly 81% Common and 19% Uncommon, because the rarer tiers are not in your pool at all. At rank 4 the full ladder applies: 75% Common, 18% Uncommon, 5% Rare, 1.5% Epic, 0.5% Legendary.' },
-  { q: 'I have gone 15 draws without anything rare.',
+  { cat: 'Relics & draws', q: 'I have gone 15 draws without anything rare.',
     a: 'After 15 consecutive draws with no Rare or better, the next draw skips Commons and Uncommons entirely. It does not guarantee a Legendary \u2014 it guarantees you leave the bottom two tiers. This only applies if your pool contains Rare or better, so a rank 1 player never triggers it: there is nothing above Uncommon to fall into.' },
-  { q: 'Why does drawing take two transactions?',
+  { cat: 'Relics & draws', q: 'Why does drawing take two transactions?',
     a: 'The first seals your draw against a future block; the second reveals it. Without this, anyone could simulate the transaction, see the outcome, and only send it when the result was good \u2014 the published odds would be fiction. The trade-off is that you must send the second transaction within the reveal window, so keep the tab open.' },
-  { q: 'I missed the reveal window. Is my relic lost?',
+  { cat: 'Relics & draws', q: 'I missed the reveal window. Is my relic lost?',
     a: 'That draw is, yes. The credit is spent at the seal, not at the reveal, which is what stops players from abandoning bad rolls and retrying for free. Use \u201cClear expired draw\u201d in the Arena and you can seal again as soon as you have another draw. Nothing else is affected.' },
-  { q: 'I keep drawing the same relic. Is that a bug?',
+  { cat: 'Relics & draws', q: 'I keep drawing the same relic. Is that a bug?',
     a: 'No \u2014 duplicates are expected, and they are the point. You have two ways to use them: trade them at the Void Store with players still missing them, or take three of the same tier to the Forge and turn them into something better. The Store shows a \u00d72 badge on anything you hold more than one of.' },
-  { q: 'What happens to the money when I sell?',
+  { cat: 'The Lower City', q: 'What happens to the money when I sell?',
     a: 'The Store contract splits every sale: 80% to you, 17% burned forever, 3% to the Order. Listing costs 0.0075 zkLTC, of which 0.005 is burned. Every sale therefore shrinks the supply a little further.' },
-  { q: 'Are the rank badges the same thing as relics?',
+  { cat: 'Burning & ranks', q: 'Are the rank badges the same thing as relics?',
     a: 'No. Badges of the Order are soulbound \u2014 they prove what you burned and can never be sold or transferred. Relics are transferable NFTs: yours to trade. A badge says who you are; a relic is something you own.' },
-  { q: 'My burn is not showing in the leaderboard.',
+  { cat: 'Burning & ranks', q: 'My burn is not showing in the leaderboard.',
     a: 'The board is read from the chain and refreshes about every minute, so a fresh burn can take a moment to appear. Your own total in the Codex is read straight from the contract and is always exact \u2014 if the two disagree, the Codex is right and the board is simply behind.' },
+  { cat: 'Getting started', q: 'What do I need to start?',
+    a: 'A wallet such as MetaMask, connected to the LitVM network, and a little zkLTC for your offerings and network fees. Connect your wallet from the menu, then make your first offering at the Ritual to earn your first rank.' },
+  { cat: 'Getting started', q: 'Is this the testnet? Will my items carry over?',
+    a: 'The Silver Void currently runs on the LiteForge testnet. Testnet zkLTC and everything obtained with it have no monetary value, and testnet ranks, relics and profiles do not carry over to mainnet unless we announce otherwise.' },
+  { cat: 'Ownership & safety', q: 'Can a transaction be refunded?',
+    a: 'No. Every transaction is final, burns are permanent, and nobody, including us, can reverse or refund one. Always check the amount and the network in your wallet before confirming.' },
+  { cat: 'Ownership & safety', q: 'How do I know I\'m on the real site?',
+    a: 'The only official address is thesilvervoid.com. We will never ask for your seed phrase or private key, and never send you a link to \u201cclaim\u201d or \u201cverify\u201d your wallet. If your wallet shows an action you don\'t recognise, reject it.' },
+  { cat: 'Ownership & safety', q: 'Do I own the artwork of my relics?',
+    a: 'You own the token, and with it a personal licence to display its artwork, in your wallet, on marketplaces or on social media, for as long as you hold it. The artwork and the lore themselves remain the project\'s property; commercial use needs our written consent. The details are in the Terms of Use.' },
+  { cat: 'Ownership & safety', q: 'What data do you keep about me?',
+    a: 'Only what you choose to set: your username, avatar and equipped skin, linked to your wallet address. Your transactions are public on the blockchain by nature. We sell nothing and use no advertising trackers. You can ask us to delete your profile data through the feedback form.' },
 ];
 
 function svOpenContracts(){
@@ -14195,11 +14490,15 @@ function faqOpen(){
   if (!m) return;
   const host = document.getElementById('faq-list');
   if (host && host.dataset.done !== '1') {
-    host.innerHTML = FAQ_ITEMS.map(f => `
+    host.innerHTML = FAQ_CATS.map(cat => {
+      const items = FAQ_ITEMS.filter(f => (f.cat || 'Getting started') === cat);
+      if (!items.length) return '';
+      return `<h4 class="faq-cat">${cat}</h4>` + items.map(f => `
       <div class="faq-item" onclick="this.classList.toggle('open')">
         <div class="q"><span>${f.q}</span><i>+</i></div>
         <div class="a">${f.a}</div>
       </div>`).join('');
+    }).join('');
     host.dataset.done = '1';
   }
   m.style.display = 'flex';
@@ -14388,6 +14687,9 @@ async function codexOpen(addr){
   // Si l'onglet courant vient d'etre masque, on retombe sur Relics plutot
   // que de laisser un panneau ouvert sans onglet correspondant.
   if (isOther) codexTab('relics');
+  // Les quêtes ne concernent que son propre wallet, connecté.
+  const qt = document.getElementById('cx-tab-quests');
+  if (qt) qt.classList.toggle('cx-hidden', isOther || !connectedAddress);
 
   if (!target) {
     // Show the full collection sealed rather than a bare "connect" message —
@@ -15852,7 +16154,7 @@ function storeZoomImage(url) {
 //
 // Un chiffre de la veille vaut mieux qu'un tiret : il donne l'ordre de
 // grandeur, et il ne ment que sur les decimales.
-const SV_STATS_KEY = 'sv_stats_cache_v1';
+const SV_STATS_KEY = 'sv_stats_cache_v2';   // v2 : vrais Sacrifiants
 const SV_STATS_MAX_AGE = 7 * 24 * 3600 * 1000;   // au-dela, mieux vaut un tiret
 
 /// Tous les compteurs du tableau de bord, par id.
@@ -18168,6 +18470,28 @@ async function myDuelsCancel(id) {
 
 
 <!-- FEEDBACK FLOATING BUTTON -->
+<!-- QUÊTES — bouton flottant (au-dessus de celui du feedback) et fenêtre -->
+<button id="quest-fab" class="qp-fab" onclick="questOpen()" title="Weekly quests" aria-label="Weekly quests">&#10022;<b id="quest-fab-n" hidden></b></button>
+<div id="quest-modal" onclick="if(event.target===this)questClose()">
+  <div class="qm-box">
+    <button class="qm-close" onclick="questClose()" aria-label="Close">&#10005;</button>
+    <div class="qp-head">
+      <div>
+        <div class="qp-eyebrow" style="color:#ffc140;">Weekly quests &middot; Preview</div>
+        <div class="qp-title">Three quests this week</div>
+      </div>
+      <div class="qp-reset" id="qm-reset"></div>
+    </div>
+    <div class="qp-preview">This is a test run: quests give no reward on the testnet. On mainnet, completing all three will grant a bonus relic draw.</div>
+    <div id="qm-list" class="qp-list"></div>
+    <div class="qp-note" id="qm-note" style="display:block;margin-top:0.8rem;"></div>
+    <div class="qm-acts">
+      <button class="qp-claim" onclick="questClose();svRailGo('fire')">To the Ritual</button>
+      <button class="qp-claim" onclick="questClose();svRailGo('arena')">To the Arena</button>
+    </div>
+  </div>
+</div>
+
 <button id="feedback-fab" onclick="document.getElementById('feedback-modal').style.display='flex'" style="position:fixed;bottom:84px;right:24px;z-index:9990;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#7755cc,#00e5cc);border:none;color:#04021a;font-size:1.5rem;cursor:pointer;box-shadow:0 4px 20px rgba(0,229,204,0.35);display:flex;align-items:center;justify-content:center;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" title="Send feedback">💬</button>
 
 <!-- FEEDBACK MODAL -->
