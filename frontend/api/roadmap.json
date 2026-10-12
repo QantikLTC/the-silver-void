@@ -1,0 +1,117 @@
+{
+  "_comment": "Roadmap of The Silver Void. Edit this file to update the Roadmap window: set \"done\": true on an item to tick it, \"state\" of a phase can be done, now, next or later. <b>bold</b> is allowed in texts.",
+  "phases": [
+    {
+      "tag": "Done",
+      "title": "Testnet",
+      "state": "done",
+      "items": [
+        {
+          "text": "<b>The Ritual</b>: burn zkLTC, climb four ranks",
+          "done": true
+        },
+        {
+          "text": "<b>The Arena</b>: staked duels, settled on-chain",
+          "done": true
+        },
+        {
+          "text": "<b>Relics</b>: on-chain draws, and the Forge",
+          "done": true
+        },
+        {
+          "text": "<b>The Lower City</b>: an NFT marketplace open to every LitVM collection",
+          "done": true
+        },
+        {
+          "text": "<b>The Codex</b>, ring skins, feats and the soulbound badges of the Order",
+          "done": true
+        },
+        {
+          "text": "<b>The Chronicles</b>: Fragments I to VI",
+          "done": true
+        }
+      ]
+    },
+    {
+      "tag": "Now",
+      "title": "Preparing mainnet",
+      "state": "now",
+      "items": [
+        {
+          "text": "New contracts written and tested: every burn credited through one Ritual, an on-chain minimum per offering, royalties",
+          "done": false
+        },
+        {
+          "text": "Weekly quests in preview",
+          "done": true
+        },
+        {
+          "text": "Bot protection: dust offerings no longer count",
+          "done": false
+        },
+        {
+          "text": "Public testing of the mainnet version",
+          "done": false
+        }
+      ]
+    },
+    {
+      "tag": "Next",
+      "title": "Mainnet launch on LitVM",
+      "state": "next",
+      "items": [
+        {
+          "text": "External security audit",
+          "done": false
+        },
+        {
+          "text": "Deployment on LitVM mainnet",
+          "done": false
+        },
+        {
+          "text": "Weekly quests with rewards: a bonus relic draw",
+          "done": false
+        },
+        {
+          "text": "The Path: new Chronicles fragments unlock as the community burns",
+          "done": false
+        },
+        {
+          "text": "A simple integration guide for builders who want to burn through the Void",
+          "done": false
+        }
+      ]
+    },
+    {
+      "tag": "Later",
+      "title": "Beyond the launch",
+      "state": "later",
+      "items": [
+        {
+          "text": "The Chronicles continue: a journey across the seven kingdoms",
+          "done": false
+        },
+        {
+          "text": "<b>The Chronicles in print</b>: an illustrated edition, to carry the story beyond the screen",
+          "done": false
+        },
+        {
+          "text": "<b>The Void as a shared sink</b>: any LitVM dApp can burn for its users, and their rank grows wherever they play",
+          "done": false
+        },
+        {
+          "text": "Partnerships with launchpads and token creators, so new projects plug into the Void from day one",
+          "done": false
+        },
+        {
+          "text": "New relic series and ring skins",
+          "done": false
+        },
+        {
+          "text": "New ways to play, always built around the burn",
+          "done": false
+        }
+      ]
+    }
+  ]
+}
