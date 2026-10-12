@@ -1020,6 +1020,19 @@ body.sv-rail-on section#store-page[data-rail]{max-width:none !important;padding:
    en bleu clair, une teinte qui appartient deja a la palette du site et qui
    se lit longtemps sans forcer. */
 .faq-cat{font-family:'Cinzel',serif;font-weight:500;font-size:0.68rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--teal);margin:1.6rem 0 0.6rem;}
+.rm-phase{position:relative;margin:0 0 1.5rem;padding:0 0 0 1.6rem;border-left:1px solid rgba(255,255,255,0.1);}
+.rm-phase:last-child{margin-bottom:0;}
+.rm-phase::before{content:'';position:absolute;left:-6px;top:0.3rem;width:11px;height:11px;border-radius:50%;background:#0d132d;border:1px solid rgba(255,255,255,0.3);}
+.rm-phase.done::before{background:var(--teal);border-color:var(--teal);}
+.rm-phase.now::before{background:#ffc140;border-color:#ffc140;box-shadow:0 0 12px rgba(255,193,64,0.6);}
+.rm-tag{font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.45);}
+.rm-phase.done .rm-tag{color:var(--teal);} .rm-phase.now .rm-tag{color:#ffc140;}
+.rm-title{font-family:'Cinzel',serif;font-size:1.05rem;color:#fff;margin:0.2rem 0 0.6rem;}
+.rm-phase ul{margin:0;padding:0;list-style:none;}
+.rm-phase li{position:relative;padding:0 0 0 1.1rem;margin:0 0 0.4rem;font-size:0.92rem;line-height:1.5;color:rgba(255,255,255,0.78);}
+.rm-phase li::before{content:'\2022';position:absolute;left:0.2rem;color:rgba(255,255,255,0.35);}
+.rm-phase.done li::before,.rm-phase li.done::before{content:'\2713';left:0;color:var(--teal);font-size:0.8rem;}
+.rm-phase li b{color:#fff;font-weight:600;}
 .faq-lead{
   font-family:'Cormorant Garamond',serif; font-size:1rem; font-style:italic;
   line-height:1.65; color:#b8d4f0; margin-bottom:1.6rem;
@@ -7648,6 +7661,39 @@ function spherierDemo(db, ds) {
       the key, the Forge closes the circle.
     </div>
     <div id="faq-list"></div>
+  </div>
+</div>
+
+<!-- ROADMAP — ou en est le projet, et ou il va. Pas de dates : le lancement
+     depend du mainnet de LitVM, on annonce des phases, pas un calendrier. -->
+<div id="roadmap-modal" style="display:none;position:fixed;inset:0;z-index:9600;
+     background:linear-gradient(180deg, rgba(13,19,45,0.93), rgba(9,13,33,0.95));
+     backdrop-filter:blur(12px);
+     align-items:flex-start;justify-content:center;overflow-y:auto;padding:3rem 1rem;"
+     onclick="if(event.target===this)roadmapClose()">
+  <div style="width:100%;max-width:760px;
+              background:linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015));
+              border:1px solid rgba(140,190,240,0.14);border-radius:12px;padding:2rem 1.8rem;
+              box-shadow:0 24px 70px rgba(0,0,0,0.35);">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1.4rem;">
+      <div>
+        <div class="eyebrow">Roadmap</div>
+        <div style="font-family:'Cinzel',serif;font-size:1.5rem;color:#fff;margin-top:0.3rem;">Where the Void is going</div>
+      </div>
+      <button onclick="roadmapClose()" aria-label="Close" style="background:transparent;
+              border:1px solid rgba(255,255,255,0.18);color:#fff;width:34px;height:34px;
+              border-radius:8px;cursor:pointer;font-size:1.1rem;flex-shrink:0;">&times;</button>
+    </div>
+    <div class="faq-lead" style="margin-bottom:1.8rem;">
+      <b>The Silver Void</b> is a burn-to-rank collection game on LitVM. Burning is usually a dull,
+      one-off transaction; here it becomes the heart of a game. Your rank, your relics and the story
+      all grow out of what you burn, and every duel, draw or trade burns a part too.
+      <br><br>
+      <b>There is no Silver Void token.</b> Everything runs on LTC, and the more people play, the more
+      of it leaves circulation for good. Every contract is public and readable on-chain.
+    </div>
+
+    <div id="roadmap-list"></div>
   </div>
 </div>
 
@@ -14498,7 +14544,41 @@ function faqClose(){
   document.body.style.overflow = '';
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') faqClose(); });
+/// La roadmap vit dans /roadmap.json : pour cocher une etape, on modifie ce
+/// petit fichier sur GitHub, sans toucher a index.html. La copie ci-dessous
+/// ne sert que si le fichier est introuvable.
+const ROADMAP_FALLBACK = {"phases": [{"tag": "Done", "title": "Testnet", "state": "done", "items": [{"text": "<b>The Ritual</b>: burn zkLTC, climb four ranks", "done": true}, {"text": "<b>The Arena</b>: staked duels, settled on-chain", "done": true}, {"text": "<b>Relics</b>: on-chain draws, and the Forge", "done": true}, {"text": "<b>The Lower City</b>: an NFT marketplace open to every LitVM collection", "done": true}, {"text": "<b>The Codex</b>, ring skins, feats and the soulbound badges of the Order", "done": true}, {"text": "<b>The Chronicles</b>: Fragments I to VI", "done": true}]}, {"tag": "Now", "title": "Preparing mainnet", "state": "now", "items": [{"text": "New contracts written and tested: every burn credited through one Ritual, an on-chain minimum per offering, royalties", "done": false}, {"text": "Weekly quests in preview", "done": true}, {"text": "Bot protection: dust offerings no longer count", "done": false}, {"text": "Public testing of the mainnet version", "done": false}]}, {"tag": "Next", "title": "Mainnet launch on LitVM", "state": "next", "items": [{"text": "External security audit", "done": false}, {"text": "Deployment on LitVM mainnet", "done": false}, {"text": "Weekly quests with rewards: a bonus relic draw", "done": false}, {"text": "The Path: new Chronicles fragments unlock as the community burns", "done": false}, {"text": "A simple integration guide for builders who want to burn through the Void", "done": false}]}, {"tag": "Later", "title": "Beyond the launch", "state": "later", "items": [{"text": "The Chronicles continue: a journey across the seven kingdoms", "done": false}, {"text": "<b>The Chronicles in print</b>: an illustrated edition, to carry the story beyond the screen", "done": false}, {"text": "<b>The Void as a shared sink</b>: any LitVM dApp can burn for its users, and their rank grows wherever they play", "done": false}, {"text": "Partnerships with launchpads and token creators, so new projects plug into the Void from day one", "done": false}, {"text": "New relic series and ring skins", "done": false}, {"text": "New ways to play, always built around the burn", "done": false}]}]};
+
+function roadmapRender(data) {
+  const host = document.getElementById('roadmap-list');
+  if (!host || !data || !Array.isArray(data.phases)) return;
+  host.innerHTML = data.phases.map(ph => {
+    const cls = ph.state === 'done' ? ' done' : ph.state === 'now' ? ' now' : '';
+    const items = (ph.items || []).map(it => '<li' + (it.done ? ' class="done"' : '') + '>' + it.text + '</li>').join('');
+    return '<div class="rm-phase' + cls + '"><div class="rm-tag">' + ph.tag + '</div>'
+      + '<div class="rm-title">' + ph.title + '</div><ul>' + items + '</ul></div>';
+  }).join('');
+}
+
+async function roadmapOpen(){
+  const m = document.getElementById('roadmap-modal');
+  if (!m) return;
+  const host = document.getElementById('roadmap-list');
+  if (host && !host.innerHTML.trim()) roadmapRender(ROADMAP_FALLBACK);
+  m.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  try {
+    const r = await fetch('/roadmap.json', { cache: 'no-store' });
+    if (r.ok) roadmapRender(await r.json());
+  } catch (e) {}
+}
+function roadmapClose(){
+  const m = document.getElementById('roadmap-modal');
+  if (m) m.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { faqClose(); roadmapClose(); } });
 
 function cardHTML(item, owned, sealedHint, scarcity, copies, itemId) {
   // The frame carries the rarity, not the art: a locked Legendary should still
@@ -18944,6 +19024,7 @@ window.addEventListener('load', function () {
        dans le Codex : il fallait deja savoir ou chercher pour la trouver. -->
   <div class="sv-grp">Help</div>
   <div class="sv-ric" id="sv-help-btn" onclick="faqOpen()"><span>?</span>How it works</div>
+  <div class="sv-ric" id="sv-roadmap-btn" onclick="roadmapOpen()"><span>◇</span>Roadmap</div>
 
   <div class="sv-foot">
     <button class="sv-wal" id="sv-wallet-btn" onclick="svRailWallet()">
@@ -19225,6 +19306,9 @@ if (svRailEnabled) {
       rail.querySelectorAll('.sv-grp, .sv-ric').forEach(el => {
         if (el.classList.contains('sv-grp')) {
           html += '<div class="sv-dr-sep">' + el.textContent + '</div>';
+        } else if (el.id === 'sv-roadmap-btn') {
+          html += '<div class="sv-dr-item" data-roadmap="1">'
+                + '<span class="ic">\u25c7</span><span>Roadmap</span></div>';
         } else if (el.id === 'sv-help-btn') {
           // Cette entree n'est pas une section : elle ouvre le Codex.
           html += '<div class="sv-dr-item" data-faq="1">'
@@ -19269,6 +19353,7 @@ if (svRailEnabled) {
       if (!it) { setOpen(false); return; }   // clic dans le vide = fermeture
       setOpen(false);
       if (it.dataset.faq === '1') { faqOpen(); return; }
+      if (it.dataset.roadmap === '1') { roadmapOpen(); return; }
       svRailGo(it.dataset.go);
     });
 
@@ -20445,6 +20530,7 @@ body.sv-rail-on section#chronicles-page > div[aria-hidden]{ display:none !import
       <li><a href="https://testnet.litvm.com" target="_blank" rel="noopener">LiteForge</a></li>
       <li><a href="#" onclick="openTermsReader();return false;">Terms of Use</a></li>
       <li><a href="#" onclick="faqOpen();return false;">How it works</a></li>
+      <li><a href="#" onclick="roadmapOpen();return false;">Roadmap</a></li>
     </ul>
   </div>
   <div class="footer-chain">LiteForge Testnet · Chain ID 4441</div>
